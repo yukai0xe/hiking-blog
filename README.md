@@ -1,219 +1,202 @@
-# 登山日誌專案 — Learning Reflection
+# 登山日誌 — Hiking Journal
 
 > Vue 3 · TypeScript · Supabase · Leaflet · Tailwind CSS
 
----
-
-## 1. Project Overview
-
-This project is a personal hiking journal built entirely from scratch. The goal was to record expedition logs — uploading GPX route files, cover images, photo galleries, and gear lists — and display them in a visually rich, themed web interface.
-
-Building this app from scratch without a backend team meant learning the full stack: frontend architecture in Vue 3, backend-as-a-service with Supabase, file storage, map rendering, and SVG animation.
+Personal hiking journal web app for recording expedition logs — GPX routes, cover images, photo galleries, gear lists, and tags.
 
 ---
 
-## 2. Technologies Learned
+## Tech Stack
 
-### 2.1 Vue 3 — Composition API
+| Layer | Tool |
+|---|---|
+| Framework | Vue 3 + TypeScript (Composition API) |
+| Build | Vite 4 |
+| State | Pinia |
+| Routing | Vue Router 4 |
+| Styling | Tailwind CSS v3 + CSS custom properties |
+| Backend | Supabase (Postgres + Storage + RLS) |
+| Map | Leaflet |
+| Charts | Chart.js |
+| GPX parsing | @tmcw/togeojson |
+| Icons | Lucide Vue Next |
 
-This project used Vue 3 exclusively with the Composition API (`<script setup>`). Key takeaways:
+---
 
-- `ref()` and `reactive()` for local component state
-- `computed()` for derived values (e.g. elevation stats, filtered photo lists)
-- `onMounted()` / `onUnmounted()` for lifecycle hooks (map init, map cleanup)
-- `nextTick()` — critical for waiting until Vue has updated the DOM before running imperative code like Leaflet
-- `defineProps<T>()` with TypeScript generics for fully typed component props
-- `<Transition>` / `<Teleport>` for animation and portals (lightbox overlay)
+## Features
 
-### 2.2 Pinia — State Management
+### Pages
 
-Pinia replaced Vuex as the official Vue state library. Key patterns used:
+| Page | Description |
+|---|---|
+| **Home** | Waterfall card grid; GPX route draws on hover; dark/light theme toggle |
+| **Create** | 5-step form: title + tags → GPX + trip info → cover → photos → gear |
+| **Detail** | 3-column layout: icon nav / content (map / gallery / gears) / collapsible info sidebar |
+| **Edit** | Full post editing — cover crop, GPX re-upload, photo management with undo delete |
 
-- `defineStore()` with setup syntax (same as Composition API)
-- Shared store state across pages without prop drilling
-- Async actions that update `loading` / `error` reactive refs
-- `postStore`: fetchPosts, fetchPostDetail, createPost, updatePost, deletePhoto
-- `themeStore`: persists dark/light mode preference to `localStorage`
+### Detail Page Layout
 
-### 2.3 Tailwind CSS v3 + CSS Custom Properties
+```
+┌─ Hero (full width) ──────────────────────────────┐
+│  ← Back          Title / Date          Edit →    │
+└──────────────────────────────────────────────────┘
+┌─ Nav (72px) ─┬─ Center (flex-1) ──┬─ Sidebar ──┐
+│  📷 照片     │  Tags · Toggles    │  行程資訊   │
+│  🗺 地圖    │  ─────────────────  │  日期/天數  │
+│  🎒 裝備    │  PhotoGallery  OR   │  天氣/人數  │
+│             │  GpxViewer (100vh)  │  描述       │
+│             │  GearList           │  (折疊)     │
+└─────────────┴────────────────────┴─────────────┘
+```
 
-The design system combined Tailwind utility classes with CSS custom properties for runtime theming:
+- Switching to the map tab auto-collapses the sidebar so Leaflet initializes at full width
+- Sidebar animates open/close with `transition-[width]`
 
-- All colors defined as CSS variables (`--c-base`, `--c-primary`, etc.) rather than hardcoded values
-- Tailwind config maps color tokens to `var(--c-*)` so utility classes work in both dark and light mode automatically
-- The default theme is dark (expedition log); light mode adds `.light` class on `<html>` instead of using Tailwind's `dark:` prefix
+### Photo Gallery
 
-**Lesson:** `@apply` cannot use opacity modifiers with CSS variable colors.
+- CSS columns masonry layout
+- Lightbox with zoom (mouse wheel), pan (drag), swipe gestures, keyboard navigation
+- Download button with image metadata (dimensions, MP)
+- Star / favourite: moves photo to front of grid; persists to `localStorage`
+- Reset favourites button in top bar
+
+### Tag System
+
+- Tags stored in a `tags` table in Supabase
+- `TagPickerModal`: search, select from list, add custom tags (saved to DB)
+- Selected tags displayed as chips in Detail page top bar
+
+### GPX Viewer
+
+- Leaflet map with OpenStreetMap tiles
+- Route polyline + start/end markers
+- Layer toggles: 山頭 (peaks) / 記錄點 (waypoints) / 山屋 (shelters)
+- Collapsible elevation panel (Chart.js area chart)
+
+---
+
+## Database Schema
+
+```sql
+posts   (id, title, description, cover_image, gpx_file,
+         date_start, date_end, weather, people_count, tags text[],
+         created_at, deleted_at)
+photos  (id, post_id, url, created_at)
+gears   (id, post_id, name, weight int, note, created_at)
+tags    (id, name unique, created_at)
+```
+
+All tables have RLS enabled with public SELECT / INSERT / UPDATE / DELETE policies.
+Soft delete on posts (`deleted_at` timestamptz).
+
+## Storage Buckets
+
+| Bucket | Contents |
+|---|---|
+| `covers` | Post cover images |
+| `gpx` | GPX route files |
+| `photos` | Post photo galleries |
+
+---
+
+## Dev Commands
+
+```bash
+npm run dev       # start dev server
+npm run build     # type-check + vite build
+npm run preview   # preview production build
+```
+
+## Environment
+
+Copy `.env.example` → `.env`:
+
+```
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon key>
+```
+
+---
+
+## Key Technical Learnings
+
+### Vue 3
+
+- `ref()` / `computed()` / `watch()` / `onMounted()` / `onUnmounted()` patterns
+- `nextTick()` — required before running imperative DOM code (Leaflet init)
+- `<Transition>` / `<Teleport>` for lightbox and modal overlays
+- `defineExpose()` — expose component internals to parent via template ref (e.g. `galleryRef.resetFavorites()`)
+
+### Tailwind + CSS Variables
+
+All colors are CSS custom properties (`var(--c-*)`). This means opacity modifiers in `@apply` break:
 
 ```css
-/* ✗ breaks */
-@apply ring-primary/30;
+/* ✗ breaks — Tailwind can't apply opacity to CSS variables */
+@apply bg-primary/30;
 
 /* ✓ works */
-box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-primary) 30%, transparent);
+background: color-mix(in srgb, var(--c-primary) 30%, transparent);
 ```
 
-### 2.4 Supabase — Backend as a Service
+### Supabase
 
-Supabase provided the entire backend: Postgres database, file storage, and auth infrastructure.
+- RLS silent failures: missing UPDATE/DELETE policy returns 0 rows with no error — always create all four policies per table
+- `upsert: true` on storage upload allows overwriting the same file path
+- `text[]` columns for tag arrays; `on conflict (name) do nothing` for idempotent seed data
 
-#### Row Level Security (RLS)
-
-RLS is enabled by default on all tables. Without explicit policies, all operations are blocked. A critical lesson:
-
-- SELECT policies were created early, so reading data worked fine
-- UPDATE and DELETE policies were missing — Supabase **silently returned 0 rows affected** without throwing an error
-- This caused cover image updates and photo deletions to fail with no visible error message
-- **Fix:** always create INSERT, SELECT, UPDATE, and DELETE policies for each table
-
-#### Storage Buckets
-
-- Files are uploaded to named buckets (`covers`, `gpx`, `photos`)
-- `uploadFile()` uses `upsert: true` to allow re-uploading the same path
-- `getPublicUrl()` returns a permanent public URL to store in the database
-
-#### Migrations
-
-- Schema is versioned in `supabase/migrations/*.sql` files
-- Applied manually via Supabase Dashboard → SQL Editor in this project
-
-### 2.5 Leaflet — Interactive Maps
-
-Leaflet rendered the GPX route on an interactive OpenStreetMap tile layer.
-
-- `L.map()`, `L.tileLayer()`, `L.polyline()`, `L.marker()` — core Leaflet API
-- `L.divIcon()` for custom HTML marker icons (start/end dots)
-- `fitBounds()` to auto-zoom to the route extent
-
-**Critical timing bug discovered and fixed:**
-
-- `renderMap()` was called while `loading = true`, so `<div ref="mapEl">` did not exist in the DOM yet
-- `mapEl.value` was `null` → Leaflet silently exited → only the elevation chart rendered
-- **Fix:** `loading.value = false` → `await nextTick()` → `renderMap()`
-
-### 2.6 GPX Parsing — @tmcw/togeojson
-
-GPX is an XML format used by GPS devices. `@tmcw/togeojson` converts it to GeoJSON.
-
-- Dynamic import: `const { gpx } = await import('@tmcw/togeojson')` — keeps it out of the initial bundle
-- Most GPS devices export tracks with multiple `<trkseg>` segments
-- `togeojson` outputs `MultiLineString` for multi-segment tracks, **not** `LineString`
-- Original code only handled `LineString` → all multi-segment GPX files showed "route not found"
-
-**Fix:** check `geometry.type` and flatten `MultiLineString` with `.flat()`
+### Leaflet Timing
 
 ```ts
-const raw =
-  feature.geometry.type === 'LineString'
-    ? feature.geometry.coordinates
-    : feature.geometry.coordinates.flat() // MultiLineString
+// ✗ map div not in DOM yet
+renderMap()
+
+// ✓ correct order
+loading.value = false
+await nextTick()
+renderMap()
 ```
 
-### 2.7 Chart.js — Elevation Profile
+### GPX Geometry
 
-Chart.js rendered the elevation profile as a filled area chart.
+GPS devices export multi-segment tracks → `togeojson` outputs `MultiLineString`, not `LineString`:
 
-- Only required modules are registered (tree-shaking): `LineElement`, `PointElement`, `LineController`, `CategoryScale`, `LinearScale`, `Filler`, `Tooltip`
-- `chartInstance.destroy()` must be called before rebuilding to prevent canvas reuse errors
-- `watch(() => props.elevation, buildChart)` re-renders when data changes
+```ts
+const coords =
+  feature.geometry.type === 'LineString'
+    ? feature.geometry.coordinates
+    : feature.geometry.coordinates.flat()
+```
 
-### 2.8 SVG Animation — GPX Route Draw Effect
+### Date Input Timezone Trap
 
-The PostCard hover effect draws the GPX route as an animated SVG line:
+```ts
+// ✗ new Date("2024-03-15") parses as UTC → shows 2024/03/14 in UTC+8
+new Date(iso).toLocaleDateString(...)
 
-- `pathLength="1"` normalises the path length to 1 regardless of actual pixel length
-- `stroke-dasharray: 1` and `stroke-dashoffset: 1` initially hides the line
-- CSS animation transitions `stroke-dashoffset` from `1 → 0`, drawing the line
-- Three layers: outer glow (9px, 7% opacity) + mid glow (4px, 14%) + main line (1.6px)
-- Start/end circles use a `pop` keyframe (`opacity 0 → 1`, `r 1 → 5 → 3.5`) after the draw completes
-- GPX is fetched once on first hover and cached with a `loaded` flag
-- Track simplified to max 400 points to keep SVG rendering snappy
+// ✓ slice string directly — no timezone conversion
+const d = iso.slice(0, 10)  // "YYYY-MM-DD"
+`${d.slice(0,4)}/${d.slice(5,7)}/${d.slice(8,10)}`
+```
+
+### datetime-local Input on Windows Chrome
+
+`type="datetime-local" step="1"` requires filling the seconds field. If the user doesn't, `event.target.value` returns `""` → v-model always gets an empty string. Fix: use `type="date"`.
 
 ---
 
-## 3. Architecture Decisions
+## Architecture Decisions
 
 | Decision | Rationale |
 |---|---|
-| CSS variables for theming | Default theme is dark; light adds `.light` to `<html>`. Avoids needing `dark:` prefix on every class. |
-| Pinia over Vuex | Setup-style stores match Composition API. Simpler, less boilerplate, better TypeScript inference. |
-| Supabase over custom backend | No server to manage. RLS policies enforce data access rules at the database level. |
-| CSS columns masonry | `columns-1 sm:columns-2 xl:columns-4` + `break-inside-avoid`. No JS library needed for waterfall layout. |
-| Dynamic imports for GPX libs | `@tmcw/togeojson` and Leaflet are imported dynamically so they are not in the initial bundle. |
-| SVG unique pattern IDs | Each PostCard uses `id="g-{post.id}"` for the grid `<pattern>` to prevent conflicts on the home page. |
+| CSS variables for theming | Dark by default; light adds `.light` to `<html>`. No `dark:` prefix needed on every class. |
+| Pinia setup stores | Matches Composition API style. Better TypeScript inference than Vuex. |
+| Soft delete on posts | Preserves data; `deleted_at IS NULL` filter excludes deleted records. |
+| CSS columns masonry | `columns-*` + `break-inside-avoid` — no JS library needed. |
+| Dynamic imports | `@tmcw/togeojson` and Leaflet imported dynamically to reduce initial bundle. |
+| localStorage for favourites | Photo favourite order is a purely local UI preference — no need to persist to DB. |
+| Tags as separate table | Enables a shared, searchable tag list across all posts rather than free-form text. |
 
 ---
 
-## 4. Challenges & Solutions
-
-### Leaflet map not rendering
-
-- **Symptom:** Only elevation chart appeared; map was blank
-- **Cause:** `renderMap()` called before Vue rendered the map `<div>` (`mapEl.value` was `null`)
-- **Solution:** `loading = false` → `await nextTick()` → `renderMap()`
-
-### GPX route not found error
-
-- **Symptom:** "找不到有效的 GPX 軌跡" for real GPS device exports
-- **Cause:** GPS devices export multi-segment tracks → `togeojson` produces `MultiLineString`, not `LineString`
-- **Solution:** Handle both geometry types; flatten `MultiLineString` coordinates with `.flat()`
-
-### Cover update / photo delete silently failing
-
-- **Symptom:** Supabase calls returned no error but nothing changed in the database
-- **Cause:** RLS policies for `UPDATE` (posts) and `DELETE` (photos) were never created
-- **Solution:** Add missing policies in a new migration file
-
-### @apply with CSS variable colors
-
-- **Symptom:** Build error when using `@apply ring-primary/30` in CSS
-- **Cause:** Tailwind's `@apply` cannot process opacity modifiers when the color is a CSS variable
-- **Solution:** Replace with `color-mix()` in plain CSS
-
-### Node version incompatibility with create-vite
-
-- **Symptom:** `npm create vite@latest` failed on Node v22
-- **Solution:** Downgraded to `create-vite@4` and piped `printf "y"` to auto-accept the overwrite prompt
-
----
-
-## 5. Skills Developed
-
-### Frontend
-
-- Vue 3 Composition API patterns (`ref`, `computed`, `watch`, lifecycle hooks)
-- TypeScript in Vue components (typed props, store actions, service functions)
-- Tailwind CSS utility-first design with a custom design system
-- CSS custom properties for runtime theming without JavaScript
-- SVG animation using `stroke-dashoffset` and keyframes
-- File upload UI (cover image preview, multi-photo management, undo delete)
-
-### Backend / Data
-
-- Supabase Postgres schema design and migrations
-- Row Level Security policies for all CRUD operations
-- Supabase Storage: bucket creation, file upload, public URLs
-- GPX XML parsing and coordinate transformation
-- Elevation statistics computation (total ascent, max/min)
-
-### Tooling
-
-- Vite for fast dev server and production builds
-- Pinia for reactive global state
-- Vue Router for client-side navigation with dynamic route params
-
----
-
-## 6. What I Would Improve Next
-
-- Add authentication so records are private per user
-- Add gear weight summary (total pack weight) to the gear list
-- Add distance and moving time stats parsed from GPX timestamps
-- Implement optimistic UI updates instead of re-fetching after every mutation
-- Add image compression before uploading to reduce storage costs
-- Write Supabase Edge Functions for server-side GPX validation
-- Set up Supabase CLI properly with `db push` for migration management
-
----
-
-*Generated from the hiking journal project — April 2026*
+*May 2026*
