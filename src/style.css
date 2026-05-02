@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,500;0,600;0,700;1,600&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Theme tokens ──────────────────────────────────────── */
+:root {
+  /* Dark mode (default) */
+  --c-base:       #0A0908;
+  --c-surface:    #22333b;
+  --c-card:       #1a2830;
+  --c-cardHover:  #1f303a;
+  --c-primary:    #c6ac8f;
+  --c-secondary:  #5e503f;
+  --c-cta:        #c6ac8f;
+  --c-ink:        #EAE0D5;
+  --c-inkMuted:   #8a7966;
+  --c-border:     #5e503f;
+  --c-cta-text:   #0A0908;
+  --c-shadow:     rgba(0,0,0,0.55);
+  --c-vignette:   rgba(10,9,8,0.45);
+  --c-topo:       %23c6ac8f;   /* URL-encoded hex for SVG */
+  --c-grid:       %23c6ac8f;
+  --c-grain-op:   0.04;
+}
+
+.light {
+  /* Light mode */
+  --c-base:       #f2f8ee;
+  --c-surface:    #bbdb9b;
+  --c-card:       #abc4a1;
+  --c-cardHover:  #9db4ab;
+  --c-primary:    #5e503f;
+  --c-secondary:  #878e76;
+  --c-cta:        #5e503f;
+  --c-ink:        #1e2b1f;
+  --c-inkMuted:   #4a5a4c;
+  --c-border:     #8d9d90;
+  --c-cta-text:   #f2f8ee;
+  --c-shadow:     rgba(0,0,0,0.12);
+  --c-vignette:   rgba(30,43,31,0.12);
+  --c-topo:       %235e503f;
+  --c-grid:       %238d9d90;
+  --c-grain-op:   0.03;
+}
+
+/* ─── Base ─────────────────────────────────────────────── */
+@layer base {
+  body {
+    @apply font-body bg-base text-ink;
+    font-size: 15px;
+    line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  ::-webkit-scrollbar       { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--c-base); }
+  ::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 3px; }
+}
+
+/* ─── Utilities ─────────────────────────────────────────── */
+@layer utilities {
+
+  /* Textured background — dark */
+  .textured-bg {
+    background-color: var(--c-base);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M40 0H0M0 0v40' stroke='%23c6ac8f' stroke-width='0.15' stroke-opacity='0.07'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600' width='800' height='600'%3E%3Cg fill='none' stroke='%23c6ac8f' stroke-linecap='round'%3E%3Cellipse cx='400' cy='300' rx='380' ry='260' stroke-width='0.6' stroke-opacity='0.09'/%3E%3Cellipse cx='400' cy='300' rx='320' ry='210' stroke-width='0.5' stroke-opacity='0.08'/%3E%3Cellipse cx='400' cy='300' rx='260' ry='165' stroke-width='0.5' stroke-opacity='0.07'/%3E%3Cellipse cx='400' cy='300' rx='200' ry='120' stroke-width='0.4' stroke-opacity='0.07'/%3E%3Cellipse cx='400' cy='300' rx='140' ry='80' stroke-width='0.4' stroke-opacity='0.06'/%3E%3Cellipse cx='150' cy='120' rx='130' ry='90' stroke-width='0.5' stroke-opacity='0.07'/%3E%3Cellipse cx='150' cy='120' rx='80' ry='55' stroke-width='0.4' stroke-opacity='0.06'/%3E%3Cellipse cx='660' cy='480' rx='120' ry='85' stroke-width='0.5' stroke-opacity='0.07'/%3E%3Cellipse cx='660' cy='480' rx='70' ry='48' stroke-width='0.3' stroke-opacity='0.05'/%3E%3Cellipse cx='680' cy='90' rx='100' ry='70' stroke-width='0.4' stroke-opacity='0.06'/%3E%3Cellipse cx='80' cy='500' rx='90' ry='65' stroke-width='0.4' stroke-opacity='0.06'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: repeat, repeat, repeat;
+    background-size: 200px 200px, 40px 40px, 800px 600px;
+    background-position: 0 0, 0 0, center center;
+    background-attachment: fixed, fixed, fixed;
+    transition: background-color 0.3s ease;
+  }
+
+  /* Light mode — darker strokes so topo is visible on light bg */
+  .light .textured-bg {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M40 0H0M0 0v40' stroke='%238d9d90' stroke-width='0.2' stroke-opacity='0.25'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600' width='800' height='600'%3E%3Cg fill='none' stroke='%235e503f' stroke-linecap='round'%3E%3Cellipse cx='400' cy='300' rx='380' ry='260' stroke-width='0.7' stroke-opacity='0.12'/%3E%3Cellipse cx='400' cy='300' rx='320' ry='210' stroke-width='0.6' stroke-opacity='0.10'/%3E%3Cellipse cx='400' cy='300' rx='260' ry='165' stroke-width='0.5' stroke-opacity='0.09'/%3E%3Cellipse cx='400' cy='300' rx='200' ry='120' stroke-width='0.5' stroke-opacity='0.09'/%3E%3Cellipse cx='400' cy='300' rx='140' ry='80' stroke-width='0.4' stroke-opacity='0.08'/%3E%3Cellipse cx='150' cy='120' rx='130' ry='90' stroke-width='0.6' stroke-opacity='0.10'/%3E%3Cellipse cx='150' cy='120' rx='80' ry='55' stroke-width='0.5' stroke-opacity='0.08'/%3E%3Cellipse cx='660' cy='480' rx='120' ry='85' stroke-width='0.6' stroke-opacity='0.10'/%3E%3Cellipse cx='660' cy='480' rx='70' ry='48' stroke-width='0.4' stroke-opacity='0.08'/%3E%3Cellipse cx='680' cy='90' rx='100' ry='70' stroke-width='0.5' stroke-opacity='0.09'/%3E%3Cellipse cx='80' cy='500' rx='90' ry='65' stroke-width='0.5' stroke-opacity='0.08'/%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* Card */
+  .card-aged {
+    background-color: var(--c-card);
+    border: 1px solid var(--c-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 16px var(--c-shadow), inset 0 1px 0 rgba(255,255,255,0.04);
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .card-aged:hover {
+    background-color: var(--c-cardHover);
+  }
+
+  /* Input */
+  .input-field {
+    @apply w-full border rounded-lg px-4 py-2.5 transition-all duration-200;
+    background-color: var(--c-base);
+    border-color: var(--c-border);
+    color: var(--c-ink);
+    outline: none;
+  }
+  .input-field::placeholder { color: var(--c-inkMuted); }
+  .input-field:focus {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-primary) 30%, transparent);
+    border-color: var(--c-primary);
+  }
+
+  /* CTA button — text flips between themes */
+  .btn-cta {
+    background-color: var(--c-cta);
+    color: var(--c-cta-text);
+    transition: opacity 0.2s ease, background-color 0.3s ease, color 0.3s ease;
+  }
+  .btn-cta:hover { opacity: 0.88; }
+
+  /* Vignette */
+  .vignette::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, var(--c-vignette) 100%);
+    transition: background 0.3s ease;
+  }
+}

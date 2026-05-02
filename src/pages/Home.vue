@@ -1,0 +1,277 @@
+<template>
+  <div class="min-h-screen textured-bg vignette">
+
+    <!-- Navbar -->
+    <header class="sticky top-0 z-20 px-4 pt-4 pb-2">
+      <div class="max-w-7xl mx-auto card-aged px-5 py-3 flex items-center justify-between"
+           style="backdrop-filter: blur(10px);">
+        <div class="flex items-center gap-2.5">
+          <CompassIcon :size="20" class="text-primary" />
+          <span class="font-heading text-lg font-semibold text-ink tracking-wide">Expedition Log</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            class="card-aged w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
+            @click="theme.toggle()"
+            :aria-label="theme.isDark ? '切換亮色模式' : '切換暗色模式'"
+          >
+            <SunIcon v-if="theme.isDark" :size="17" />
+            <MoonIcon v-else :size="17" />
+          </button>
+          <router-link to="/create" class="btn-cta flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg cursor-pointer">
+            <PlusIcon :size="15" />
+            新增記錄
+          </router-link>
+        </div>
+      </div>
+    </header>
+
+    <main class="relative z-10 max-w-7xl mx-auto px-4 py-6">
+
+      <!-- Search & Filter bar -->
+      <div class="search-bar card-aged p-3 mb-6 flex flex-wrap gap-2">
+
+        <!-- Title search -->
+        <div class="search-input-wrap flex-1">
+          <SearchIcon :size="14" class="search-icon" />
+          <input
+            v-model="searchTitle"
+            type="text"
+            placeholder="搜尋標題…"
+            class="search-input"
+          />
+          <button v-if="searchTitle" class="search-clear" @click="searchTitle = ''" aria-label="清除">
+            <XIcon :size="12" />
+          </button>
+        </div>
+
+        <!-- Weather -->
+        <select v-model="filterWeather" class="filter-select">
+          <option value="">所有天氣</option>
+          <option>晴天</option>
+          <option>多雲時晴</option>
+          <option>多雲</option>
+          <option>陰天</option>
+          <option>小雨</option>
+          <option>雨天</option>
+          <option>大雨</option>
+          <option>雷陣雨</option>
+          <option>起霧</option>
+          <option>下雪</option>
+        </select>
+
+        <!-- Days -->
+        <select v-model="filterDays" class="filter-select">
+          <option value="">所有天數</option>
+          <option value="1">1 天</option>
+          <option value="2-3">2–3 天</option>
+          <option value="4-7">4–7 天</option>
+          <option value="7+">7 天以上</option>
+        </select>
+
+        <!-- Date range -->
+        <DateRangePicker v-model:start="filterDateStart" v-model:end="filterDateEnd" />
+
+        <!-- Clear all -->
+        <button
+          v-if="hasActiveFilters"
+          class="filter-clear flex items-center gap-1 px-3 rounded-lg text-xs font-body font-semibold cursor-pointer transition-colors duration-150"
+          @click="clearFilters"
+        >
+          <XIcon :size="12" /> 清除篩選
+        </button>
+      </div>
+
+      <!-- Result count hint -->
+      <p v-if="hasActiveFilters" class="text-xs font-body text-inkMuted mb-4 tracking-wide">
+        找到 <span class="text-primary font-semibold">{{ filteredPosts.length }}</span> 筆記錄
+      </p>
+
+      <!-- Loading skeleton -->
+      <div v-if="store.loading" class="columns-1 sm:columns-2 xl:columns-4 gap-4">
+        <div
+          v-for="i in 8" :key="i"
+          class="break-inside-avoid mb-4 card-aged animate-pulse"
+          :style="{ height: `${180 + (i % 3) * 80}px` }"
+        />
+      </div>
+
+      <div v-else-if="store.error" class="text-center py-24 font-body text-red-400">
+        {{ store.error }}
+      </div>
+
+      <!-- No posts at all -->
+      <div v-else-if="store.posts.length === 0" class="flex flex-col items-center justify-center py-32">
+        <div class="card-aged p-10 text-center max-w-sm">
+          <MapIcon :size="44" class="mx-auto mb-4 text-primary opacity-40" />
+          <p class="font-heading text-2xl text-ink mb-2">記錄尚未開始</p>
+          <p class="text-sm mb-6 font-body italic text-inkMuted">每段旅程都值得被記錄</p>
+          <router-link to="/create" class="btn-cta inline-flex items-center gap-2 font-semibold px-6 py-2.5 rounded-lg cursor-pointer">
+            <PlusIcon :size="15" />
+            新增第一筆
+          </router-link>
+        </div>
+      </div>
+
+      <!-- No results after filtering -->
+      <div v-else-if="filteredPosts.length === 0" class="flex flex-col items-center justify-center py-24">
+        <div class="card-aged p-10 text-center max-w-sm">
+          <SearchIcon :size="36" class="mx-auto mb-4 text-primary opacity-30" />
+          <p class="font-heading text-xl text-ink mb-2">沒有符合的記錄</p>
+          <p class="text-sm mb-5 font-body italic text-inkMuted">嘗試調整篩選條件</p>
+          <button class="btn-cta inline-flex items-center gap-2 font-semibold px-5 py-2 rounded-lg cursor-pointer text-sm" @click="clearFilters">
+            <XIcon :size="13" /> 清除篩選
+          </button>
+        </div>
+      </div>
+
+      <WaterfallList v-else :posts="filteredPosts" />
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import {
+  Compass as CompassIcon, Plus as PlusIcon, Map as MapIcon,
+  Sun as SunIcon, Moon as MoonIcon, Search as SearchIcon, X as XIcon,
+} from 'lucide-vue-next'
+import WaterfallList from '../components/WaterfallList.vue'
+import DateRangePicker from '../components/DateRangePicker.vue'
+import { usePostStore } from '../stores/postStore'
+import { useThemeStore } from '../stores/themeStore'
+import type { Post } from '../types'
+
+const store = usePostStore()
+const theme = useThemeStore()
+onMounted(() => store.fetchPosts())
+
+const searchTitle    = ref('')
+const filterWeather  = ref('')
+const filterDays     = ref('')
+const filterDateStart = ref('')
+const filterDateEnd   = ref('')
+
+const hasActiveFilters = computed(() =>
+  !!(searchTitle.value || filterWeather.value || filterDays.value || filterDateStart.value || filterDateEnd.value)
+)
+
+function clearFilters() {
+  searchTitle.value    = ''
+  filterWeather.value  = ''
+  filterDays.value     = ''
+  filterDateStart.value = ''
+  filterDateEnd.value   = ''
+}
+
+function calcDays(post: Post): number {
+  if (!post.date_start || !post.date_end) return 1
+  const diff = Math.round(
+    (new Date(post.date_end).getTime() - new Date(post.date_start).getTime()) / 86400000
+  )
+  return Math.max(1, diff + 1)
+}
+
+const filteredPosts = computed(() => {
+  return store.posts.filter(post => {
+    if (searchTitle.value && !post.title.toLowerCase().includes(searchTitle.value.toLowerCase()))
+      return false
+
+    if (filterWeather.value && post.weather !== filterWeather.value)
+      return false
+
+    if (filterDays.value) {
+      const d = calcDays(post)
+      if (filterDays.value === '1'   && d !== 1)          return false
+      if (filterDays.value === '2-3' && (d < 2 || d > 3)) return false
+      if (filterDays.value === '4-7' && (d < 4 || d > 7)) return false
+      if (filterDays.value === '7+'  && d <= 7)            return false
+    }
+
+    if (filterDateStart.value || filterDateEnd.value) {
+      const d = (post.date_start ?? post.created_at ?? '').slice(0, 10)
+      if (filterDateStart.value && d < filterDateStart.value) return false
+      if (filterDateEnd.value   && d > filterDateEnd.value)   return false
+    }
+
+    return true
+  })
+})
+</script>
+
+<style scoped>
+/* ── Search bar ───────────────────────────────────────── */
+.search-bar {
+  align-items: center;
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 180px;
+}
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--c-inkMuted);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+.search-input {
+  width: 100%;
+  padding: 7px 30px 7px 30px;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  font-family: Inter, sans-serif;
+  font-size: 13px;
+  color: var(--c-ink);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.search-input::placeholder { color: var(--c-inkMuted); opacity: 0.6; }
+.search-input:focus { border-color: var(--c-primary); }
+
+.search-clear {
+  position: absolute;
+  right: 8px;
+  color: var(--c-inkMuted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.search-clear:hover { color: var(--c-ink); }
+
+/* ── Filter selects ───────────────────────────────────── */
+.filter-select {
+  padding: 7px 10px;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  font-family: Inter, sans-serif;
+  font-size: 13px;
+  color: var(--c-ink);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  min-width: 110px;
+}
+.filter-select:focus { border-color: var(--c-primary); }
+.filter-select option { background: var(--c-card); color: var(--c-ink); }
+
+/* ── Clear button ─────────────────────────────────────── */
+.filter-clear {
+  height: 34px;
+  color: var(--c-inkMuted);
+  border: 1px solid var(--c-border);
+  white-space: nowrap;
+}
+.filter-clear:hover {
+  color: var(--c-ink);
+  border-color: var(--c-inkMuted);
+}
+</style>
