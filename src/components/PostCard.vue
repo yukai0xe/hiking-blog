@@ -11,7 +11,7 @@
     <!-- Image area -->
     <div class="img-wrap">
       <img
-        :src="post.cover_image"
+        :src="post.coverImage"
         :alt="post.title"
         loading="lazy"
         class="cover-img"
@@ -118,11 +118,11 @@ let loaded = false
 
 async function onHover() {
   isHovered.value = true
-  if (loaded || !props.post.gpx_file) return
+  if (loaded || !props.post.gpxFile) return
   loaded = true
 
   try {
-    const res  = await fetch(props.post.gpx_file)
+    const res  = await fetch(props.post.gpxFile)
     if (!res.ok) return
     const text = await res.text()
     const xml  = new DOMParser().parseFromString(text, 'text/xml')
@@ -188,12 +188,12 @@ function fmtMonthDay(iso: string) {
 }
 
 const dateDisplay = computed(() => {
-  const { date_start, date_end } = props.post
-  if (date_start) {
-    if (date_end && date_end !== date_start) {
-      return `${fmtShort(date_start)} – ${fmtMonthDay(date_end)}`
+  const { dateStart, dateEnd } = props.post
+  if (dateStart) {
+    if (dateEnd && dateEnd !== dateStart) {
+      return `${fmtShort(dateStart)} – ${fmtMonthDay(dateEnd)}`
     }
-    return fmtShort(date_start)
+    return fmtShort(dateStart)
   }
   return fmtShort(props.post.created_at)
 })

@@ -17,7 +17,7 @@
       <!-- Hero -->
       <div class="relative h-64 sm:h-[340px] shrink-0 overflow-hidden">
         <img
-          :src="store.currentPost.cover_image"
+          :src="store.currentPost.coverImage"
           :alt="store.currentPost.title"
           class="w-full h-full object-cover"
           style="opacity: 0.65; filter: sepia(0.2) contrast(1.05);"
@@ -166,7 +166,7 @@
             <GpxViewer
               v-else-if="activeTab === 'gpx'"
               style="height: 100vh;"
-              :gpx-url="store.currentPost!.gpx_file"
+              :gpx-url="store.currentPost!.gpxFile"
               :show-peaks="showPeaks"
               :show-waypoints="showWaypoints"
               :show-shelters="showShelters"
@@ -203,10 +203,10 @@
                 <span class="meta-label">天氣</span>
                 <span class="meta-value">{{ store.currentPost.weather }}</span>
               </div>
-              <div v-if="store.currentPost.people_count" class="meta-item">
+              <div v-if="store.currentPost.peopleCount" class="meta-item">
                 <UsersIcon :size="13" class="meta-icon" />
                 <span class="meta-label">人數</span>
-                <span class="meta-value">{{ store.currentPost.people_count }} 人</span>
+                <span class="meta-value">{{ store.currentPost.peopleCount }} 人</span>
               </div>
             </div>
           </div>
@@ -288,24 +288,24 @@ function fmtDate(iso: string) {
 const dateRange = computed(() => {
   const p = store.currentPost
   if (!p) return ''
-  if (p.date_start && p.date_end && p.date_end !== p.date_start)
-    return `${fmtDate(p.date_start)} – ${fmtDate(p.date_end)}`
-  if (p.date_start) return fmtDate(p.date_start)
+  if (p.dateStart && p.dateEnd && p.dateEnd !== p.dateStart)
+    return `${fmtDate(p.dateStart)} – ${fmtDate(p.dateEnd)}`
+  if (p.dateStart) return fmtDate(p.dateStart)
   return ''
 })
 
 const tripDays = computed(() => {
   const p = store.currentPost
-  if (!p?.date_start || !p.date_end) return null
+  if (!p?.dateStart || !p.dateEnd) return null
   const diff = Math.round(
-    (new Date(p.date_end).getTime() - new Date(p.date_start).getTime()) / 86400000
+    (new Date(p.dateEnd).getTime() - new Date(p.dateStart).getTime()) / 86400000
   )
   return Math.max(1, diff + 1)
 })
 
 const hasMeta = computed(() => {
   const p = store.currentPost
-  return !!(dateRange.value || p?.weather || p?.people_count)
+  return !!(dateRange.value || p?.weather || p?.peopleCount)
 })
 
 onMounted(() => store.fetchPostDetail(route.params.id as string))

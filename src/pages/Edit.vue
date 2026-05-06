@@ -227,7 +227,7 @@
           <!-- Current / new preview -->
           <div class="relative rounded-xl overflow-hidden mb-3 cursor-pointer group/cover" @click="coverInput?.click()">
             <img
-              :src="coverPreview ?? store.currentPost?.cover_image"
+              :src="coverPreview ?? store.currentPost?.coverImage"
               alt="封面"
               class="w-full max-h-56 object-cover transition-all duration-300 group-hover/cover:brightness-75"
             />
@@ -388,7 +388,7 @@ const form = ref({
 
 
 const currentGpxFilename = computed(() => {
-  const url = store.currentPost?.gpx_file ?? ''
+  const url = store.currentPost?.gpxFile ?? ''
   return decodeURIComponent(url.split('/').pop() ?? '').replace(/^[^-]+-\d+-/, '') || 'route.gpx'
 })
 
@@ -412,10 +412,10 @@ onMounted(async () => {
     const p = store.currentPost
     form.value.title       = p.title
     form.value.description = p.description ?? ''
-    form.value.dateStart   = toDateInput(p.date_start)
-    form.value.dateEnd     = toDateInput(p.date_end)
+    form.value.dateStart   = toDateInput(p.dateStart)
+    form.value.dateEnd     = toDateInput(p.dateEnd)
     form.value.weather     = p.weather     ?? ''
-    form.value.peopleCount = p.people_count ?? null
+    form.value.peopleCount = p.peopleCount ?? null
     form.value.tags        = p.tags?.length ? [...p.tags] : []
   }
   pageLoading.value = false

@@ -1,15 +1,15 @@
 export interface Post {
   id: string
   title: string
-  cover_image: string
-  gpx_file: string
+  coverImage: string
+  gpxFile: string
   description: string
   created_at: string
-  date_start?:    string | null
-  date_end?:      string | null
+  dateStart?:    string | null
+  dateEnd?:      string | null
   weather?:       string | null
-  people_count?:  number | null
-  deleted_at?:    string | null
+  peopleCount?:  number | null
+  deletedAt?:    string | null
   tags?:          string[] | null
 }
 

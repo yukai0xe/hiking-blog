@@ -165,9 +165,9 @@ function clearFilters() {
 }
 
 function calcDays(post: Post): number {
-  if (!post.date_start || !post.date_end) return 1
+  if (!post.dateStart || !post.dateEnd) return 1
   const diff = Math.round(
-    (new Date(post.date_end).getTime() - new Date(post.date_start).getTime()) / 86400000
+    (new Date(post.dateEnd).getTime() - new Date(post.dateStart).getTime()) / 86400000
   )
   return Math.max(1, diff + 1)
 }
@@ -189,7 +189,7 @@ const filteredPosts = computed(() => {
     }
 
     if (filterDateStart.value || filterDateEnd.value) {
-      const d = (post.date_start ?? post.created_at ?? '').slice(0, 10)
+      const d = (post.dateStart ?? post.created_at ?? '').slice(0, 10)
       if (filterDateStart.value && d < filterDateStart.value) return false
       if (filterDateEnd.value   && d > filterDateEnd.value)   return false
     }
