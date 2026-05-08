@@ -62,26 +62,28 @@
 /* ─── Utilities ─────────────────────────────────────────── */
 @layer utilities {
 
-  /* Textured background — dark */
+  /* Textured background */
   .textured-bg {
     background-color: var(--c-base);
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M40 0H0M0 0v40' stroke='%23c6ac8f' stroke-width='0.15' stroke-opacity='0.07'/%3E%3C/svg%3E"),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600' width='800' height='600'%3E%3Cg fill='none' stroke='%23c6ac8f' stroke-linecap='round'%3E%3Cellipse cx='400' cy='300' rx='380' ry='260' stroke-width='0.6' stroke-opacity='0.09'/%3E%3Cellipse cx='400' cy='300' rx='320' ry='210' stroke-width='0.5' stroke-opacity='0.08'/%3E%3Cellipse cx='400' cy='300' rx='260' ry='165' stroke-width='0.5' stroke-opacity='0.07'/%3E%3Cellipse cx='400' cy='300' rx='200' ry='120' stroke-width='0.4' stroke-opacity='0.07'/%3E%3Cellipse cx='400' cy='300' rx='140' ry='80' stroke-width='0.4' stroke-opacity='0.06'/%3E%3Cellipse cx='150' cy='120' rx='130' ry='90' stroke-width='0.5' stroke-opacity='0.07'/%3E%3Cellipse cx='150' cy='120' rx='80' ry='55' stroke-width='0.4' stroke-opacity='0.06'/%3E%3Cellipse cx='660' cy='480' rx='120' ry='85' stroke-width='0.5' stroke-opacity='0.07'/%3E%3Cellipse cx='660' cy='480' rx='70' ry='48' stroke-width='0.3' stroke-opacity='0.05'/%3E%3Cellipse cx='680' cy='90' rx='100' ry='70' stroke-width='0.4' stroke-opacity='0.06'/%3E%3Cellipse cx='80' cy='500' rx='90' ry='65' stroke-width='0.4' stroke-opacity='0.06'/%3E%3C/g%3E%3C/svg%3E");
-    background-repeat: repeat, repeat, repeat;
-    background-size: 200px 200px, 40px 40px, 800px 600px;
-    background-position: 0 0, 0 0, center center;
-    background-attachment: fixed, fixed, fixed;
     transition: background-color 0.3s ease;
   }
 
-  /* Light mode — darker strokes so topo is visible on light bg */
-  .light .textured-bg {
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M40 0H0M0 0v40' stroke='%238d9d90' stroke-width='0.2' stroke-opacity='0.25'/%3E%3C/svg%3E"),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600' width='800' height='600'%3E%3Cg fill='none' stroke='%235e503f' stroke-linecap='round'%3E%3Cellipse cx='400' cy='300' rx='380' ry='260' stroke-width='0.7' stroke-opacity='0.12'/%3E%3Cellipse cx='400' cy='300' rx='320' ry='210' stroke-width='0.6' stroke-opacity='0.10'/%3E%3Cellipse cx='400' cy='300' rx='260' ry='165' stroke-width='0.5' stroke-opacity='0.09'/%3E%3Cellipse cx='400' cy='300' rx='200' ry='120' stroke-width='0.5' stroke-opacity='0.09'/%3E%3Cellipse cx='400' cy='300' rx='140' ry='80' stroke-width='0.4' stroke-opacity='0.08'/%3E%3Cellipse cx='150' cy='120' rx='130' ry='90' stroke-width='0.6' stroke-opacity='0.10'/%3E%3Cellipse cx='150' cy='120' rx='80' ry='55' stroke-width='0.5' stroke-opacity='0.08'/%3E%3Cellipse cx='660' cy='480' rx='120' ry='85' stroke-width='0.6' stroke-opacity='0.10'/%3E%3Cellipse cx='660' cy='480' rx='70' ry='48' stroke-width='0.4' stroke-opacity='0.08'/%3E%3Cellipse cx='680' cy='90' rx='100' ry='70' stroke-width='0.5' stroke-opacity='0.09'/%3E%3Cellipse cx='80' cy='500' rx='90' ry='65' stroke-width='0.5' stroke-opacity='0.08'/%3E%3C/g%3E%3C/svg%3E");
+  /* Fixed topo SVG background — rendered as <img> in App.vue */
+  .topo-bg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.07;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+  }
+  /* Light mode: darken strokes toward light-theme primary (#5e503f) */
+  html.light .topo-bg {
+    filter: brightness(0.45) saturate(1.1);
+    opacity: 0.09;
   }
 
   /* Card */

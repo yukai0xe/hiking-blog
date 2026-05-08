@@ -225,11 +225,11 @@
           <h2 class="section-label">封面圖片</h2>
 
           <!-- Current / new preview -->
-          <div class="relative rounded-xl overflow-hidden mb-3 cursor-pointer group/cover" @click="coverInput?.click()">
+          <div class="relative overflow-hidden mb-3 cursor-pointer group/cover w-1/2 mx-auto" @click="coverInput?.click()">
             <img
               :src="coverPreview ?? store.currentPost?.coverImage"
               alt="封面"
-              class="w-full max-h-56 object-cover transition-all duration-300 group-hover/cover:brightness-75"
+              class="w-full h-auto block transition-all duration-300 group-hover/cover:brightness-75"
             />
             <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity duration-200">
               <div class="flex items-center gap-2 bg-base/80 text-ink px-4 py-2 rounded-lg text-sm font-body font-medium">
@@ -327,6 +327,147 @@
           </div>
         </section>
 
+        <!-- ⑥ 裝備清單 -->
+        <section class="card-aged p-6 mb-4">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <h2 class="section-label mb-0">裝備清單</h2>
+              <span v-if="totalWeight > 0" class="font-mono text-xs text-inkMuted">
+                {{ (totalWeight / 1000).toFixed(2) }} kg
+              </span>
+            </div>
+          </div>
+
+          <!-- Gear rows -->
+          <div v-if="visibleGears.length > 0 || gearsToAdd.length > 0" class="mb-4 space-y-1.5">
+
+            <!-- Existing gears -->
+            <div
+              v-for="gear in visibleGears"
+              :key="gear.id"
+              class="gear-row group/gear"
+            >
+              <span class="gear-name">{{ gear.name }}</span>
+              <span class="gear-category">{{ gear.category || '其他' }}</span>
+              <span class="gear-qty">× {{ gear.quantity ?? 1 }}</span>
+              <span class="gear-weight">{{ gear.weight }}<span class="text-inkMuted text-[10px] ml-0.5">g</span></span>
+              <span class="gear-note text-inkMuted truncate">{{ gear.note }}</span>
+              <button
+                class="gear-del opacity-0 group-hover/gear:opacity-100 cursor-pointer text-inkMuted hover:text-red-400 transition-all duration-150"
+                @click="markGearDelete(gear.id)"
+                aria-label="刪除裝備"
+              >
+                <XIcon :size="13" />
+              </button>
+            </div>
+
+            <!-- New gears pending upload -->
+            <div
+              v-for="(gear, i) in gearsToAdd"
+              :key="`ng-${i}`"
+              class="gear-row group/gear"
+              style="border-color: color-mix(in srgb, var(--c-primary) 30%, transparent); background: color-mix(in srgb, var(--c-primary) 5%, transparent);"
+            >
+              <span class="gear-name">{{ gear.name }}</span>
+              <span class="gear-category">{{ gear.category }}</span>
+              <span class="gear-qty">× {{ gear.quantity }}</span>
+              <span class="gear-weight">{{ gear.weight }}<span class="text-inkMuted text-[10px] ml-0.5">g</span></span>
+              <span class="gear-note text-inkMuted truncate">{{ gear.note }}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="bg-primary text-[var(--c-cta-text)] text-[10px] font-mono px-1.5 py-0.5 rounded">NEW</span>
+                <button
+                  class="opacity-0 group-hover/gear:opacity-100 cursor-pointer text-inkMuted hover:text-red-400 transition-all duration-150"
+                  @click="gearsToAdd.splice(i, 1)"
+                  aria-label="取消新增"
+                >
+                  <XIcon :size="13" />
+                </button>
+              </div>
+            </div>
+
+          </div>
+          <p v-else class="text-center text-inkMuted text-sm font-body italic py-4 mb-4">
+            — 尚無裝備 —
+          </p>
+
+          <!-- Add gear form -->
+          <div class="border-t pt-4" style="border-color: color-mix(in srgb, var(--c-border) 40%, transparent);">
+            <p class="field-label mb-3">新增裝備</p>
+            <div class="grid grid-cols-[1fr_120px] gap-2 mb-2">
+              <input
+                v-model="newGear.name"
+                type="text"
+                class="input-field text-sm"
+                placeholder="裝備名稱 *"
+                @keyup.enter="addGear"
+              />
+              <select v-model="newGear.category" class="input-field text-sm font-body">
+                <option v-for="cat in GEAR_CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-[80px_60px_1fr] gap-2 mb-3">
+              <div>
+                <label class="field-label">重量 (g)</label>
+                <input
+                  v-model.number="newGear.weight"
+                  type="number"
+                  min="0"
+                  class="input-field text-sm font-mono no-spinner"
+                  placeholder="0"
+                  @keyup.enter="addGear"
+                />
+              </div>
+              <div>
+                <label class="field-label">數量</label>
+                <input
+                  v-model.number="newGear.quantity"
+                  type="number"
+                  min="1"
+                  class="input-field text-sm font-mono no-spinner"
+                  placeholder="1"
+                  @keyup.enter="addGear"
+                />
+              </div>
+              <div>
+                <label class="field-label">備註</label>
+                <input
+                  v-model="newGear.note"
+                  type="text"
+                  class="input-field text-sm"
+                  placeholder="選填"
+                  @keyup.enter="addGear"
+                />
+              </div>
+            </div>
+            <button
+              class="flex items-center gap-1.5 btn-cta text-xs font-semibold font-body px-3 py-1.5 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="!newGear.name.trim()"
+              @click="addGear"
+            >
+              <PlusIcon :size="13" /> 加入清單
+            </button>
+          </div>
+
+          <!-- Deleted gears undo -->
+          <div v-if="pendingGearDeletes.length > 0" class="mt-4 pt-4 border-t border-border/40">
+            <p class="text-xs text-inkMuted font-body mb-2 flex items-center gap-1">
+              <AlertCircleIcon :size="12" />
+              以下裝備將於儲存時刪除（點擊可復原）
+            </p>
+            <div class="flex flex-wrap gap-2">
+              <div
+                v-for="gear in deletedGears"
+                :key="gear.id"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg cursor-pointer opacity-40 hover:opacity-70 transition-opacity border border-border/50 font-body text-xs text-inkMuted"
+                @click="undoGearDelete(gear.id)"
+              >
+                <RotateCcwIcon :size="11" />
+                {{ gear.name }}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <p v-if="store.error" class="text-red-400 text-sm flex items-center gap-1 font-body mt-2">
           <AlertCircleIcon :size="14" /> {{ store.error }}
         </p>
@@ -352,7 +493,8 @@ import {
 import { usePostStore } from '../stores/postStore'
 import CropModal from '../components/CropModal.vue'
 import TagPickerModal from '../components/TagPickerModal.vue'
-import type { Photo } from '../types'
+import { GEAR_CATEGORIES } from '../types'
+import type { Photo, Gear } from '../types'
 
 const route  = useRoute()
 const router = useRouter()
@@ -373,7 +515,10 @@ const newCoverFile    = ref<File | null>(null)
 const newGpxFile      = ref<File | null>(null)
 const newPhotoFiles   = ref<File[]>([])
 const newPhotoPreviews = ref<string[]>([])
-const pendingDeletes  = ref<string[]>([])
+const pendingDeletes      = ref<string[]>([])
+const gearsToAdd          = ref<{ name: string; weight: number; note: string }[]>([])
+const pendingGearDeletes  = ref<string[]>([])
+const newGear             = ref({ name: '', weight: 0, note: '', category: '其他', quantity: 1 })
 
 
 const form = ref({
@@ -396,10 +541,22 @@ const currentGpxFilename = computed(() => {
 const visiblePhotos = computed<Photo[]>(() =>
   store.currentPhotos.filter(p => !pendingDeletes.value.includes(p.id))
 )
-// Photos marked for deletion (shown in undo area)
 const deletedPhotos = computed<Photo[]>(() =>
   store.currentPhotos.filter(p => pendingDeletes.value.includes(p.id))
 )
+
+// Gears
+const visibleGears = computed<Gear[]>(() =>
+  store.currentGears.filter(g => !pendingGearDeletes.value.includes(g.id))
+)
+const deletedGears = computed<Gear[]>(() =>
+  store.currentGears.filter(g => pendingGearDeletes.value.includes(g.id))
+)
+const totalWeight = computed(() => {
+  const existing = visibleGears.value.reduce((s, g) => s + g.weight, 0)
+  const added    = gearsToAdd.value.reduce((s, g) => s + g.weight, 0)
+  return existing + added
+})
 
 function toDateInput(val: string | null | undefined): string {
   if (!val) return ''
@@ -470,6 +627,20 @@ function undoDelete(photoId: string) {
   pendingDeletes.value = pendingDeletes.value.filter(id => id !== photoId)
 }
 
+function addGear() {
+  if (!newGear.value.name.trim()) return
+  gearsToAdd.value.push({ ...newGear.value })
+  newGear.value = { name: '', weight: 0, note: '', category: '其他', quantity: 1 }
+}
+
+function markGearDelete(gearId: string) {
+  pendingGearDeletes.value.push(gearId)
+}
+
+function undoGearDelete(gearId: string) {
+  pendingGearDeletes.value = pendingGearDeletes.value.filter(id => id !== gearId)
+}
+
 async function handleDelete() {
   try {
     await store.deletePost(id)
@@ -486,6 +657,8 @@ async function save() {
       gpxFile:          newGpxFile.value,
       photoFilesToAdd:  newPhotoFiles.value,
       photoIdsToDelete: pendingDeletes.value,
+      gearsToAdd:       gearsToAdd.value,
+      gearIdsToDelete:  pendingGearDeletes.value,
       dateStart:        form.value.dateStart  || undefined,
       dateEnd:          form.value.dateEnd    || undefined,
       weather:          form.value.weather    || undefined,
@@ -516,6 +689,32 @@ async function save() {
   text-transform: uppercase;
   margin-bottom: 6px;
 }
+/* ── Gear row ───────────────────────────────────────── */
+.gear-row {
+  display: grid;
+  grid-template-columns: 1fr 90px 40px 56px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--c-border) 45%, transparent);
+  font-size: 13px;
+  font-family: Inter, sans-serif;
+  color: var(--c-ink);
+  background: color-mix(in srgb, var(--c-card) 60%, transparent);
+}
+.gear-name     { font-weight: 500; }
+.gear-category { font-size: 11px; color: var(--c-primary); }
+.gear-qty      { font-size: 12px; font-family: 'Space Mono', monospace; color: var(--c-inkMuted); text-align: center; }
+.gear-weight   { font-size: 12px; font-family: 'Space Mono', monospace; color: var(--c-ink); text-align: right; }
+.gear-note     { font-size: 12px; }
+.gear-del      { flex-shrink: 0; }
+
+/* Remove number input spinners */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.no-spinner { -moz-appearance: textfield; }
+
 /* ── Delete button (header) ─────────────────────────── */
 .delete-btn {
   background: rgba(220, 60, 60, 0.1);

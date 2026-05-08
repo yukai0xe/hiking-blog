@@ -66,7 +66,7 @@ export const usePostStore = defineStore('posts', () => {
 
   async function createPost(payload: {
     title: string
-    description: string
+    description?: string
     coverFile: File
     gpxFile: File | null
     photoFiles: File[]
@@ -82,7 +82,7 @@ export const usePostStore = defineStore('posts', () => {
     try {
       const form = new FormData()
       form.append('title',       payload.title)
-      form.append('description', payload.description)
+      form.append('description', payload.description ?? '')
       form.append('coverFile',   payload.coverFile)
       if (payload.gpxFile) form.append('gpxFile', payload.gpxFile)
       payload.photoFiles.forEach(f => form.append('photoFiles', f))
@@ -112,11 +112,13 @@ export const usePostStore = defineStore('posts', () => {
     id: string,
     payload: {
       title: string
-      description: string
+      description?: string
       coverFile: File | null
       gpxFile: File | null
       photoFilesToAdd: File[]
       photoIdsToDelete: string[]
+      gearsToAdd: { name: string; weight: number; note: string; category: string; quantity: number }[]
+      gearIdsToDelete: string[]
       dateStart?: string
       dateEnd?: string
       weather?: string
@@ -127,20 +129,41 @@ export const usePostStore = defineStore('posts', () => {
     loading.value = true
     error.value   = null
     try {
-      const form = new FormData()
-      form.append('title',       payload.title)
-      form.append('description', payload.description)
-      if (payload.coverFile) form.append('coverFile', payload.coverFile)
-      if (payload.gpxFile)   form.append('gpxFile',   payload.gpxFile)
-      payload.photoFilesToAdd.forEach(f => form.append('photoFilesToAdd', f))
-      payload.photoIdsToDelete.forEach(id => form.append('photoIdsToDelete', id))
-      if (payload.dateStart)           form.append('dateStart',   payload.dateStart)
-      if (payload.dateEnd)             form.append('dateEnd',     payload.dateEnd)
-      if (payload.weather)             form.append('weather',     payload.weather)
-      if (payload.peopleCount != null) form.append('peopleCount', String(payload.peopleCount))
-      payload.tags?.forEach(t => form.append('tags', t))
+      // ① Upload files first (FormData, each to its own endpoint)
+      if (payload.coverFile) {
+        const fd = new FormData()
+        fd.append('coverFile', payload.coverFile)
+        await apiFetch(`/api/Photos/${id}/cover`, { method: 'POST', body: fd })
+      }
+      if (payload.gpxFile) {
+        const fd = new FormData()
+        fd.append('gpxFile', payload.gpxFile)
+        await apiFetch(`/api/Gpx/${id}`, { method: 'POST', body: fd })
+      }
+      if (payload.photoFilesToAdd.length > 0) {
+        const fd = new FormData()
+        payload.photoFilesToAdd.forEach(f => fd.append('photos', f))
+        await apiFetch(`/api/Photos/${id}/photos`, { method: 'POST', body: fd })
+      }
 
-      await apiFetch(`/api/Posts/${id}`, { method: 'PUT', body: form })
+      // ② Send metadata as JSON
+      await apiFetch(`/api/Posts/${id}`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:            payload.title,
+          description:      payload.description ?? '',
+          photoIdsToDelete: payload.photoIdsToDelete,
+          gearsToAdd:       payload.gearsToAdd,
+          gearIdsToDelete:  payload.gearIdsToDelete,
+          dateStart:        payload.dateStart   ?? null,
+          dateEnd:          payload.dateEnd     ?? null,
+          weather:          payload.weather     ?? null,
+          peopleCount:      payload.peopleCount ?? null,
+          tags:             payload.tags        ?? [],
+        }),
+      })
+
       await fetchPostDetail(id)
     } catch (e) {
       error.value = (e as Error).message

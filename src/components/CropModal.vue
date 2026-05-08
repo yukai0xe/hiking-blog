@@ -6,60 +6,56 @@
         <!-- Header -->
         <div class="crop-header">
           <span class="font-heading text-base font-semibold text-ink tracking-wide">裁剪封面</span>
-          <button class="crop-icon-btn" @click="$emit('cancel')" aria-label="取消">
-            <XIcon :size="17" />
-          </button>
+          <div class="flex items-center gap-3">
+            <span v-if="ready" class="font-mono text-xs" style="color: var(--c-inkMuted);">
+              {{ naturalCropW }} × {{ naturalCropH }} px
+            </span>
+            <button class="crop-icon-btn" @click="$emit('cancel')" aria-label="取消">
+              <XIcon :size="17" />
+            </button>
+          </div>
         </div>
 
         <!-- Viewport -->
-        <div
-          class="crop-viewport"
-          ref="viewportRef"
-          @pointerdown="onPointerDown"
-          @pointermove="onPointerMove"
-          @pointerup="onPointerUp"
-          @pointercancel="onPointerUp"
-          @wheel.prevent="onWheel"
-        >
+        <div ref="viewportRef" class="crop-viewport">
           <img
             ref="imgRef"
             :src="src"
             class="crop-img"
-            :style="imgStyle"
+            :style="{ left: dispOffX + 'px', top: dispOffY + 'px', width: dispW + 'px', height: dispH + 'px' }"
             draggable="false"
             alt=""
             @load="onImgLoad"
           />
 
-          <!-- Rule-of-thirds guides -->
-          <div class="crop-guide crop-guide--v" style="left:33.33%" />
-          <div class="crop-guide crop-guide--v" style="left:66.66%" />
-          <div class="crop-guide crop-guide--h" style="top:33.33%" />
-          <div class="crop-guide crop-guide--h" style="top:66.66%" />
+          <template v-if="ready">
+            <!-- Dark overlay outside crop selection -->
+            <div class="crop-overlay" :style="{ top: 0, left: 0, right: 0, height: cropY + 'px' }" />
+            <div class="crop-overlay" :style="{ top: (cropY + cropH) + 'px', left: 0, right: 0, bottom: 0 }" />
+            <div class="crop-overlay" :style="{ top: cropY + 'px', left: 0, width: cropX + 'px', height: cropH + 'px' }" />
+            <div class="crop-overlay" :style="{ top: cropY + 'px', left: (cropX + cropW) + 'px', right: 0, height: cropH + 'px' }" />
 
-          <!-- Corner brackets -->
-          <div class="crop-corner tl" /><div class="crop-corner tr" />
-          <div class="crop-corner bl" /><div class="crop-corner br" />
-        </div>
+            <!-- Crop selection box -->
+            <div
+              class="crop-box"
+              :style="{ left: cropX + 'px', top: cropY + 'px', width: cropW + 'px', height: cropH + 'px' }"
+              @pointerdown.stop.prevent="startDrag($event, 'move')"
+            >
+              <!-- Rule-of-thirds guides -->
+              <div class="crop-guide crop-guide--v" style="left:33.33%" />
+              <div class="crop-guide crop-guide--v" style="left:66.66%" />
+              <div class="crop-guide crop-guide--h" style="top:33.33%" />
+              <div class="crop-guide crop-guide--h" style="top:66.66%" />
 
-        <!-- Zoom controls -->
-        <div class="crop-controls">
-          <button class="crop-icon-btn crop-icon-btn--sm" @click="adjustScale(-0.05)" aria-label="縮小">
-            <ZoomOutIcon :size="14" />
-          </button>
-          <input
-            type="range"
-            class="crop-slider"
-            :min="minScale"
-            :max="minScale * 3.5"
-            :step="0.001"
-            :value="scale"
-            @input="onSlider"
-          />
-          <button class="crop-icon-btn crop-icon-btn--sm" @click="adjustScale(0.05)" aria-label="放大">
-            <ZoomInIcon :size="14" />
-          </button>
-          <span class="crop-zoom-pct font-mono">{{ zoomPct }}%</span>
+              <!-- Resize handles -->
+              <div
+                v-for="dir in HANDLE_DIRS"
+                :key="dir"
+                :class="`crop-handle crop-handle--${dir}`"
+                @pointerdown.stop.prevent="startDrag($event, dir)"
+              />
+            </div>
+          </template>
         </div>
 
         <!-- Footer -->
@@ -84,153 +80,162 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { X as XIcon, ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon } from 'lucide-vue-next'
+import { ref, computed, watch, onUnmounted } from 'vue'
+import { X as XIcon } from 'lucide-vue-next'
 
 const props = defineProps<{ src: string }>()
-const emit  = defineEmits<{
-  cancel:  []
-  confirm: [file: File]
-}>()
+const emit  = defineEmits<{ cancel: []; confirm: [file: File] }>()
 
-// ── Constants ───────────────────────────────────────────
-const CROP_W = 480
-const CROP_H = 270   // 16:9
+// ── Constants ──────────────────────────────────────────────
+const VP_W     = 480
+const VP_H     = 360
+const MIN_CROP = 20   // minimum selection size in viewport px
 
-// ── State ───────────────────────────────────────────────
+const HANDLE_DIRS = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const
+type HandleDir = typeof HANDLE_DIRS[number]
+type DragMode  = 'move' | HandleDir
+
+// ── State ──────────────────────────────────────────────────
 const viewportRef = ref<HTMLElement | null>(null)
 const imgRef      = ref<HTMLImageElement | null>(null)
-const naturalW    = ref(0)
-const naturalH    = ref(0)
 const ready       = ref(false)
-const scale       = ref(1)
-const panX        = ref(0)
-const panY        = ref(0)
 
-// ── Min scale: image must cover the viewport (cover fit) ─
-const minScale = computed(() =>
-  naturalW.value
-    ? Math.max(CROP_W / naturalW.value, CROP_H / naturalH.value)
-    : 1
+const naturalW = ref(0), naturalH = ref(0)
+const dispW    = ref(0), dispH    = ref(0)
+const dispOffX = ref(0), dispOffY = ref(0)
+const cropX    = ref(0), cropY    = ref(0)
+const cropW    = ref(0), cropH    = ref(0)
+
+// ── Computed: show natural-pixel dimensions in header ───────
+const naturalCropW = computed(() =>
+  ready.value ? Math.round(cropW.value * naturalW.value / dispW.value) : 0
+)
+const naturalCropH = computed(() =>
+  ready.value ? Math.round(cropH.value * naturalH.value / dispH.value) : 0
 )
 
-const zoomPct = computed(() =>
-  minScale.value ? Math.round((scale.value / minScale.value) * 100) : 100
-)
-
-// ── Image style ─────────────────────────────────────────
-const imgStyle = computed(() => ({
-  width:     `${naturalW.value * scale.value}px`,
-  height:    `${naturalH.value * scale.value}px`,
-  transform: `translate(${panX.value}px, ${panY.value}px)`,
-  cursor:    isDragging.value ? 'grabbing' : 'grab',
-}))
-
-// ── On image load: init scale + center ──────────────────
+// ── Image load: scale to fit viewport, init crop ────────────
 function onImgLoad() {
-  const img  = imgRef.value!
+  const img = imgRef.value!
   naturalW.value = img.naturalWidth
   naturalH.value = img.naturalHeight
-  scale.value    = minScale.value
-  centerPan()
+
+  const aspect   = naturalW.value / naturalH.value
+  const vpAspect = VP_W / VP_H
+
+  if (aspect >= vpAspect) {
+    dispW.value    = VP_W
+    dispH.value    = VP_W / aspect
+    dispOffX.value = 0
+    dispOffY.value = (VP_H - dispH.value) / 2
+  } else {
+    dispH.value    = VP_H
+    dispW.value    = VP_H * aspect
+    dispOffX.value = (VP_W - dispW.value) / 2
+    dispOffY.value = 0
+  }
+
+  // Initial selection = full image
+  cropX.value = dispOffX.value
+  cropY.value = dispOffY.value
+  cropW.value = dispW.value
+  cropH.value = dispH.value
   ready.value = true
 }
 
-function centerPan() {
-  panX.value = (CROP_W - naturalW.value * scale.value) / 2
-  panY.value = (CROP_H - naturalH.value * scale.value) / 2
-  clampPan()
-}
+// ── Drag ───────────────────────────────────────────────────
+let dragMode: DragMode | null = null
+let dragStartX = 0, dragStartY = 0
+let baseX = 0, baseY = 0, baseW = 0, baseH = 0
 
-function clampPan() {
-  const rw = naturalW.value * scale.value
-  const rh = naturalH.value * scale.value
-  panX.value = Math.min(0, Math.max(CROP_W - rw, panX.value))
-  panY.value = Math.min(0, Math.max(CROP_H - rh, panY.value))
-}
-
-// ── Zoom ────────────────────────────────────────────────
-function adjustScale(delta: number) {
-  const next = Math.max(minScale.value, Math.min(minScale.value * 3.5, scale.value + delta * minScale.value))
-  applyScale(next)
-}
-
-function applyScale(next: number) {
-  // zoom towards center of viewport
-  const cx   = CROP_W / 2
-  const cy   = CROP_H / 2
-  const ratio = next / scale.value
-  panX.value  = cx - (cx - panX.value) * ratio
-  panY.value  = cy - (cy - panY.value) * ratio
-  scale.value = next
-  clampPan()
-}
-
-function onWheel(e: WheelEvent) {
-  adjustScale(e.deltaY < 0 ? 0.04 : -0.04)
-}
-
-function onSlider(e: Event) {
-  applyScale(Number((e.target as HTMLInputElement).value))
-}
-
-// ── Drag ────────────────────────────────────────────────
-const isDragging = ref(false)
-let dragStartX = 0
-let dragStartY = 0
-let dragBaseX  = 0
-let dragBaseY  = 0
-
-function onPointerDown(e: PointerEvent) {
-  isDragging.value = true
+function startDrag(e: PointerEvent, mode: DragMode) {
+  dragMode   = mode
   dragStartX = e.clientX
   dragStartY = e.clientY
-  dragBaseX  = panX.value
-  dragBaseY  = panY.value
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  baseX = cropX.value; baseY = cropY.value
+  baseW = cropW.value; baseH = cropH.value
 }
 
 function onPointerMove(e: PointerEvent) {
-  if (!isDragging.value) return
-  panX.value = dragBaseX + (e.clientX - dragStartX)
-  panY.value = dragBaseY + (e.clientY - dragStartY)
-  clampPan()
+  if (!dragMode) return
+  e.preventDefault()
+
+  const dx = e.clientX - dragStartX
+  const dy = e.clientY - dragStartY
+  let x = baseX, y = baseY, w = baseW, h = baseH
+
+  const l = dispOffX.value, t = dispOffY.value
+  const r = l + dispW.value, b = t + dispH.value
+
+  if (dragMode === 'move') {
+    x = Math.max(l, Math.min(r - w, baseX + dx))
+    y = Math.max(t, Math.min(b - h, baseY + dy))
+  } else {
+    const isLeft   = dragMode === 'w'  || dragMode === 'nw' || dragMode === 'sw'
+    const isRight  = dragMode === 'e'  || dragMode === 'ne' || dragMode === 'se'
+    const isTop    = dragMode === 'n'  || dragMode === 'nw' || dragMode === 'ne'
+    const isBottom = dragMode === 's'  || dragMode === 'sw' || dragMode === 'se'
+
+    if (isLeft) {
+      x = Math.max(l, Math.min(baseX + baseW - MIN_CROP, baseX + dx))
+      w = baseX + baseW - x
+    }
+    if (isRight)  w = Math.max(MIN_CROP, Math.min(r - baseX, baseW + dx))
+    if (isTop) {
+      y = Math.max(t, Math.min(baseY + baseH - MIN_CROP, baseY + dy))
+      h = baseY + baseH - y
+    }
+    if (isBottom) h = Math.max(MIN_CROP, Math.min(b - baseY, baseH + dy))
+  }
+
+  cropX.value = x; cropY.value = y
+  cropW.value = w; cropH.value = h
 }
 
-function onPointerUp() {
-  isDragging.value = false
-}
+function onPointerUp() { dragMode = null }
 
-// ── Confirm: draw to canvas and emit File ───────────────
+document.addEventListener('pointermove',   onPointerMove)
+document.addEventListener('pointerup',     onPointerUp)
+document.addEventListener('pointercancel', onPointerUp)
+
+onUnmounted(() => {
+  document.removeEventListener('pointermove',   onPointerMove)
+  document.removeEventListener('pointerup',     onPointerUp)
+  document.removeEventListener('pointercancel', onPointerUp)
+})
+
+// ── Confirm: export cropped region ─────────────────────────
 function confirm() {
   if (!ready.value || !imgRef.value) return
 
-  const srcX = -panX.value / scale.value
-  const srcY = -panY.value / scale.value
-  const srcW = CROP_W      / scale.value
-  const srcH = CROP_H      / scale.value
+  const scaleX = naturalW.value / dispW.value
+  const scaleY = naturalH.value / dispH.value
+  const srcX = (cropX.value - dispOffX.value) * scaleX
+  const srcY = (cropY.value - dispOffY.value) * scaleY
+  const srcW = cropW.value * scaleX
+  const srcH = cropH.value * scaleY
 
-  const OUT_W = 1920
-  const OUT_H = Math.round(OUT_W * CROP_H / CROP_W)
+  // Cap output at 2400px on the longer side
+  const s    = Math.min(1, 2400 / Math.max(srcW, srcH))
+  const outW = Math.round(srcW * s)
+  const outH = Math.round(srcH * s)
 
   const canvas  = document.createElement('canvas')
-  canvas.width  = OUT_W
-  canvas.height = OUT_H
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(imgRef.value, srcX, srcY, srcW, srcH, 0, 0, OUT_W, OUT_H)
+  canvas.width  = outW
+  canvas.height = outH
+  canvas.getContext('2d')!.drawImage(imgRef.value, srcX, srcY, srcW, srcH, 0, 0, outW, outH)
 
-  canvas.toBlob(blob => {
-    if (!blob) return
-    emit('confirm', new File([blob], 'cover.jpg', { type: 'image/jpeg' }))
-  }, 'image/jpeg', 0.92)
+  canvas.toBlob(
+    blob => blob && emit('confirm', new File([blob], 'cover.jpg', { type: 'image/jpeg' })),
+    'image/jpeg', 0.92
+  )
 }
 
-// re-init if src changes
 watch(() => props.src, () => { ready.value = false })
 </script>
 
 <style scoped>
-/* ── Backdrop ──────────────────────────────────────────── */
+/* ── Backdrop ──────────────────────────────────────────────── */
 .crop-backdrop {
   position: fixed;
   inset: 0;
@@ -243,7 +248,7 @@ watch(() => props.src, () => { ready.value = false })
   padding: 24px;
 }
 
-/* ── Modal box ─────────────────────────────────────────── */
+/* ── Modal ─────────────────────────────────────────────────── */
 .crop-modal {
   width: 100%;
   max-width: 540px;
@@ -254,7 +259,7 @@ watch(() => props.src, () => { ready.value = false })
   box-shadow: 0 24px 64px rgba(0,0,0,0.55);
 }
 
-/* ── Header ────────────────────────────────────────────── */
+/* ── Header ────────────────────────────────────────────────── */
 .crop-header {
   display: flex;
   align-items: center;
@@ -263,70 +268,62 @@ watch(() => props.src, () => { ready.value = false })
   border-bottom: 1px solid var(--c-border);
 }
 
-/* ── Viewport ──────────────────────────────────────────── */
+/* ── Viewport ──────────────────────────────────────────────── */
 .crop-viewport {
   position: relative;
   width: 480px;
-  height: 270px;
+  height: 360px;
   margin: 16px auto;
   overflow: hidden;
-  background: #000;
-  cursor: grab;
+  background: #111;
   user-select: none;
   touch-action: none;
-  outline: 2px solid rgba(198,172,143,0.5);
 }
-.crop-viewport:active { cursor: grabbing; }
 
 .crop-img {
   position: absolute;
-  top: 0; left: 0;
   display: block;
   max-width: none;
 }
 
-/* Rule-of-thirds guides */
-.crop-guide {
+/* ── Overlay ───────────────────────────────────────────────── */
+.crop-overlay {
   position: absolute;
+  background: rgba(10,9,8,0.55);
   pointer-events: none;
-  background: rgba(255,255,255,0.18);
 }
+
+/* ── Crop box ──────────────────────────────────────────────── */
+.crop-box {
+  position: absolute;
+  outline: 1.5px solid rgba(198,172,143,0.85);
+  cursor: move;
+}
+
+/* Rule-of-thirds */
+.crop-guide { position: absolute; pointer-events: none; background: rgba(255,255,255,0.15); }
 .crop-guide--v { width: 1px; top: 0; bottom: 0; }
 .crop-guide--h { height: 1px; left: 0; right: 0; }
 
-/* Corner brackets */
-.crop-corner {
+/* ── Resize handles ────────────────────────────────────────── */
+.crop-handle {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
+  width: 10px;
+  height: 10px;
+  background: #c6ac8f;
+  border: 1.5px solid rgba(10,9,8,0.7);
+  border-radius: 2px;
 }
-.crop-corner.tl { top:  0; left:  0; border-top:  2px solid #c6ac8f; border-left:  2px solid #c6ac8f; }
-.crop-corner.tr { top:  0; right: 0; border-top:  2px solid #c6ac8f; border-right: 2px solid #c6ac8f; }
-.crop-corner.bl { bottom: 0; left:  0; border-bottom: 2px solid #c6ac8f; border-left:  2px solid #c6ac8f; }
-.crop-corner.br { bottom: 0; right: 0; border-bottom: 2px solid #c6ac8f; border-right: 2px solid #c6ac8f; }
+.crop-handle--nw { top: -5px;              left: -5px;              cursor: nw-resize; }
+.crop-handle--n  { top: -5px;              left: calc(50% - 5px);   cursor: n-resize;  }
+.crop-handle--ne { top: -5px;              right: -5px;             cursor: ne-resize; }
+.crop-handle--e  { top: calc(50% - 5px);   right: -5px;             cursor: e-resize;  }
+.crop-handle--se { bottom: -5px;           right: -5px;             cursor: se-resize; }
+.crop-handle--s  { bottom: -5px;           left: calc(50% - 5px);   cursor: s-resize;  }
+.crop-handle--sw { bottom: -5px;           left: -5px;              cursor: sw-resize; }
+.crop-handle--w  { top: calc(50% - 5px);   left: -5px;              cursor: w-resize;  }
 
-/* ── Zoom controls ─────────────────────────────────────── */
-.crop-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 20px 12px;
-}
-.crop-slider {
-  flex: 1;
-  height: 3px;
-  cursor: pointer;
-  accent-color: var(--c-primary);
-}
-.crop-zoom-pct {
-  font-size: 11px;
-  color: var(--c-inkMuted);
-  min-width: 38px;
-  text-align: right;
-}
-
-/* ── Footer ────────────────────────────────────────────── */
+/* ── Footer ────────────────────────────────────────────────── */
 .crop-footer {
   display: flex;
   gap: 10px;
@@ -350,7 +347,7 @@ watch(() => props.src, () => { ready.value = false })
 .crop-btn--confirm { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .crop-btn--confirm:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Icon buttons ──────────────────────────────────────── */
+/* ── Icon button ───────────────────────────────────────────── */
 .crop-icon-btn {
   width: 32px; height: 32px;
   border-radius: 7px;
@@ -361,5 +358,4 @@ watch(() => props.src, () => { ready.value = false })
   flex-shrink: 0;
 }
 .crop-icon-btn:hover { background: rgba(198,172,143,0.1); color: var(--c-ink); }
-.crop-icon-btn--sm { width: 26px; height: 26px; border-radius: 6px; }
 </style>

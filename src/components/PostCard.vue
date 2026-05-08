@@ -9,14 +9,26 @@
     <div class="accent-bar" />
 
     <!-- Image area -->
-    <div class="img-wrap">
+    <div class="img-wrap" :style="{ aspectRatio }">
+      <!-- Compressed thumbnail — loads instantly, provides blur + aspect-ratio -->
+      <img
+        v-if="post.compressedCoverImage"
+        :src="post.compressedCoverImage"
+        class="blur-img"
+        :class="{ dimmed: isHovered }"
+        aria-hidden="true"
+        @load="onBlurLoad"
+      />
+      <!-- Full quality cover -->
       <img
         :src="post.coverImage"
         :alt="post.title"
         loading="lazy"
         class="cover-img"
-        :class="{ dimmed: isHovered }"
+        :class="{ dimmed: isHovered, 'cover-full': post.compressedCoverImage, 'cover-full--ready': fullLoaded }"
+        @load="fullLoaded = true"
       />
+
 
       <!-- GPX topo overlay -->
       <Transition name="topo">
@@ -112,9 +124,17 @@ interface SvgData {
   end: [number, number]
 }
 
-const isHovered = ref(false)
-const svg = ref<SvgData | null>(null)
+const isHovered   = ref(false)
+const fullLoaded  = ref(!props.post.compressedCoverImage)
+const svg         = ref<SvgData | null>(null)
+const aspectRatio = ref('4 / 3')
 let loaded = false
+
+function onBlurLoad(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (img.naturalWidth && img.naturalHeight)
+    aspectRatio.value = `${img.naturalWidth} / ${img.naturalHeight}`
+}
 
 async function onHover() {
   isHovered.value = true
@@ -225,11 +245,28 @@ const dateDisplay = computed(() => {
 .card-wrap:hover .accent-bar { opacity: 1; }
 
 /* ── Image ──────────────────────────────────────────── */
-.img-wrap { position: relative; overflow: hidden; }
+.img-wrap { position: relative; overflow: hidden; width: 100%; }
 
-.cover-img {
-  display: block;
+/* Compressed thumbnail — blurred backdrop */
+.blur-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(10px) sepia(0.1) contrast(1.05);
+  transform: scale(1.06);
+}
+.blur-img.dimmed {
+  filter: blur(10px) brightness(0.22) sepia(0.4) contrast(1.1);
+}
+
+/* Full-quality cover */
+.cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   filter: sepia(0.1) contrast(1.05);
   transition: filter 0.45s ease, transform 0.45s ease;
@@ -238,6 +275,11 @@ const dateDisplay = computed(() => {
   filter: brightness(0.22) sepia(0.4) contrast(1.1);
   transform: scale(1.04);
 }
+.cover-full {
+  opacity: 0;
+  transition: opacity 0.5s ease, filter 0.45s ease, transform 0.45s ease;
+}
+.cover-full--ready { opacity: 1; }
 
 /* ── GPX overlay ────────────────────────────────────── */
 .topo-overlay {

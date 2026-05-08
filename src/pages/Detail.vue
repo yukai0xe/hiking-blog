@@ -14,20 +14,14 @@
 
     <template v-else-if="store.currentPost">
 
-      <!-- Hero -->
-      <div class="relative h-64 sm:h-[340px] shrink-0 overflow-hidden">
-        <img
-          :src="store.currentPost.coverImage"
-          :alt="store.currentPost.title"
-          class="w-full h-full object-cover"
-          style="opacity: 0.65; filter: sepia(0.2) contrast(1.05);"
-        />
-        <div class="absolute inset-0" style="background: linear-gradient(to top, #0A0908 0%, rgba(10,9,8,0.3) 50%, transparent 100%);" />
+      <!-- Header -->
+      <header class="shrink-0 px-[5vw] pt-5 pb-4 border-b"
+        style="border-color: color-mix(in srgb, var(--c-border) 50%, transparent);">
 
-        <!-- Back + Edit -->
-        <div class="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
+        <!-- Row 1: back + edit -->
+        <div class="flex items-center justify-between mb-3">
           <button
-            class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
+            class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
             @click="$router.push('/')"
           >
             <ArrowLeftIcon :size="15" />
@@ -35,25 +29,41 @@
           </button>
           <router-link
             :to="`/edit/${store.currentPost!.id}`"
-            class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
+            class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
           >
             <PencilIcon :size="14" />
+            編輯
           </router-link>
         </div>
 
-        <!-- Title -->
-        <div class="absolute bottom-0 left-0 right-0 px-6 pb-5 z-10">
-          <p class="text-xs font-body tracking-[0.25em] uppercase mb-1.5" style="color: #c6ac8f80;">
-            Expedition Record
-          </p>
-          <h1 class="font-heading text-2xl sm:text-4xl font-bold text-ink leading-tight">
-            {{ store.currentPost.title }}
-          </h1>
-          <p class="text-xs mt-1.5 font-body tracking-wide text-inkMuted">
-            {{ formatDate(store.currentPost.created_at) }}
-          </p>
+        <!-- Row 2: label + title -->
+        <p class="text-[10px] font-body tracking-[0.25em] uppercase mb-1" style="color: var(--c-primary); opacity: 0.6;">
+          Expedition Record
+        </p>
+        <h1 class="font-heading text-2xl sm:text-3xl font-bold text-ink leading-tight mb-3">
+          {{ store.currentPost.title }}
+        </h1>
+
+        <!-- Row 3: meta chips -->
+        <div v-if="hasMeta" class="flex flex-wrap items-center gap-2">
+          <div v-if="dateRange" class="meta-chip">
+            <CalendarIcon :size="11" class="meta-chip-icon" />
+            <span class="font-mono text-[11px]">{{ dateRange }}</span>
+          </div>
+          <div v-if="tripDays" class="meta-chip">
+            <SunriseIcon :size="11" class="meta-chip-icon" />
+            <span>{{ tripDays }} 天</span>
+          </div>
+          <div v-if="store.currentPost.weather" class="meta-chip">
+            <CloudIcon :size="11" class="meta-chip-icon" />
+            <span>{{ store.currentPost.weather }}</span>
+          </div>
+          <div v-if="store.currentPost.peopleCount" class="meta-chip">
+            <UsersIcon :size="11" class="meta-chip-icon" />
+            <span>{{ store.currentPost.peopleCount }} 人</span>
+          </div>
         </div>
-      </div>
+      </header>
 
       <!-- Three-column layout -->
       <div class="relative z-10 flex flex-1 overflow-hidden px-[5vw] pt-6 pb-[30vh]">
@@ -274,12 +284,6 @@ const mapToggles = [
   { key: 'shelters',  label: '山屋',    icon: HomeIcon,     active: showShelters },
 ]
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('zh-TW', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  })
-}
-
 function fmtDate(iso: string) {
   const d = iso.slice(0, 10)
   return `${d.slice(0, 4)}/${d.slice(5, 7)}/${d.slice(8, 10)}`
@@ -321,4 +325,18 @@ onMounted(() => store.fetchPostDetail(route.params.id as string))
 .meta-icon  { color: var(--c-primary); opacity: 0.75; flex-shrink: 0; }
 .meta-label { font-family: Inter, sans-serif; color: var(--c-inkMuted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
 .meta-value { font-family: Inter, sans-serif; color: var(--c-ink); font-weight: 500; }
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--c-border) 80%, transparent);
+  background: color-mix(in srgb, var(--c-primary) 6%, transparent);
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  color: var(--c-inkMuted);
+}
+.meta-chip-icon { color: var(--c-primary); opacity: 0.8; flex-shrink: 0; }
 </style>
