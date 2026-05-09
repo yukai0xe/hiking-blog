@@ -16,7 +16,7 @@ export interface Post {
 
 export interface Photo {
   id: string
-  post_id: string
+  postId: string
   url: string
   created_at: string
 }
@@ -27,13 +27,18 @@ export const GEAR_CATEGORIES = [
 export type GearCategory = typeof GEAR_CATEGORIES[number]
 
 export interface Gear {
-  id: string
-  post_id: string
+  id: string       // gears_mapping_post.id (mapping row)
+  gearId: string   // gears.id (library entry)
+  postId: string
   name: string
   weight: number
   note: string
   category: GearCategory
   quantity: number
+  brand?:        string | null
+  referenceUrl?: string | null
+  price?:        number | null
+  addedAt?:      string | null
 }
 
 export interface GpxData {

@@ -16,8 +16,14 @@ export const usePostStore = defineStore('posts', () => {
   const currentPhotos = ref<Photo[]>([])
   const currentGears  = ref<Gear[]>([])
   const availableTags = ref<string[]>([])
+  const gearLibrary   = ref<Gear[]>([])
   const loading       = ref(false)
   const error         = ref<string | null>(null)
+
+  async function fetchGearLibrary() {
+    const res           = await apiFetch('/api/Gears')
+    gearLibrary.value   = await res.json()
+  }
 
   async function fetchTags() {
     const res           = await apiFetch('/api/Tags')
@@ -70,7 +76,8 @@ export const usePostStore = defineStore('posts', () => {
     coverFile: File
     gpxFile: File | null
     photoFiles: File[]
-    gears: { name: string; weight: number; note: string }[]
+    gears: { name: string; weight: number; note: string; category: string; quantity: number; brand?: string; referenceUrl?: string; price?: number | null; addedAt?: string }[]
+    libraryGearIds?: string[]
     dateStart?: string
     dateEnd?: string
     weather?: string
@@ -80,26 +87,43 @@ export const usePostStore = defineStore('posts', () => {
     loading.value = true
     error.value   = null
     try {
-      const form = new FormData()
-      form.append('title',       payload.title)
-      form.append('description', payload.description ?? '')
-      form.append('coverFile',   payload.coverFile)
-      if (payload.gpxFile) form.append('gpxFile', payload.gpxFile)
-      payload.photoFiles.forEach(f => form.append('photoFiles', f))
-      payload.gears.forEach((g, i) => {
-        form.append(`gears[${i}].name`,   g.name)
-        form.append(`gears[${i}].weight`, String(g.weight))
-        form.append(`gears[${i}].note`,   g.note)
+      // ① Send metadata as JSON
+      const res  = await apiFetch('/api/Posts', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:          payload.title,
+          description:    payload.description ?? '',
+          gears:          payload.gears,
+          libraryGearIds: payload.libraryGearIds ?? [],
+          dateStart:      payload.dateStart   ?? null,
+          dateEnd:        payload.dateEnd     ?? null,
+          weather:        payload.weather     ?? null,
+          peopleCount:    payload.peopleCount ?? null,
+          tags:           payload.tags        ?? [],
+        }),
       })
-      if (payload.dateStart)          form.append('dateStart',   payload.dateStart)
-      if (payload.dateEnd)            form.append('dateEnd',     payload.dateEnd)
-      if (payload.weather)            form.append('weather',     payload.weather)
-      if (payload.peopleCount != null) form.append('peopleCount', String(payload.peopleCount))
-      payload.tags?.forEach(t => form.append('tags', t))
-
-      const res  = await apiFetch('/api/Posts', { method: 'POST', body: form })
       const data = await res.json()
-      return data.id as string
+      const id   = data.id as string
+
+      // ② Upload files
+      const coverFd = new FormData()
+      coverFd.append('coverFile', payload.coverFile)
+      await apiFetch(`/api/Photos/${id}/cover`, { method: 'POST', body: coverFd })
+
+      if (payload.gpxFile) {
+        const gpxFd = new FormData()
+        gpxFd.append('gpxFile', payload.gpxFile)
+        await apiFetch(`/api/Gpx/${id}`, { method: 'POST', body: gpxFd })
+      }
+
+      if (payload.photoFiles.length > 0) {
+        const photoFd = new FormData()
+        payload.photoFiles.forEach(f => photoFd.append('photos', f))
+        await apiFetch(`/api/Photos/${id}/photos`, { method: 'POST', body: photoFd })
+      }
+
+      return id
     } catch (e) {
       error.value = (e as Error).message
       throw e
@@ -117,8 +141,10 @@ export const usePostStore = defineStore('posts', () => {
       gpxFile: File | null
       photoFilesToAdd: File[]
       photoIdsToDelete: string[]
-      gearsToAdd: { name: string; weight: number; note: string; category: string; quantity: number }[]
+      gearsToAdd: { name: string; weight: number; note: string; category: string; quantity: number; brand?: string; referenceUrl?: string; price?: number | null; addedAt?: string }[]
+      gearsToUpdate: { id: string; name: string; weight: number; note: string; category: string; quantity: number; brand?: string; referenceUrl?: string; price?: number | null; addedAt?: string }[]
       gearIdsToDelete: string[]
+      libraryGearIdsToLink?: string[]
       dateStart?: string
       dateEnd?: string
       weather?: string
@@ -154,8 +180,10 @@ export const usePostStore = defineStore('posts', () => {
           title:            payload.title,
           description:      payload.description ?? '',
           photoIdsToDelete: payload.photoIdsToDelete,
-          gearsToAdd:       payload.gearsToAdd,
-          gearIdsToDelete:  payload.gearIdsToDelete,
+          gearsToAdd:           payload.gearsToAdd,
+          gearsToUpdate:        payload.gearsToUpdate,
+          gearIdsToDelete:      payload.gearIdsToDelete,
+          libraryGearIdsToLink: payload.libraryGearIdsToLink ?? [],
           dateStart:        payload.dateStart   ?? null,
           dateEnd:          payload.dateEnd     ?? null,
           weather:          payload.weather     ?? null,
@@ -199,6 +227,7 @@ export const usePostStore = defineStore('posts', () => {
     currentPhotos,
     currentGears,
     availableTags,
+    gearLibrary,
     loading,
     error,
     fetchTags,
@@ -209,5 +238,6 @@ export const usePostStore = defineStore('posts', () => {
     updatePost,
     deletePhoto,
     deletePost,
+    fetchGearLibrary,
   }
 })
