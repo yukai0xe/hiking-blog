@@ -21,8 +21,39 @@ export const usePostStore = defineStore('posts', () => {
   const error         = ref<string | null>(null)
 
   async function fetchGearLibrary() {
-    const res           = await apiFetch('/api/Gears')
-    gearLibrary.value   = await res.json()
+    const res         = await apiFetch('/api/Gears')
+    gearLibrary.value = await res.json()
+  }
+
+  type GearPayload = {
+    name: string; weight: number; note: string; category: string
+    quantity: number; brand?: string | null; referenceUrl?: string | null
+    price?: number | null; addedAt?: string | null
+  }
+
+  async function createLibraryGear(payload: GearPayload): Promise<string> {
+    const res  = await apiFetch('/api/Gears', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    })
+    const data = await res.json()
+    await fetchGearLibrary()
+    return data.id as string
+  }
+
+  async function updateLibraryGear(id: string, payload: GearPayload): Promise<void> {
+    await apiFetch(`/api/Gears/${id}`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    })
+    await fetchGearLibrary()
+  }
+
+  async function deleteLibraryGear(id: string): Promise<void> {
+    await apiFetch(`/api/Gears/${id}`, { method: 'DELETE' })
+    gearLibrary.value = gearLibrary.value.filter(g => g.id !== id)
   }
 
   async function fetchTags() {
@@ -239,5 +270,8 @@ export const usePostStore = defineStore('posts', () => {
     deletePhoto,
     deletePost,
     fetchGearLibrary,
+    createLibraryGear,
+    updateLibraryGear,
+    deleteLibraryGear,
   }
 })

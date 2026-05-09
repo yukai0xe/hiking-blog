@@ -3,6 +3,7 @@ import Home from '../pages/Home.vue'
 import Detail from '../pages/Detail.vue'
 import Create from '../pages/Create.vue'
 import Edit from '../pages/Edit.vue'
+import GearLibrary from '../pages/GearLibrary.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -11,6 +12,7 @@ const router = createRouter({
     { path: '/detail/:id', component: Detail },
     { path: '/create', component: Create },
     { path: '/edit/:id', component: Edit },
+    { path: '/gear-library', component: GearLibrary },
   ],
 })
 

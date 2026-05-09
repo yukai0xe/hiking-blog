@@ -18,6 +18,13 @@
             <SunIcon v-if="theme.isDark" :size="17" />
             <MoonIcon v-else :size="17" />
           </button>
+          <router-link
+            to="/gear-library"
+            class="card-aged flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
+          >
+            <LibraryIcon :size="15" />
+            裝備庫
+          </router-link>
           <router-link to="/create" class="btn-cta flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg cursor-pointer">
             <PlusIcon :size="15" />
             新增記錄
@@ -135,6 +142,7 @@ import { ref, computed, onMounted } from 'vue'
 import {
   Compass as CompassIcon, Plus as PlusIcon, Map as MapIcon,
   Sun as SunIcon, Moon as MoonIcon, Search as SearchIcon, X as XIcon,
+  Library as LibraryIcon,
 } from 'lucide-vue-next'
 import WaterfallList from '../components/WaterfallList.vue'
 import DateRangePicker from '../components/DateRangePicker.vue'
