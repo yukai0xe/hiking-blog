@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Post, Photo, Gear } from '../types'
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
 async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(`${API_BASE}${path}`, init)
