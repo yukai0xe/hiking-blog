@@ -16,13 +16,20 @@ export const usePostStore = defineStore('posts', () => {
   const currentPhotos = ref<Photo[]>([])
   const currentGears  = ref<Gear[]>([])
   const availableTags = ref<string[]>([])
-  const gearLibrary   = ref<Gear[]>([])
+  const gearLibrary      = ref<Gear[]>([])
+  const gearCategories   = ref<string[]>([])
   const loading       = ref(false)
   const error         = ref<string | null>(null)
 
   async function fetchGearLibrary() {
     const res         = await apiFetch('/api/Gears')
     gearLibrary.value = await res.json()
+  }
+
+  async function fetchGearCategories() {
+    if (gearCategories.value.length > 0) return
+    const res            = await apiFetch('/api/Gears/categories')
+    gearCategories.value = await res.json()
   }
 
   type GearPayload = {
@@ -270,6 +277,8 @@ export const usePostStore = defineStore('posts', () => {
     deletePhoto,
     deletePost,
     fetchGearLibrary,
+    fetchGearCategories,
+    gearCategories,
     createLibraryGear,
     updateLibraryGear,
     deleteLibraryGear,

@@ -274,11 +274,13 @@ async function loadAndRender() {
     )
     if (!trackFeature) throw new Error('找不到有效的 GPX 軌跡')
 
+    type TrackGeom = import('geojson').LineString | import('geojson').MultiLineString
+    const trackGeom = trackFeature.geometry as TrackGeom
     let rawCoords: [number, number, number][]
-    if (trackFeature.geometry.type === 'LineString') {
-      rawCoords = trackFeature.geometry.coordinates as [number, number, number][]
+    if (trackGeom.type === 'LineString') {
+      rawCoords = trackGeom.coordinates as [number, number, number][]
     } else {
-      rawCoords = (trackFeature.geometry.coordinates as [number, number, number][][]).flat()
+      rawCoords = (trackGeom.coordinates as [number, number, number][][]).flat()
     }
 
     const coordinates: [number, number][] = rawCoords.map(([lng, lat]) => [lat, lng])
@@ -290,7 +292,7 @@ async function loadAndRender() {
     waypoints.value = geojson.features
       .filter(f => f.geometry.type === 'Point')
       .map((f, i) => {
-        const [lng, lat, ele] = f.geometry.coordinates as [number, number, number?]
+        const [lng, lat, ele] = (f.geometry as { type: 'Point'; coordinates: number[] }).coordinates as [number, number, number?]
         return {
           kind: 'waypoint' as const,
           id:   i,

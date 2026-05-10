@@ -17,7 +17,7 @@
         </div>
 
         <!-- Viewport -->
-        <div ref="viewportRef" class="crop-viewport">
+        <div class="crop-viewport">
           <img
             ref="imgRef"
             :src="src"
@@ -96,7 +96,6 @@ type HandleDir = typeof HANDLE_DIRS[number]
 type DragMode  = 'move' | HandleDir
 
 // ── State ──────────────────────────────────────────────────
-const viewportRef = ref<HTMLElement | null>(null)
 const imgRef      = ref<HTMLImageElement | null>(null)
 const ready       = ref(false)
 

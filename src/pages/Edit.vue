@@ -319,7 +319,7 @@
             <div class="grid grid-cols-[1fr_120px] gap-2">
               <input v-model="newGear.name" type="text" class="input-field text-sm" placeholder="裝備名稱 *" @keyup.enter="submitGear" />
               <select v-model="newGear.category" class="input-field text-sm font-body">
-                <option v-for="cat in GEAR_CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+                <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
               </select>
             </div>
 
@@ -568,8 +568,7 @@ import {
   PlusCircle as PlusCircleIcon,
   ExternalLink as ExternalLinkIcon,
 } from 'lucide-vue-next'
-import { GEAR_CATEGORIES } from '../types'
-import type { Photo, Gear } from '../types'
+import type { Photo, Gear, GearDraft } from '../types'
 import { usePostStore } from '../stores/postStore'
 import CropModal from '../components/CropModal.vue'
 import TagPickerModal from '../components/TagPickerModal.vue'
@@ -607,7 +606,6 @@ const newPhotoPreviews = ref<string[]>([])
 const pendingDeletes = ref<string[]>([])
 
 // Gear state
-type GearDraft = { name: string; weight: number; note: string; category: string; quantity: number; brand: string; referenceUrl: string; price: number | null; addedAt: string; _libraryId?: string }
 const gearsToAdd         = ref<GearDraft[]>([])
 const gearsToUpdate      = ref<(GearDraft & { id: string })[]>([])
 const pendingGearDeletes = ref<string[]>([])
@@ -654,11 +652,6 @@ const displayGears = computed<Gear[]>(() =>
     return u ? { ...g, ...u } : g
   })
 )
-const totalWeight = computed(() => {
-  const existing = displayGears.value.reduce((s, g) => s + g.weight * (g.quantity ?? 1), 0)
-  const added    = gearsToAdd.value.reduce((s, g) => s + g.weight * g.quantity, 0)
-  return existing + added
-})
 
 function toDateInput(val: string | null | undefined) {
   return val ? val.slice(0, 10) : ''
@@ -739,7 +732,7 @@ function confirmLibrarySelection() {
 }
 
 onMounted(async () => {
-  await Promise.all([store.fetchPostDetail(id), store.fetchGearLibrary()])
+  await Promise.all([store.fetchPostDetail(id), store.fetchGearLibrary(), store.fetchGearCategories()])
   if (store.currentPost) {
     const p = store.currentPost
     form.value.title       = p.title

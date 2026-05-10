@@ -211,7 +211,7 @@
             <div class="grid grid-cols-[1fr_120px] gap-2">
               <input v-model="newGear.name" type="text" class="input-field text-sm" placeholder="裝備名稱 *" @keyup.enter="submitGear" />
               <select v-model="newGear.category" class="input-field text-sm font-body">
-                <option v-for="cat in GEAR_CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+                <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
               </select>
             </div>
 
@@ -459,7 +459,6 @@ import {
   PlusCircle as PlusCircleIcon, ExternalLink as ExternalLinkIcon,
   Pencil as PencilIcon, Save as SaveIcon,
 } from 'lucide-vue-next'
-import { GEAR_CATEGORIES } from '../types'
 import { usePostStore } from '../stores/postStore'
 import TagPickerModal from '../components/TagPickerModal.vue'
 import GearQuickPick from '../components/GearQuickPick.vue'
@@ -536,7 +535,7 @@ const isAllFilteredSelected = computed(() =>
 )
 const isSomeSelected = computed(() => librarySelected.value.length > 0)
 
-onMounted(() => store.fetchGearLibrary())
+onMounted(() => Promise.all([store.fetchGearLibrary(), store.fetchGearCategories()]))
 
 function openLibraryModal() {
   librarySearch.value   = ''

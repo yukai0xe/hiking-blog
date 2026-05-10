@@ -159,7 +159,6 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import {
   X as XIcon,
   Star as StarIcon,
-  StarOff as StarOffIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ZoomIn as ZoomInIcon,

@@ -58,7 +58,7 @@
 
         <select v-model="filterCategory" class="filter-select">
           <option value="">所有類別</option>
-          <option v-for="cat in GEAR_CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+          <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
         </select>
       </div>
 
@@ -203,7 +203,7 @@
               <div>
                 <label class="field-label">類別</label>
                 <select v-model="form.category" class="input-field text-sm font-body">
-                  <option v-for="cat in GEAR_CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+                  <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
                 </select>
               </div>
             </div>
@@ -319,12 +319,11 @@ import {
   ChevronDown as ChevronDownIcon,
   ChevronsUpDown as ChevronsUpDownIcon,
 } from 'lucide-vue-next'
-import { GEAR_CATEGORIES } from '../types'
 import type { Gear } from '../types'
 import { usePostStore } from '../stores/postStore'
 
 const store = usePostStore()
-onMounted(() => store.fetchGearLibrary())
+onMounted(() => Promise.all([store.fetchGearLibrary(), store.fetchGearCategories()]))
 
 // ── Table state ──────────────────────────────────────────
 const search         = ref('')
