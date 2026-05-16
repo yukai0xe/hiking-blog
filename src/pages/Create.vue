@@ -462,7 +462,7 @@ import {
 import { usePostStore } from '../stores/postStore'
 import TagPickerModal from '../components/TagPickerModal.vue'
 import GearQuickPick from '../components/GearQuickPick.vue'
-import defaultCoverUrl from '../assets/cover_default.png'
+import defaultCoverUrl from '../assets/cover_default.jpg'
 
 const router = useRouter()
 const store  = usePostStore()
@@ -638,7 +638,7 @@ async function submit() {
     if (!coverFile) {
       const res  = await fetch(defaultCoverUrl)
       const blob = await res.blob()
-      coverFile  = new File([blob], 'cover_default.png', { type: blob.type })
+      coverFile  = new File([blob], 'cover_default.jpg', { type: blob.type })
     }
 
     const id = await store.createPost({
