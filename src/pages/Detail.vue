@@ -27,13 +27,22 @@
             <ArrowLeftIcon :size="15" />
             返回
           </button>
-          <router-link
-            :to="`/edit/${store.currentPost!.id}`"
-            class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
-          >
-            <PencilIcon :size="14" />
-            編輯
-          </router-link>
+          <div class="flex items-center gap-2">
+            <router-link
+              :to="`/edit/${store.currentPost!.id}`"
+              class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
+            >
+              <PencilIcon :size="14" />
+              編輯
+            </router-link>
+            <button
+              class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
+              @click="showExportModal = true"
+            >
+              <DownloadIcon :size="14" />
+              匯出
+            </button>
+          </div>
         </div>
 
         <!-- Row 2: label + title -->
@@ -237,6 +246,80 @@
 
       </div>
     </template>
+
+    <!-- ── Export Modal ─────────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="export-fade">
+        <div
+          v-if="showExportModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style="background: color-mix(in srgb, var(--c-base) 60%, transparent); backdrop-filter: blur(4px);"
+          @click.self="showExportModal = false"
+          @keydown.esc="showExportModal = false"
+        >
+          <div class="card-aged rounded-xl p-6 w-full max-w-sm shadow-xl">
+
+            <!-- Header -->
+            <div class="flex items-center gap-2.5 mb-5">
+              <DownloadIcon :size="16" class="text-primary" />
+              <span class="font-heading text-lg text-ink tracking-wide">匯出記錄</span>
+            </div>
+
+            <!-- Format selection -->
+            <p class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted mb-2.5">匯出格式</p>
+            <div class="flex gap-2 mb-5">
+              <button
+                v-for="fmt in (['json', 'pdf'] as const)"
+                :key="fmt"
+                class="flex-1 py-2 rounded-lg text-sm font-mono font-semibold border cursor-pointer transition-all duration-150"
+                :style="exportFormat === fmt
+                  ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                  : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                @click="exportFormat = fmt"
+              >
+                .{{ fmt }}
+              </button>
+            </div>
+
+            <!-- Include gears toggle -->
+            <label class="flex items-center gap-3 cursor-pointer select-none mb-6 group">
+              <div
+                class="w-10 h-5 rounded-full relative transition-colors duration-200 shrink-0"
+                :style="includeGears
+                  ? 'background: var(--c-primary);'
+                  : 'background: color-mix(in srgb, var(--c-border) 80%, transparent);'"
+                @click="includeGears = !includeGears"
+              >
+                <div
+                  class="absolute top-0.5 w-4 h-4 rounded-full transition-transform duration-200"
+                  :style="`background: var(--c-base); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transform: translateX(${includeGears ? 20 : 2}px);`"
+                />
+              </div>
+              <span class="text-sm font-body text-ink">匯出裝備清單</span>
+            </label>
+
+            <!-- Footer buttons -->
+            <div class="flex gap-2">
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
+                style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                @click="showExportModal = false"
+              >
+                取消
+              </button>
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150"
+                @click="doExport"
+              >
+                匯出
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
@@ -250,7 +333,7 @@ import {
   Calendar as CalendarIcon, Sunrise as SunriseIcon,
   Cloud as CloudIcon, Users as UsersIcon,
   ChevronsRight as ChevronsRightIcon, ChevronsLeft as ChevronsLeftIcon,
-  StarOff as StarOffIcon,
+  StarOff as StarOffIcon, Download as DownloadIcon,
 } from 'lucide-vue-next'
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
@@ -313,6 +396,71 @@ const hasMeta = computed(() => {
 })
 
 onMounted(() => store.fetchPostDetail(route.params.id as string))
+
+// ── Export ────────────────────────────────────────────────────────
+const showExportModal = ref(false)
+const exportFormat    = ref<'json' | 'pdf'>('json')
+const includeGears    = ref(true)
+
+function doExport() {
+  showExportModal.value = false
+  if (exportFormat.value === 'json') exportAsJson()
+  else void exportAsPdf()
+}
+
+function exportAsJson() {
+  const p = store.currentPost!
+  const data: Record<string, unknown> = {
+    title:       p.title,
+    description: p.description ?? null,
+    dateStart:   p.dateStart   ?? null,
+    dateEnd:     p.dateEnd     ?? null,
+    weather:     p.weather     ?? null,
+    peopleCount: p.peopleCount ?? null,
+    tags:        p.tags        ?? [],
+    photos:      store.currentPhotos.map(ph => ph.url),
+  }
+  if (includeGears.value) {
+    data.gears = store.currentGears.map(g => ({
+      name:     g.name,
+      category: g.category,
+      brand:    g.brand     ?? null,
+      weight:   g.weight,
+      quantity: g.quantity,
+      note:     g.note      || null,
+    }))
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url  = URL.createObjectURL(blob)
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `${safeFilename(p.title)}.json` })
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function exportAsPdf() {
+  const p       = store.currentPost!
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+  const url     = `${apiBase}/api/Posts/${p.id}/export/pdf?includeGears=${includeGears.value}`
+
+  const res = await fetch(url)
+  if (!res.ok) {
+    console.error('PDF export failed:', res.status, await res.text())
+    return
+  }
+
+  const blob     = await res.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const a        = Object.assign(document.createElement('a'), {
+    href:     objectUrl,
+    download: `${safeFilename(p.title)}.pdf`,
+  })
+  a.click()
+  URL.revokeObjectURL(objectUrl)
+}
+
+function safeFilename(s: string) {
+  return s.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'export'
+}
 </script>
 
 <style scoped>
@@ -339,4 +487,9 @@ onMounted(() => store.fetchPostDetail(route.params.id as string))
   color: var(--c-inkMuted);
 }
 .meta-chip-icon { color: var(--c-primary); opacity: 0.8; flex-shrink: 0; }
+
+.export-fade-enter-active,
+.export-fade-leave-active { transition: opacity 0.15s ease; }
+.export-fade-enter-from,
+.export-fade-leave-to    { opacity: 0; }
 </style>
