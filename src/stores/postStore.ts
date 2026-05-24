@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Post, Photo, Gear } from '../types'
+import type { Post, Photo, Gear, WaypointOverride } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -11,10 +11,11 @@ async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
 }
 
 export const usePostStore = defineStore('posts', () => {
-  const posts         = ref<Post[]>([])
-  const currentPost   = ref<Post | null>(null)
-  const currentPhotos = ref<Photo[]>([])
-  const currentGears  = ref<Gear[]>([])
+  const posts                    = ref<Post[]>([])
+  const currentPost              = ref<Post | null>(null)
+  const currentPhotos            = ref<Photo[]>([])
+  const currentGears             = ref<Gear[]>([])
+  const currentWaypointOverrides = ref<WaypointOverride[]>([])
   const availableTags = ref<string[]>([])
   const gearLibrary      = ref<Gear[]>([])
   const gearCategories   = ref<string[]>([])
@@ -98,9 +99,10 @@ export const usePostStore = defineStore('posts', () => {
     try {
       const res  = await apiFetch(`/api/Posts/${id}`)
       const data = await res.json()
-      currentPost.value   = data.post
-      currentPhotos.value = data.photos
-      currentGears.value  = data.gears
+      currentPost.value              = data.post
+      currentPhotos.value            = data.photos
+      currentGears.value             = data.gears
+      currentWaypointOverrides.value = data.waypointOverrides ?? []
     } catch (e) {
       error.value = (e as Error).message
     } finally {
@@ -264,6 +266,7 @@ export const usePostStore = defineStore('posts', () => {
     currentPost,
     currentPhotos,
     currentGears,
+    currentWaypointOverrides,
     availableTags,
     gearLibrary,
     loading,

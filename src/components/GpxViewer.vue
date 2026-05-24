@@ -128,7 +128,7 @@ import 'leaflet/dist/leaflet.css'
 import { ChevronDown as ChevronDownIcon, X as XIcon, Clock as ClockIcon, Layers as LayersIcon } from 'lucide-vue-next'
 import ElevationChart from './ElevationChart.vue'
 import { computeElevationStats } from '../services/gpx'
-import type { GpxData } from '../types'
+import type { GpxData, Waypoint, WaypointOverride } from '../types'
 
 // ── Unified panel item ────────────────────────────────────
 interface PanelItem {
@@ -142,7 +142,8 @@ interface PanelItem {
   time: Date | null
 }
 
-const props = defineProps<{ gpxUrl: string; showPeaks?: boolean; showWaypoints?: boolean; showShelters?: boolean }>()
+const props = defineProps<{ gpxUrl: string; showPeaks?: boolean; showWaypoints?: boolean; showShelters?: boolean; overrides?: WaypointOverride[] }>()
+const emit  = defineEmits<{ 'waypoints-ready': [wpts: Waypoint[]] }>()
 
 const mapEl         = ref<HTMLElement | null>(null)
 const gpxData       = ref<GpxData | null>(null)
@@ -304,7 +305,22 @@ async function loadAndRender() {
         }
       })
 
+    // Apply DB overrides (name/desc edits stored without modifying the GPX file)
+    if (props.overrides?.length) {
+      for (const wpt of waypoints.value) {
+        const ov = props.overrides.find(
+          o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
+        )
+        if (ov) { wpt.name = ov.name; wpt.desc = ov.description }
+      }
+    }
+
     loading.value = false
+    emit('waypoints-ready', waypoints.value.map(w => ({
+      name: w.name, desc: w.desc,
+      lat: w.lat,  lng: w.lng,
+      ele: w.ele,  time: w.time,
+    })))
     await nextTick()
     renderMap(coordinates)
     fetchPeaks(coordinates)
@@ -440,6 +456,27 @@ async function fetchShelters(coordinates: [number, number][]) {
     })
   } catch { /* Overpass unavailable */ }
 }
+
+function updateWaypoint(lat: number, lng: number, name: string, desc: string) {
+  const wpt = waypoints.value.find(
+    w => Math.abs(w.lat - lat) < 1e-6 && Math.abs(w.lng - lng) < 1e-6
+  )
+  if (!wpt) return
+  wpt.name = name
+  wpt.desc = desc
+  // Refresh marker tooltip
+  const marker = wptMarkers.get(wpt.id)
+  if (marker) {
+    marker.unbindTooltip()
+    if (name) marker.bindTooltip(name, { permanent: false, direction: 'top', offset: [0, -10] })
+  }
+  // If this waypoint is open in the panel, keep it in sync
+  if (selected.value?.id === wpt.id && selected.value.kind === 'waypoint') {
+    selected.value = { ...selected.value, name, desc }
+  }
+}
+
+defineExpose({ updateWaypoint })
 
 onMounted(loadAndRender)
 onUnmounted(() => { map?.remove(); wptMarkers.clear(); peakMarkers.clear() })

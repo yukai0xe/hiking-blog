@@ -38,6 +38,22 @@ export interface Gear {
   addedAt?: string | null
 }
 
+export interface WaypointOverride {
+  lat: number
+  lng: number
+  name: string
+  description: string
+}
+
+export interface Waypoint {
+  name: string
+  desc: string
+  lat:  number
+  lng:  number
+  ele:  number | null
+  time: Date | null
+}
+
 export interface GpxData {
   coordinates: [number, number][]
   elevation: number[]

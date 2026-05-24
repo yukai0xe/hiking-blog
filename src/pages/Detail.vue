@@ -174,7 +174,7 @@
           <!-- Content area -->
           <div
             class="flex-1 min-h-0"
-            :class="activeTab !== 'gpx' ? 'overflow-y-auto p-6' : ''"
+            :class="activeTab !== 'gpx' ? 'overflow-y-auto p-6' : 'overflow-y-auto'"
           >
             <PhotoGallery
               v-if="activeTab === 'photos'"
@@ -182,14 +182,73 @@
               :photos="store.currentPhotos"
             />
 
-            <GpxViewer
-              v-else-if="activeTab === 'gpx'"
-              style="height: 100vh;"
-              :gpx-url="store.currentPost!.gpxFile"
-              :show-peaks="showPeaks"
-              :show-waypoints="showWaypoints"
-              :show-shelters="showShelters"
-            />
+            <template v-else-if="activeTab === 'gpx'">
+              <!-- Map (fixed height so Leaflet renders correctly) -->
+              <GpxViewer
+                ref="gpxViewerRef"
+                style="height: 100vh;"
+                :gpx-url="store.currentPost!.gpxFile"
+                :show-peaks="showPeaks"
+                :show-waypoints="showWaypoints"
+                :show-shelters="showShelters"
+                :overrides="store.currentWaypointOverrides"
+                @waypoints-ready="gpxWaypoints = $event"
+              />
+
+              <!-- Waypoint list below the map -->
+              <div v-if="gpxWaypoints.length > 0" class="p-6">
+                <div class="flex items-center gap-2 mb-4">
+                  <MapPinIcon :size="14" class="text-primary opacity-70" />
+                  <span class="text-[10px] font-body uppercase tracking-[0.2em] text-inkMuted">記錄點</span>
+                  <span class="font-mono text-[10px] text-inkMuted opacity-50">{{ gpxWaypoints.length }}</span>
+                </div>
+
+                <div class="flex gap-4 overflow-x-auto pb-2">
+                  <div
+                    v-for="([date, wpts]) in groupedWaypoints"
+                    :key="date"
+                    class="flex-none w-64 flex flex-col gap-3"
+                  >
+                    <!-- Date header -->
+                    <p class="text-[10px] font-mono tracking-wider text-inkMuted opacity-60 pb-1"
+                      style="border-bottom: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);">
+                      {{ date }}
+                    </p>
+
+                    <!-- Waypoint cards for this date -->
+                    <div
+                      v-for="(wpt, i) in wpts"
+                      :key="i"
+                      class="card-aged rounded-xl p-4 space-y-2.5 cursor-pointer hover:ring-1 transition-all duration-150"
+                      style="--tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                      @click="openWptEdit(wpt)"
+                    >
+                      <p class="font-heading text-sm font-semibold text-ink leading-snug truncate">
+                        {{ wpt.name || '未命名' }}
+                      </p>
+                      <p v-if="wpt.desc" class="text-[11px] font-body text-inkMuted italic leading-relaxed">
+                        {{ wpt.desc }}
+                      </p>
+                      <div class="flex flex-wrap gap-1.5">
+                        <span v-if="wpt.ele !== null"
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px]"
+                          style="background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary);">
+                          {{ wpt.ele }} m
+                        </span>
+                        <span
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] text-inkMuted"
+                          style="background: color-mix(in srgb, var(--c-surface) 60%, transparent);">
+                          {{ wpt.lat.toFixed(5) }}, {{ wpt.lng.toFixed(5) }}
+                        </span>
+                      </div>
+                      <p v-if="wpt.time" class="text-[10px] font-mono text-inkMuted opacity-60">
+                        {{ formatWptTime(wpt.time) }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
 
             <GearList
               v-else-if="activeTab === 'gears'"
@@ -246,6 +305,93 @@
 
       </div>
     </template>
+
+    <!-- ── Waypoint Edit Modal ──────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="export-fade">
+        <div
+          v-if="editingWpt"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style="background: color-mix(in srgb, var(--c-base) 60%, transparent); backdrop-filter: blur(4px);"
+          @click.self="editingWpt = null"
+          @keydown.esc="editingWpt = null"
+        >
+          <div class="card-aged rounded-xl p-6 w-full max-w-sm shadow-xl space-y-4">
+
+            <!-- Header -->
+            <div class="flex items-center gap-2.5">
+              <MapPinIcon :size="15" class="text-primary opacity-80" />
+              <span class="font-heading text-lg text-ink tracking-wide">編輯記錄點</span>
+            </div>
+
+            <!-- Read-only info chips -->
+            <div class="flex flex-wrap gap-1.5">
+              <span v-if="editingWpt.ele !== null"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px]"
+                style="background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary);">
+                {{ editingWpt.ele }} m
+              </span>
+              <span
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] text-inkMuted"
+                style="background: color-mix(in srgb, var(--c-surface) 60%, transparent);">
+                {{ editingWpt.lat.toFixed(5) }}, {{ editingWpt.lng.toFixed(5) }}
+              </span>
+              <span v-if="editingWpt.time"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] text-inkMuted"
+                style="background: color-mix(in srgb, var(--c-surface) 60%, transparent);">
+                {{ formatWptTime(editingWpt.time) }}
+              </span>
+            </div>
+
+            <!-- Name field -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">名稱</label>
+              <input
+                v-model="wptDraft.name"
+                class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                placeholder="記錄點名稱"
+                @keydown.enter="saveWptEdit"
+              />
+            </div>
+
+            <!-- Desc field -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">描述</label>
+              <textarea
+                v-model="wptDraft.desc"
+                rows="3"
+                class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150 resize-none"
+                style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                placeholder="備註說明"
+              />
+            </div>
+
+            <!-- Error message -->
+            <p v-if="wptError" class="text-xs font-body text-red-400">{{ wptError }}</p>
+
+            <!-- Footer buttons -->
+            <div class="flex gap-2 pt-1">
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
+                style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                :disabled="wptSaving"
+                @click="editingWpt = null"
+              >取消</button>
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
+                :disabled="wptSaving"
+                @click="saveWptEdit"
+              >
+                <div v-if="wptSaving" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                {{ wptSaving ? '儲存中…' : '儲存' }}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- ── Export Modal ─────────────────────────────────────────── -->
     <Teleport to="body">
@@ -339,6 +485,7 @@ import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
 import GearList from '../components/GearList.vue'
 import { usePostStore } from '../stores/postStore'
+import type { Waypoint } from '../types'
 
 const route = useRoute()
 const store = usePostStore()
@@ -346,6 +493,7 @@ const store = usePostStore()
 const activeTab    = ref('photos')
 const sidebarOpen   = ref(false)
 const galleryRef    = ref<InstanceType<typeof PhotoGallery> | null>(null)
+const gpxViewerRef  = ref<InstanceType<typeof GpxViewer> | null>(null)
 
 function setTab(key: string) {
   if (key === 'gpx') sidebarOpen.value = false
@@ -354,6 +502,74 @@ function setTab(key: string) {
 const showPeaks     = ref(true)
 const showWaypoints = ref(true)
 const showShelters  = ref(false)
+const gpxWaypoints  = ref<Waypoint[]>([])
+
+// ── Waypoint edit ─────────────────────────────────────────────────
+const editingWpt  = ref<Waypoint | null>(null)
+const wptDraft    = ref({ name: '', desc: '' })
+const wptSaving   = ref(false)
+const wptError    = ref<string | null>(null)
+
+function openWptEdit(wpt: Waypoint) {
+  editingWpt.value = wpt
+  wptDraft.value   = { name: wpt.name, desc: wpt.desc }
+  wptError.value   = null
+}
+
+async function saveWptEdit() {
+  if (!editingWpt.value || wptSaving.value) return
+  const wpt  = editingWpt.value
+  const post = store.currentPost!
+  wptSaving.value = true
+  wptError.value  = null
+
+  try {
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+    const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name: wptDraft.value.name, desc: wptDraft.value.desc }),
+    })
+    if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
+
+    wpt.name = wptDraft.value.name
+    wpt.desc = wptDraft.value.desc
+    gpxViewerRef.value?.updateWaypoint(wpt.lat, wpt.lng, wpt.name, wpt.desc)
+
+    const existing = store.currentWaypointOverrides.find(
+      o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
+    )
+    if (existing) { existing.name = wpt.name; existing.description = wpt.desc }
+    else store.currentWaypointOverrides.push({ lat: wpt.lat, lng: wpt.lng, name: wpt.name, description: wpt.desc })
+
+    editingWpt.value = null
+  } catch (e) {
+    wptError.value = (e as Error).message
+  } finally {
+    wptSaving.value = false
+  }
+}
+
+const sortedWaypoints = computed(() =>
+  [...gpxWaypoints.value].sort((a, b) => {
+    if (!a.time && !b.time) return 0
+    if (!a.time) return 1
+    if (!b.time) return -1
+    return a.time.getTime() - b.time.getTime()
+  })
+)
+
+const groupedWaypoints = computed(() => {
+  const map = new Map<string, Waypoint[]>()
+  for (const wpt of sortedWaypoints.value) {
+    const key = wpt.time
+      ? wpt.time.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
+      : '未知日期'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(wpt)
+  }
+  return [...map.entries()]
+})
 
 const navTabs = [
   { key: 'photos', label: '照片', icon: CameraIcon },
@@ -460,6 +676,10 @@ async function exportAsPdf() {
 
 function safeFilename(s: string) {
   return s.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'export'
+}
+
+function formatWptTime(d: Date) {
+  return d.toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
