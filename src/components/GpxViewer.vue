@@ -8,6 +8,22 @@
       <!-- Leaflet map -->
       <div ref="mapEl" class="absolute inset-0" />
 
+      <!-- Add-mode tooltip overlay -->
+      <Transition name="add-hint">
+        <div
+          v-if="addMode"
+          class="absolute top-6 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none"
+        >
+          <div
+            class="flex items-center gap-2 px-4 py-2.5 rounded-full font-body text-sm"
+            style="background: color-mix(in srgb, var(--c-base) 88%, transparent); backdrop-filter: blur(10px); border: 1px solid color-mix(in srgb, var(--c-primary) 50%, transparent); color: var(--c-primary); box-shadow: 0 4px 20px rgba(0,0,0,0.4);"
+          >
+            <div class="w-2 h-2 rounded-full animate-pulse" style="background: var(--c-primary);" />
+            點擊地圖任意位置新增記錄點
+          </div>
+        </div>
+      </Transition>
+
       <!-- Right-side column: layer toggle + info panel -->
       <div class="absolute top-4 right-4 z-[1000] flex flex-col gap-2 w-72">
 
@@ -132,18 +148,19 @@ import type { GpxData, Waypoint, WaypointOverride } from '../types'
 
 // ── Unified panel item ────────────────────────────────────
 interface PanelItem {
-  kind: 'waypoint' | 'peak' | 'shelter'
-  id:   number
-  name: string
-  desc: string
-  lat:  number
-  lng:  number
-  ele:  number | null
-  time: Date | null
+  kind:      'waypoint' | 'peak' | 'shelter'
+  id:        number
+  name:      string
+  desc:      string
+  lat:       number
+  lng:       number
+  ele:       number | null
+  time:      Date | null
+  isCustom?: boolean
 }
 
-const props = defineProps<{ gpxUrl: string; showPeaks?: boolean; showWaypoints?: boolean; showShelters?: boolean; overrides?: WaypointOverride[] }>()
-const emit  = defineEmits<{ 'waypoints-ready': [wpts: Waypoint[]] }>()
+const props = defineProps<{ gpxUrl: string; showPeaks?: boolean; showWaypoints?: boolean; showShelters?: boolean; overrides?: WaypointOverride[]; addMode?: boolean }>()
+const emit  = defineEmits<{ 'waypoints-ready': [wpts: Waypoint[]]; 'add-waypoint': [pos: { lat: number; lng: number }] }>()
 
 const mapEl         = ref<HTMLElement | null>(null)
 const gpxData       = ref<GpxData | null>(null)
@@ -157,6 +174,7 @@ let tileLayer: L.TileLayer | null = null
 let wptLayerGroup:     L.LayerGroup | null = null
 let peakLayerGroup:    L.LayerGroup | null = null
 let shelterLayerGroup: L.LayerGroup | null = null
+let mapReady = false
 const isTopo = ref(false)
 
 const wptMarkers  = new Map<number, L.Marker>()
@@ -185,6 +203,24 @@ watch(() => props.showShelters, v => {
   if (!map || !shelterLayerGroup) return
   v !== false ? shelterLayerGroup.addTo(map) : shelterLayerGroup.remove()
 })
+watch(() => props.addMode, v => {
+  if (!map) return
+  map.getContainer().style.cursor = v ? 'crosshair' : ''
+})
+
+// Reactive fallback: sync custom waypoints whenever overrides change.
+// The imperative addWaypointMarker call in Detail.vue is the fast path;
+// this watcher catches cases where the map wasn't ready at call time.
+watch(() => props.overrides, (overrides) => {
+  if (!mapReady) return
+  for (const ov of (overrides ?? [])) {
+    if (!ov.isCustom || ov.hidden) continue
+    const alreadyOnMap = waypoints.value.some(
+      w => Math.abs(w.lat - ov.lat) < 1e-5 && Math.abs(w.lng - ov.lng) < 1e-5
+    )
+    if (!alreadyOnMap) addWaypointMarker(ov.lat, ov.lng, ov.name, ov.description, true)
+  }
+}, { deep: true })
 
 function toggleLayer() {
   if (!map) return
@@ -220,6 +256,19 @@ function wptIcon(active: boolean) {
   })
 }
 
+function customWptIcon(active: boolean) {
+  const size   = active ? 20 : 16
+  const bg     = active ? '#ff6b35' : '#7eb86a'
+  const shadow = active
+    ? '0 0 0 4px rgba(255,107,53,0.25), 0 2px 8px rgba(0,0,0,0.6)'
+    : '0 1px 6px rgba(0,0,0,0.55)'
+  return L.divIcon({
+    className: '',
+    iconAnchor: [size / 2, size / 2],
+    html: `<div style="width:${size}px;height:${size}px;background:${bg};border-radius:50%;border:2px solid white;box-shadow:${shadow};cursor:pointer;transition:all .15s ease;"></div>`,
+  })
+}
+
 function peakIcon(active: boolean) {
   const fill   = active ? '#ff6b35' : '#c6ac8f'
   const size   = active ? 22 : 18
@@ -235,16 +284,18 @@ function peakIcon(active: boolean) {
 
 // ── Selection ─────────────────────────────────────────────
 function selectItem(item: PanelItem | null) {
-  // Reset previous icon
   if (selected.value) {
-    if (selected.value.kind === 'waypoint') wptMarkers.get(selected.value.id)?.setIcon(wptIcon(false))
-    else                                    peakMarkers.get(selected.value.id)?.setIcon(peakIcon(false))
+    if (selected.value.kind === 'waypoint')
+      wptMarkers.get(selected.value.id)?.setIcon(selected.value.isCustom ? customWptIcon(false) : wptIcon(false))
+    else
+      peakMarkers.get(selected.value.id)?.setIcon(peakIcon(false))
   }
   selected.value = item
-  // Highlight new icon
   if (item) {
-    if (item.kind === 'waypoint') wptMarkers.get(item.id)?.setIcon(wptIcon(true))
-    else                          peakMarkers.get(item.id)?.setIcon(peakIcon(true))
+    if (item.kind === 'waypoint')
+      wptMarkers.get(item.id)?.setIcon(item.isCustom ? customWptIcon(true) : wptIcon(true))
+    else
+      peakMarkers.get(item.id)?.setIcon(peakIcon(true))
   }
 }
 
@@ -290,9 +341,10 @@ async function loadAndRender() {
 
     gpxData.value = { coordinates, elevation, timestamps: times.map(t => new Date(t)) }
 
-    waypoints.value = geojson.features
+    // Parse GPX waypoints
+    const gpxWpts = geojson.features
       .filter(f => f.geometry.type === 'Point')
-      .map((f, i) => {
+      .map<PanelItem>((f, i) => {
         const [lng, lat, ele] = (f.geometry as { type: 'Point'; coordinates: number[] }).coordinates as [number, number, number?]
         return {
           kind: 'waypoint' as const,
@@ -305,22 +357,42 @@ async function loadAndRender() {
         }
       })
 
-    // Apply DB overrides (name/desc edits stored without modifying the GPX file)
-    if (props.overrides?.length) {
-      for (const wpt of waypoints.value) {
-        const ov = props.overrides.find(
-          o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
-        )
-        if (ov) { wpt.name = ov.name; wpt.desc = ov.description }
+    // Apply overrides: skip hidden from map, merge name/desc, collect all for emit
+    const allForEmit: import('../types').Waypoint[] = []
+    waypoints.value = []
+    for (const wpt of gpxWpts) {
+      const ov       = props.overrides?.find(o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5)
+      const isHidden = ov?.hidden ?? false
+      if (ov) {
+        if (ov.name) wpt.name = ov.name           // empty string means no rename yet — keep original GPX name
+        if (ov.description) wpt.desc = ov.description
+        if (ov.isCustom) wpt.isCustom = true
+      }
+      allForEmit.push({ name: wpt.name, desc: wpt.desc, lat: wpt.lat, lng: wpt.lng, ele: wpt.ele, time: wpt.time, hidden: isHidden })
+      if (!isHidden) waypoints.value.push(wpt)
+    }
+
+    // Reconstruct non-custom hidden waypoints removed from GPX by a prior sync
+    for (const ov of (props.overrides ?? [])) {
+      if (ov.isCustom || !ov.hidden) continue
+      const alreadyEmitted = allForEmit.some(w => Math.abs(w.lat - ov.lat) < 1e-5 && Math.abs(w.lng - ov.lng) < 1e-5)
+      if (!alreadyEmitted)
+        allForEmit.push({ name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: null, hidden: true })
+    }
+
+    // Add custom waypoints (not in GPX file) from overrides
+    let nextId = gpxWpts.length
+    for (const ov of (props.overrides ?? [])) {
+      if (!ov.isCustom) continue
+      const exists = gpxWpts.some(w => Math.abs(w.lat - ov.lat) < 1e-5 && Math.abs(w.lng - ov.lng) < 1e-5)
+      if (!exists) {
+        allForEmit.push({ name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: null, hidden: ov.hidden })
+        if (!ov.hidden) waypoints.value.push({ kind: 'waypoint', id: nextId++, name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: null, isCustom: true })
       }
     }
 
     loading.value = false
-    emit('waypoints-ready', waypoints.value.map(w => ({
-      name: w.name, desc: w.desc,
-      lat: w.lat,  lng: w.lng,
-      ele: w.ele,  time: w.time,
-    })))
+    emit('waypoints-ready', allForEmit)
     await nextTick()
     renderMap(coordinates)
     fetchPeaks(coordinates)
@@ -352,11 +424,18 @@ function renderMap(coordinates: [number, number][]) {
   L.marker(coordinates[coordinates.length - 1], { icon: endIcon }).addTo(map).bindTooltip('終點', { permanent: false })
 
   waypoints.value.forEach(wpt => {
-    const marker = L.marker([wpt.lat, wpt.lng], { icon: wptIcon(false) }).addTo(wptLayerGroup!)
+    const icon = wpt.isCustom ? customWptIcon(false) : wptIcon(false)
+    const marker = L.marker([wpt.lat, wpt.lng], { icon }).addTo(wptLayerGroup!)
     if (wpt.name) marker.bindTooltip(wpt.name, { permanent: false, direction: 'top', offset: [0, -10] })
     marker.on('click', () => { selectItem(wpt); map!.panTo([wpt.lat, wpt.lng]) })
     wptMarkers.set(wpt.id, marker)
   })
+
+  map.on('click', (e: L.LeafletMouseEvent) => {
+    if (props.addMode) emit('add-waypoint', { lat: e.latlng.lat, lng: e.latlng.lng })
+  })
+
+  mapReady = true
 }
 
 // ── Peaks ─────────────────────────────────────────────────
@@ -476,10 +555,40 @@ function updateWaypoint(lat: number, lng: number, name: string, desc: string) {
   }
 }
 
-defineExpose({ updateWaypoint })
+function addWaypointMarker(lat: number, lng: number, name: string, desc: string, isCustom = true) {
+  if (!map || !wptLayerGroup) return
+  const id = waypoints.value.length > 0 ? Math.max(...waypoints.value.map(w => w.id)) + 1 : 0
+  const item: PanelItem = { kind: 'waypoint', id, name, desc, lat, lng, ele: null, time: null, isCustom }
+  waypoints.value.push(item)
+  const icon   = isCustom ? customWptIcon(false) : wptIcon(false)
+  const marker = L.marker([lat, lng], { icon }).addTo(wptLayerGroup)
+  if (name) marker.bindTooltip(name, { permanent: false, direction: 'top', offset: [0, -10] })
+  marker.on('click', () => { selectItem(item); map!.panTo([lat, lng]) })
+  wptMarkers.set(id, marker)
+}
+
+function removeWaypointMarker(lat: number, lng: number) {
+  const wpt = waypoints.value.find(w => Math.abs(w.lat - lat) < 1e-5 && Math.abs(w.lng - lng) < 1e-5)
+  if (!wpt) return
+  wptMarkers.get(wpt.id)?.remove()
+  wptMarkers.delete(wpt.id)
+  waypoints.value = waypoints.value.filter(w => w.id !== wpt.id)
+  if (selected.value?.id === wpt.id) selected.value = null
+}
+
+function selectWaypoint(lat: number, lng: number) {
+  const wpt = waypoints.value.find(
+    w => Math.abs(w.lat - lat) < 1e-5 && Math.abs(w.lng - lng) < 1e-5
+  )
+  if (!wpt || !map) return
+  selectItem(wpt)
+  map.panTo([wpt.lat, wpt.lng])
+}
+
+defineExpose({ updateWaypoint, addWaypointMarker, removeWaypointMarker, selectWaypoint })
 
 onMounted(loadAndRender)
-onUnmounted(() => { map?.remove(); wptMarkers.clear(); peakMarkers.clear() })
+onUnmounted(() => { map?.remove(); wptMarkers.clear(); peakMarkers.clear(); mapReady = false })
 </script>
 
 <style scoped>
@@ -488,6 +597,9 @@ onUnmounted(() => { map?.remove(); wptMarkers.clear(); peakMarkers.clear() })
 
 .panel-enter-active, .panel-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .panel-enter-from, .panel-leave-to { opacity: 0; transform: translateX(12px); }
+
+.add-hint-enter-active, .add-hint-leave-active { transition: opacity 0.25s ease, transform 0.25s ease; }
+.add-hint-enter-from, .add-hint-leave-to { opacity: 0; transform: translateX(-50%) translateY(8px); }
 </style>
 
 <style>

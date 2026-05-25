@@ -43,15 +43,18 @@ export interface WaypointOverride {
   lng: number
   name: string
   description: string
+  isCustom: boolean
+  hidden: boolean
 }
 
 export interface Waypoint {
-  name: string
-  desc: string
-  lat:  number
-  lng:  number
-  ele:  number | null
-  time: Date | null
+  name:    string
+  desc:    string
+  lat:     number
+  lng:     number
+  ele:     number | null
+  time:    Date | null
+  hidden?: boolean
 }
 
 export interface GpxData {

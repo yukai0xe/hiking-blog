@@ -168,6 +168,7 @@
                 <component :is="tog.icon" :size="12" />
                 {{ tog.label }}
               </button>
+
             </div>
           </div>
 
@@ -186,24 +187,48 @@
               <!-- Map (fixed height so Leaflet renders correctly) -->
               <GpxViewer
                 ref="gpxViewerRef"
+                data-gpx-map
                 style="height: 100vh;"
                 :gpx-url="store.currentPost!.gpxFile"
                 :show-peaks="showPeaks"
                 :show-waypoints="showWaypoints"
                 :show-shelters="showShelters"
                 :overrides="store.currentWaypointOverrides"
+                :add-mode="addingWpt"
                 @waypoints-ready="gpxWaypoints = $event"
+                @add-waypoint="onMapClick"
               />
 
               <!-- Waypoint list below the map -->
-              <div v-if="gpxWaypoints.length > 0" class="p-6">
+              <div class="p-6">
                 <div class="flex items-center gap-2 mb-4">
                   <MapPinIcon :size="14" class="text-primary opacity-70" />
                   <span class="text-[10px] font-body uppercase tracking-[0.2em] text-inkMuted">記錄點</span>
-                  <span class="font-mono text-[10px] text-inkMuted opacity-50">{{ gpxWaypoints.length }}</span>
+                  <span v-if="gpxWaypoints.length" class="font-mono text-[10px] text-inkMuted opacity-50">{{ gpxWaypoints.length }}</span>
+                  <div class="ml-auto flex items-center gap-2">
+                    <button
+                      v-if="gpxWaypoints.length > 0"
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
+                      style="background: transparent; color: var(--c-inkMuted); border: 1px solid var(--c-border);"
+                      @click="openBatchHide"
+                    >
+                      <EyeOffIcon :size="12" />
+                      批次顯示/隱藏
+                    </button>
+                    <button
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
+                      :style="addingWpt
+                        ? 'background: var(--c-cta); color: #fff; border: 1px solid var(--c-cta);'
+                        : 'background: transparent; color: var(--c-inkMuted); border: 1px solid var(--c-border);'"
+                      @click="toggleAddMode"
+                    >
+                      <PlusIcon :size="12" />
+                      {{ addingWpt ? '點擊地圖選點…' : '新增記錄點' }}
+                    </button>
+                  </div>
                 </div>
 
-                <div class="flex gap-4 overflow-x-auto pb-2">
+                <div class="flex gap-4 overflow-x-auto pb-2 pl-2">
                   <div
                     v-for="([date, wpts]) in groupedWaypoints"
                     :key="date"
@@ -219,9 +244,14 @@
                     <div
                       v-for="(wpt, i) in wpts"
                       :key="i"
-                      class="card-aged rounded-xl p-4 space-y-2.5 cursor-pointer hover:ring-1 transition-all duration-150"
-                      style="--tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
-                      @click="openWptEdit(wpt)"
+                      class="card-aged rounded-xl p-4 space-y-2.5 cursor-pointer select-none transition-all duration-200"
+                      :class="[
+                        wpt.hidden ? 'opacity-35 grayscale-[40%]' : '',
+                        selectedWpt === wpt ? 'wpt-card-selected' : 'hover:ring-1',
+                      ]"
+                      :style="selectedWpt !== wpt ? '--tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);' : ''"
+                      @click="onWptClick(wpt)"
+                      @dblclick="onWptDblClick(wpt)"
                     >
                       <p class="font-heading text-sm font-semibold text-ink leading-snug truncate">
                         {{ wpt.name || '未命名' }}
@@ -244,6 +274,11 @@
                       <p v-if="wpt.time" class="text-[10px] font-mono text-inkMuted opacity-60">
                         {{ formatWptTime(wpt.time) }}
                       </p>
+                      <Transition name="wpt-hint">
+                        <p v-if="hintWpt === wpt" class="text-[10px] font-body text-inkMuted opacity-60 tracking-wide">
+                          ✦ 雙擊進入編輯
+                        </p>
+                      </Transition>
                     </div>
                   </div>
                 </div>
@@ -316,42 +351,162 @@
           @click.self="editingWpt = null"
           @keydown.esc="editingWpt = null"
         >
+          <div class="card-aged rounded-xl shadow-xl overflow-hidden flex w-full" style="max-width: 26rem;">
+
+            <!-- Main form area -->
+            <div class="flex-1 p-6 space-y-4 min-w-0">
+
+              <!-- Header: title + X close -->
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <MapPinIcon :size="15" class="text-primary opacity-80 shrink-0" />
+                  <span class="font-heading text-lg text-ink tracking-wide truncate">編輯記錄點</span>
+                </div>
+                <button class="wpt-close-btn shrink-0" @click="editingWpt = null">
+                  <XIcon :size="12" />
+                </button>
+              </div>
+
+              <!-- Read-only info chips -->
+              <div class="flex flex-wrap gap-1.5">
+                <span v-if="editingWpt.ele !== null"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px]"
+                  style="background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary);">
+                  {{ editingWpt.ele }} m
+                </span>
+                <span
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] text-inkMuted"
+                  style="background: color-mix(in srgb, var(--c-surface) 60%, transparent);">
+                  {{ editingWpt.lat.toFixed(5) }}, {{ editingWpt.lng.toFixed(5) }}
+                </span>
+                <span v-if="editingWpt.time"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] text-inkMuted"
+                  style="background: color-mix(in srgb, var(--c-surface) 60%, transparent);">
+                  {{ formatWptTime(editingWpt.time) }}
+                </span>
+              </div>
+
+              <!-- Name field -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">名稱</label>
+                <input
+                  v-model="wptDraft.name"
+                  class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                  style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                  placeholder="記錄點名稱"
+                  @keydown.enter="saveWptEdit"
+                />
+              </div>
+
+              <!-- Desc field -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">描述</label>
+                <textarea
+                  v-model="wptDraft.desc"
+                  rows="3"
+                  class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150 resize-none"
+                  style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                  placeholder="備註說明"
+                />
+              </div>
+
+              <!-- Error message -->
+              <p v-if="wptError" class="text-xs font-body text-red-400">{{ wptError }}</p>
+
+              <!-- Save button -->
+              <button
+                class="w-full py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
+                :disabled="wptSaving"
+                @click="saveWptEdit"
+              >
+                <div v-if="wptSaving" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                {{ wptSaving ? '儲存中…' : '儲存' }}
+              </button>
+
+            </div>
+
+            <!-- Right action strip -->
+            <div
+              class="shrink-0 flex flex-col items-center gap-3 py-6 px-3"
+              style="border-left: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);"
+            >
+              <button
+                class="wpt-action-btn"
+                :title="editingWpt?.hidden ? '顯示記錄點' : '隱藏記錄點'"
+                :disabled="wptSaving"
+                @click="editingWpt && toggleWptHidden(editingWpt); editingWpt = null"
+              >
+                <EyeIcon v-if="editingWpt?.hidden" :size="16" />
+                <EyeOffIcon v-else :size="16" />
+              </button>
+              <button
+                v-if="editingWpt && isCustomWpt(editingWpt)"
+                class="wpt-action-btn danger"
+                title="刪除記錄點"
+                :disabled="wptSaving"
+                @click="editingWpt && deleteWpt(editingWpt); editingWpt = null"
+              >
+                <Trash2Icon :size="16" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ── Add Waypoint Modal ────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="export-fade">
+        <div
+          v-if="showAddWptModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style="background: color-mix(in srgb, var(--c-base) 60%, transparent); backdrop-filter: blur(4px);"
+          @click.self="showAddWptModal = false"
+          @keydown.esc="showAddWptModal = false"
+        >
           <div class="card-aged rounded-xl p-6 w-full max-w-sm shadow-xl space-y-4">
 
             <!-- Header -->
             <div class="flex items-center gap-2.5">
-              <MapPinIcon :size="15" class="text-primary opacity-80" />
-              <span class="font-heading text-lg text-ink tracking-wide">編輯記錄點</span>
+              <PlusIcon :size="15" class="text-primary opacity-80" />
+              <span class="font-heading text-lg text-ink tracking-wide">新增記錄點</span>
             </div>
 
-            <!-- Read-only info chips -->
-            <div class="flex flex-wrap gap-1.5">
-              <span v-if="editingWpt.ele !== null"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px]"
-                style="background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary);">
-                {{ editingWpt.ele }} m
-              </span>
-              <span
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] text-inkMuted"
-                style="background: color-mix(in srgb, var(--c-surface) 60%, transparent);">
-                {{ editingWpt.lat.toFixed(5) }}, {{ editingWpt.lng.toFixed(5) }}
-              </span>
-              <span v-if="editingWpt.time"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[10px] text-inkMuted"
-                style="background: color-mix(in srgb, var(--c-surface) 60%, transparent);">
-                {{ formatWptTime(editingWpt.time) }}
-              </span>
+            <!-- Lat/Lng fields -->
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">緯度</label>
+                <input
+                  v-model="newWptDraft.lat"
+                  type="number"
+                  step="0.000001"
+                  class="w-full rounded-lg px-3 py-2 text-sm font-mono text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                  style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                  placeholder="24.123456"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">經度</label>
+                <input
+                  v-model="newWptDraft.lng"
+                  type="number"
+                  step="0.000001"
+                  class="w-full rounded-lg px-3 py-2 text-sm font-mono text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                  style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                  placeholder="121.123456"
+                />
+              </div>
             </div>
 
             <!-- Name field -->
             <div class="space-y-1.5">
               <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">名稱</label>
               <input
-                v-model="wptDraft.name"
+                v-model="newWptDraft.name"
                 class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
                 style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
                 placeholder="記錄點名稱"
-                @keydown.enter="saveWptEdit"
               />
             </div>
 
@@ -359,8 +514,8 @@
             <div class="space-y-1.5">
               <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">描述</label>
               <textarea
-                v-model="wptDraft.desc"
-                rows="3"
+                v-model="newWptDraft.desc"
+                rows="2"
                 class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150 resize-none"
                 style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
                 placeholder="備註說明"
@@ -368,23 +523,23 @@
             </div>
 
             <!-- Error message -->
-            <p v-if="wptError" class="text-xs font-body text-red-400">{{ wptError }}</p>
+            <p v-if="addWptError" class="text-xs font-body text-red-400">{{ addWptError }}</p>
 
             <!-- Footer buttons -->
             <div class="flex gap-2 pt-1">
               <button
                 class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
                 style="color: var(--c-inkMuted); border-color: var(--c-border);"
-                :disabled="wptSaving"
-                @click="editingWpt = null"
+                :disabled="addWptSaving"
+                @click="showAddWptModal = false"
               >取消</button>
               <button
                 class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
-                :disabled="wptSaving"
-                @click="saveWptEdit"
+                :disabled="addWptSaving"
+                @click="createWpt"
               >
-                <div v-if="wptSaving" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                {{ wptSaving ? '儲存中…' : '儲存' }}
+                <div v-if="addWptSaving" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                {{ addWptSaving ? '新增中…' : '新增' }}
               </button>
             </div>
 
@@ -466,11 +621,107 @@
       </Transition>
     </Teleport>
 
+    <!-- ── Batch Hide Modal ─────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="export-fade">
+        <div
+          v-if="showBatchHideModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style="background: color-mix(in srgb, var(--c-base) 60%, transparent); backdrop-filter: blur(4px);"
+          @click.self="showBatchHideModal = false"
+          @keydown.esc="showBatchHideModal = false"
+        >
+          <div class="card-aged rounded-xl shadow-xl overflow-hidden flex flex-col w-full" style="max-width: 26rem; max-height: 80vh;">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between gap-2 px-6 py-4" style="border-bottom: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);">
+              <div class="flex items-center gap-2">
+                <EyeOffIcon :size="15" class="text-primary opacity-70" />
+                <span class="font-heading text-base text-ink tracking-wide">批次顯示/隱藏</span>
+              </div>
+              <button
+                class="w-6 h-6 rounded-full flex items-center justify-center text-inkMuted hover:text-ink transition-colors cursor-pointer"
+                style="border: 1px solid var(--c-border);"
+                @click="showBatchHideModal = false"
+              >
+                <XIcon :size="12" />
+              </button>
+            </div>
+
+            <!-- Select all -->
+            <div class="px-6 py-3 flex items-center gap-3" style="border-bottom: 1px solid color-mix(in srgb, var(--c-border) 30%, transparent);">
+              <input
+                id="batch-select-all"
+                type="checkbox"
+                class="w-4 h-4 cursor-pointer accent-primary"
+                :checked="batchHideSelected.size === sortedWaypoints.length && sortedWaypoints.length > 0"
+                :indeterminate="batchHideSelected.size > 0 && batchHideSelected.size < sortedWaypoints.length"
+                @change="toggleBatchSelectAll"
+              />
+              <label for="batch-select-all" class="text-xs font-body text-inkMuted cursor-pointer select-none">全選</label>
+              <span class="ml-auto font-mono text-[10px] text-inkMuted opacity-50">
+                已選 {{ batchHideSelected.size }} / {{ sortedWaypoints.length }}
+              </span>
+            </div>
+
+            <!-- Waypoint list -->
+            <div class="overflow-y-auto flex-1 px-6 py-3 space-y-1">
+              <label
+                v-for="wpt in sortedWaypoints"
+                :key="`${wpt.lat},${wpt.lng}`"
+                class="flex items-center gap-3 py-2.5 px-3 rounded-lg cursor-pointer select-none transition-colors duration-100"
+                :style="batchHideSelected.has(`${wpt.lat},${wpt.lng}`)
+                  ? 'background: color-mix(in srgb, var(--c-primary) 8%, transparent);'
+                  : 'background: transparent;'"
+              >
+                <input
+                  type="checkbox"
+                  class="w-4 h-4 cursor-pointer accent-primary shrink-0"
+                  :checked="batchHideSelected.has(`${wpt.lat},${wpt.lng}`)"
+                  @change="toggleBatchItem(`${wpt.lat},${wpt.lng}`)"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="font-heading text-sm leading-snug truncate" :class="wpt.hidden ? 'text-inkMuted line-through' : 'text-ink'">{{ wpt.name || '未命名' }}</p>
+                  <p class="font-mono text-[10px] text-inkMuted opacity-60">{{ wpt.lat.toFixed(5) }}, {{ wpt.lng.toFixed(5) }}</p>
+                </div>
+                <component
+                  :is="wpt.hidden ? EyeOffIcon : EyeIcon"
+                  :size="13"
+                  class="shrink-0 opacity-40"
+                  :class="wpt.hidden ? 'text-inkMuted' : 'text-primary'"
+                />
+              </label>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex gap-2 px-6 py-4" style="border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);">
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
+                style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                @click="showBatchHideModal = false"
+              >
+                取消
+              </button>
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
+                :disabled="batchHideSelected.size === 0 || batchHideSaving"
+                @click="confirmBatchHide"
+              >
+                <div v-if="batchHideSaving" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                {{ batchHideSaving ? '處理中…' : `切換 ${batchHideSelected.size} 個記錄點` }}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   ArrowLeft as ArrowLeftIcon, Pencil as PencilIcon,
@@ -480,6 +731,7 @@ import {
   Cloud as CloudIcon, Users as UsersIcon,
   ChevronsRight as ChevronsRightIcon, ChevronsLeft as ChevronsLeftIcon,
   StarOff as StarOffIcon, Download as DownloadIcon,
+  Plus as PlusIcon, Eye as EyeIcon, EyeOff as EyeOffIcon, Trash2 as Trash2Icon, X as XIcon,
 } from 'lucide-vue-next'
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
@@ -504,11 +756,84 @@ const showWaypoints = ref(true)
 const showShelters  = ref(false)
 const gpxWaypoints  = ref<Waypoint[]>([])
 
-// ── Waypoint edit ─────────────────────────────────────────────────
+watch(gpxWaypoints, () => {
+  selectedWpt.value = null
+  hintWpt.value     = null
+  if (hintTimer) { clearTimeout(hintTimer); hintTimer = null }
+})
+
+// ── Waypoint selection + edit ──────────────────────────────────────
+const selectedWpt = ref<Waypoint | null>(null)
+const hintWpt     = ref<Waypoint | null>(null)
+let   hintTimer:  ReturnType<typeof setTimeout> | null = null
 const editingWpt  = ref<Waypoint | null>(null)
 const wptDraft    = ref({ name: '', desc: '' })
 const wptSaving   = ref(false)
 const wptError    = ref<string | null>(null)
+
+// ── Waypoint add ──────────────────────────────────────────────────
+const addingWpt       = ref(false)
+const showAddWptModal = ref(false)
+const newWptDraft     = ref({ lat: '', lng: '', name: '', desc: '' })
+const addWptSaving    = ref(false)
+const addWptError     = ref<string | null>(null)
+
+// ── Batch hide ────────────────────────────────────────────────────
+const showBatchHideModal = ref(false)
+const batchHideSelected  = ref<Set<string>>(new Set())
+const batchHideSaving    = ref(false)
+
+function openBatchHide() {
+  batchHideSelected.value = new Set()
+  showBatchHideModal.value = true
+}
+
+function toggleBatchItem(key: string) {
+  const s = new Set(batchHideSelected.value)
+  if (s.has(key)) s.delete(key)
+  else s.add(key)
+  batchHideSelected.value = s
+}
+
+function toggleBatchSelectAll() {
+  const all = sortedWaypoints.value
+  if (batchHideSelected.value.size === all.length) {
+    batchHideSelected.value = new Set()
+  } else {
+    batchHideSelected.value = new Set(all.map(w => `${w.lat},${w.lng}`))
+  }
+}
+
+async function confirmBatchHide() {
+  if (batchHideSaving.value || batchHideSelected.value.size === 0) return
+  batchHideSaving.value = true
+  const targets = sortedWaypoints.value.filter(w => batchHideSelected.value.has(`${w.lat},${w.lng}`))
+  for (const wpt of targets) {
+    await toggleWptHidden(wpt)
+  }
+  batchHideSaving.value = false
+  showBatchHideModal.value = false
+}
+
+function onWptClick(wpt: Waypoint) {
+  selectedWpt.value = wpt
+  gpxViewerRef.value?.selectWaypoint(wpt.lat, wpt.lng)
+  if (hintTimer) clearTimeout(hintTimer)
+  hintWpt.value = wpt
+  hintTimer = setTimeout(() => { hintWpt.value = null; hintTimer = null }, 3000)
+}
+
+function onWptDblClick(wpt: Waypoint) {
+  openWptEdit(wpt)
+}
+
+function toggleAddMode() {
+  addingWpt.value = !addingWpt.value
+  if (addingWpt.value) {
+    const mapEl = document.querySelector('[data-gpx-map]') as HTMLElement | null
+    mapEl?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 
 function openWptEdit(wpt: Waypoint) {
   editingWpt.value = wpt
@@ -520,34 +845,141 @@ async function saveWptEdit() {
   if (!editingWpt.value || wptSaving.value) return
   const wpt  = editingWpt.value
   const post = store.currentPost!
+  const name = wptDraft.value.name
+  const desc = wptDraft.value.desc
   wptSaving.value = true
   wptError.value  = null
+
+  // Immediate UI update
+  wpt.name = name
+  wpt.desc = desc
+  gpxViewerRef.value?.updateWaypoint(wpt.lat, wpt.lng, name, desc)
+  const existing = store.currentWaypointOverrides.find(
+    o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
+  )
+  if (existing) { existing.name = name; existing.description = desc }
+  else store.currentWaypointOverrides.push({ lat: wpt.lat, lng: wpt.lng, name, description: desc, isCustom: false, hidden: false })
+  editingWpt.value = null
 
   try {
     const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
     const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name: wptDraft.value.name, desc: wptDraft.value.desc }),
+      body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name, desc }),
     })
     if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
-
-    wpt.name = wptDraft.value.name
-    wpt.desc = wptDraft.value.desc
-    gpxViewerRef.value?.updateWaypoint(wpt.lat, wpt.lng, wpt.name, wpt.desc)
-
-    const existing = store.currentWaypointOverrides.find(
-      o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
-    )
-    if (existing) { existing.name = wpt.name; existing.description = wpt.desc }
-    else store.currentWaypointOverrides.push({ lat: wpt.lat, lng: wpt.lng, name: wpt.name, description: wpt.desc })
-
-    editingWpt.value = null
   } catch (e) {
     wptError.value = (e as Error).message
   } finally {
     wptSaving.value = false
   }
+}
+
+function isCustomWpt(wpt: Waypoint): boolean {
+  return store.currentWaypointOverrides.some(
+    o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5 && o.isCustom
+  )
+}
+
+function onMapClick(pos: { lat: number; lng: number }) {
+  newWptDraft.value   = { lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), name: '', desc: '' }
+  addWptError.value   = null
+  showAddWptModal.value = true
+  addingWpt.value     = false
+}
+
+async function createWpt() {
+  if (addWptSaving.value) return
+  const lat  = parseFloat(newWptDraft.value.lat)
+  const lng  = parseFloat(newWptDraft.value.lng)
+  if (isNaN(lat) || isNaN(lng)) { addWptError.value = '請輸入有效的座標'; return }
+  const name = newWptDraft.value.name
+  const desc = newWptDraft.value.desc
+  addWptSaving.value = true
+  addWptError.value  = null
+
+  // Immediate UI update
+  const newWpt: Waypoint = { name, desc, lat, lng, ele: null, time: null }
+  gpxWaypoints.value.push(newWpt)
+  store.currentWaypointOverrides.push({ lat, lng, name, description: desc, isCustom: true, hidden: false })
+  gpxViewerRef.value?.addWaypointMarker(lat, lng, name, desc)
+  showAddWptModal.value = false
+
+  try {
+    const post    = store.currentPost!
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+    const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ lat, lng, name, desc }),
+    })
+    if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
+  } catch (e) {
+    // Rollback
+    gpxWaypoints.value = gpxWaypoints.value.filter(
+      w => !(Math.abs(w.lat - lat) < 1e-5 && Math.abs(w.lng - lng) < 1e-5)
+    )
+    store.currentWaypointOverrides = store.currentWaypointOverrides.filter(
+      o => !(Math.abs(o.lat - lat) < 1e-5 && Math.abs(o.lng - lng) < 1e-5)
+    )
+    gpxViewerRef.value?.removeWaypointMarker(lat, lng)
+    addWptError.value = (e as Error).message
+    showAddWptModal.value = true
+  } finally {
+    addWptSaving.value = false
+  }
+}
+
+async function toggleWptHidden(wpt: Waypoint) {
+  const newHidden = !wpt.hidden
+  const post      = store.currentPost!
+  const apiBase   = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+
+  // Immediate UI update
+  wpt.hidden = newHidden
+  const ov = store.currentWaypointOverrides.find(
+    o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
+  )
+  if (ov) ov.hidden = newHidden
+  else store.currentWaypointOverrides.push({ lat: wpt.lat, lng: wpt.lng, name: wpt.name, description: wpt.desc, isCustom: false, hidden: newHidden })
+  if (newHidden) {
+    gpxViewerRef.value?.removeWaypointMarker(wpt.lat, wpt.lng)
+  } else {
+    gpxViewerRef.value?.addWaypointMarker(wpt.lat, wpt.lng, wpt.name, wpt.desc, isCustomWpt(wpt))
+  }
+
+  try {
+    const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name: wpt.name, desc: wpt.desc, hidden: newHidden }),
+    })
+    if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
+  } catch (e) { console.error(e) }
+}
+
+async function deleteWpt(wpt: Waypoint) {
+  const post    = store.currentPost!
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+
+  // Immediate UI update
+  gpxWaypoints.value = gpxWaypoints.value.filter(
+    w => !(Math.abs(w.lat - wpt.lat) < 1e-5 && Math.abs(w.lng - wpt.lng) < 1e-5)
+  )
+  store.currentWaypointOverrides = store.currentWaypointOverrides.filter(
+    o => !(Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5)
+  )
+  gpxViewerRef.value?.removeWaypointMarker(wpt.lat, wpt.lng)
+
+  try {
+    const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
+      method:  'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng }),
+    })
+    if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
+  } catch (e) { console.error(e) }
 }
 
 const sortedWaypoints = computed(() =>
@@ -612,6 +1044,27 @@ const hasMeta = computed(() => {
 })
 
 onMounted(() => store.fetchPostDetail(route.params.id as string))
+
+// ── SSE: listen for background GPX sync completion ───────────────
+let sseSource: EventSource | null = null
+
+watch(() => store.currentPost?.id, (id) => {
+  sseSource?.close()
+  if (!id) return
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+  sseSource = new EventSource(`${apiBase}/api/Gpx/${id}/events`)
+  sseSource.onmessage = (e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data as string) as { gpxUrl?: string }
+      if (data.gpxUrl && store.currentPost) store.currentPost.gpxFile = data.gpxUrl
+    } catch { /* ignore malformed events */ }
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  sseSource?.close()
+  if (hintTimer) clearTimeout(hintTimer)
+})
 
 // ── Export ────────────────────────────────────────────────────────
 const showExportModal = ref(false)
@@ -712,4 +1165,56 @@ function formatWptTime(d: Date) {
 .export-fade-leave-active { transition: opacity 0.15s ease; }
 .export-fade-enter-from,
 .export-fade-leave-to    { opacity: 0; }
+
+.wpt-card-selected {
+  box-shadow:
+    0 0 0 2px var(--c-primary),
+    0 0 16px color-mix(in srgb, var(--c-primary) 30%, transparent);
+}
+
+.wpt-hint-enter-active { transition: opacity 0.2s ease; }
+.wpt-hint-leave-active { transition: opacity 1s ease; }
+.wpt-hint-enter-from,
+.wpt-hint-leave-to     { opacity: 0 !important; }
+
+.wpt-close-btn {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--c-border);
+  color: var(--c-inkMuted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.wpt-close-btn:hover {
+  background: color-mix(in srgb, var(--c-border) 60%, transparent);
+  color: var(--c-ink);
+  transform: scale(1.1);
+}
+
+.wpt-action-btn {
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--c-border);
+  color: var(--c-inkMuted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wpt-action-btn:hover {
+  transform: scale(1.18);
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+.wpt-action-btn.danger {
+  border-color: rgba(224, 112, 112, 0.35);
+  color: #e07070;
+}
+.wpt-action-btn.danger:hover {
+  transform: scale(1.18);
+  background: rgba(224, 112, 112, 0.12);
+  border-color: #e07070;
+  color: #ff8a8a;
+}
 </style>
