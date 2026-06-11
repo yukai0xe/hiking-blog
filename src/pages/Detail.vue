@@ -289,6 +289,11 @@
               v-else-if="activeTab === 'gears'"
               :gears="store.currentGears"
             />
+
+            <template v-if="activeTab === 'gears' && store.currentFoods.length > 0">
+              <h3 class="font-heading text-base text-ink mt-6 mb-3 px-1">糧食清單</h3>
+              <FoodList :foods="store.currentFoods" />
+            </template>
           </div>
         </main>
 
@@ -410,6 +415,18 @@
                 />
               </div>
 
+              <!-- Date field -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">日期</label>
+                <input
+                  :value="wptDraft.wptDate"
+                  type="date"
+                  class="w-full rounded-lg px-3 py-2 text-sm font-mono text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                  :style="`border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent); color-scheme: ${theme.isDark ? 'dark' : 'light'};`"
+                  @change="wptDraft.wptDate = ($event.target as HTMLInputElement).value"
+                />
+              </div>
+
               <!-- Error message -->
               <p v-if="wptError" class="text-xs font-body text-red-400">{{ wptError }}</p>
 
@@ -519,6 +536,18 @@
                 class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150 resize-none"
                 style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
                 placeholder="備註說明"
+              />
+            </div>
+
+            <!-- Date field -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">日期</label>
+              <input
+                :value="newWptDraft.wptDate"
+                type="date"
+                class="w-full rounded-lg px-3 py-2 text-sm font-mono text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                :style="`border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent); color-scheme: ${theme.isDark ? 'dark' : 'light'};`"
+                @change="newWptDraft.wptDate = ($event.target as HTMLInputElement).value"
               />
             </div>
 
@@ -736,11 +765,14 @@ import {
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
 import GearList from '../components/GearList.vue'
+import FoodList from '../components/FoodList.vue'
 import { usePostStore } from '../stores/postStore'
+import { useThemeStore } from '../stores/themeStore'
 import type { Waypoint } from '../types'
 
 const route = useRoute()
 const store = usePostStore()
+const theme = useThemeStore()
 
 const activeTab    = ref('photos')
 const sidebarOpen   = ref(false)
@@ -767,14 +799,14 @@ const selectedWpt = ref<Waypoint | null>(null)
 const hintWpt     = ref<Waypoint | null>(null)
 let   hintTimer:  ReturnType<typeof setTimeout> | null = null
 const editingWpt  = ref<Waypoint | null>(null)
-const wptDraft    = ref({ name: '', desc: '' })
+const wptDraft    = ref({ name: '', desc: '', wptDate: '' })
 const wptSaving   = ref(false)
 const wptError    = ref<string | null>(null)
 
 // ── Waypoint add ──────────────────────────────────────────────────
 const addingWpt       = ref(false)
 const showAddWptModal = ref(false)
-const newWptDraft     = ref({ lat: '', lng: '', name: '', desc: '' })
+const newWptDraft     = ref({ lat: '', lng: '', name: '', desc: '', wptDate: '' })
 const addWptSaving    = ref(false)
 const addWptError     = ref<string | null>(null)
 
@@ -837,7 +869,7 @@ function toggleAddMode() {
 
 function openWptEdit(wpt: Waypoint) {
   editingWpt.value = wpt
-  wptDraft.value   = { name: wpt.name, desc: wpt.desc }
+  wptDraft.value   = { name: wpt.name, desc: wpt.desc, wptDate: toDateInput(wpt.time) }
   wptError.value   = null
 }
 
@@ -847,18 +879,20 @@ async function saveWptEdit() {
   const post = store.currentPost!
   const name = wptDraft.value.name
   const desc = wptDraft.value.desc
+  const { date: time, iso: timeIso } = parseDate(wptDraft.value.wptDate)
   wptSaving.value = true
   wptError.value  = null
 
   // Immediate UI update
   wpt.name = name
   wpt.desc = desc
-  gpxViewerRef.value?.updateWaypoint(wpt.lat, wpt.lng, name, desc)
+  wpt.time = time
+  gpxViewerRef.value?.updateWaypoint(wpt.lat, wpt.lng, name, desc, time)
   const existing = store.currentWaypointOverrides.find(
     o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
   )
-  if (existing) { existing.name = name; existing.description = desc }
-  else store.currentWaypointOverrides.push({ lat: wpt.lat, lng: wpt.lng, name, description: desc, isCustom: false, hidden: false })
+  if (existing) { existing.name = name; existing.description = desc; existing.time = timeIso }
+  else store.currentWaypointOverrides.push({ lat: wpt.lat, lng: wpt.lng, name, description: desc, isCustom: false, hidden: false, time: timeIso })
   editingWpt.value = null
 
   try {
@@ -866,7 +900,7 @@ async function saveWptEdit() {
     const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name, desc }),
+      body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name, desc, time: timeIso }),
     })
     if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
   } catch (e) {
@@ -883,7 +917,7 @@ function isCustomWpt(wpt: Waypoint): boolean {
 }
 
 function onMapClick(pos: { lat: number; lng: number }) {
-  newWptDraft.value   = { lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), name: '', desc: '' }
+  newWptDraft.value   = { lat: pos.lat.toFixed(6), lng: pos.lng.toFixed(6), name: '', desc: '', wptDate: '' }
   addWptError.value   = null
   showAddWptModal.value = true
   addingWpt.value     = false
@@ -896,13 +930,14 @@ async function createWpt() {
   if (isNaN(lat) || isNaN(lng)) { addWptError.value = '請輸入有效的座標'; return }
   const name = newWptDraft.value.name
   const desc = newWptDraft.value.desc
+  const { date: time, iso: timeIso } = parseDate(newWptDraft.value.wptDate)
   addWptSaving.value = true
   addWptError.value  = null
 
   // Immediate UI update
-  const newWpt: Waypoint = { name, desc, lat, lng, ele: null, time: null }
+  const newWpt: Waypoint = { name, desc, lat, lng, ele: null, time }
   gpxWaypoints.value.push(newWpt)
-  store.currentWaypointOverrides.push({ lat, lng, name, description: desc, isCustom: true, hidden: false })
+  store.currentWaypointOverrides.push({ lat, lng, name, description: desc, isCustom: true, hidden: false, time: timeIso })
   gpxViewerRef.value?.addWaypointMarker(lat, lng, name, desc)
   showAddWptModal.value = false
 
@@ -912,7 +947,7 @@ async function createWpt() {
     const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ lat, lng, name, desc }),
+      body:    JSON.stringify({ lat, lng, name, desc, time: timeIso }),
     })
     if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
   } catch (e) {
@@ -1132,7 +1167,20 @@ function safeFilename(s: string) {
 }
 
 function formatWptTime(d: Date) {
-  return d.toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
+function toDateInput(d: Date | null | undefined): string {
+  if (!d) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function parseDate(dateStr: string): { date: Date | null; iso: string | null } {
+  if (!dateStr) return { date: null, iso: null }
+  const d = new Date(dateStr + 'T00:00')
+  if (isNaN(d.getTime())) return { date: null, iso: null }
+  return { date: d, iso: d.toISOString() }
 }
 </script>
 
