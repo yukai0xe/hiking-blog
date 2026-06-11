@@ -127,7 +127,7 @@
         </div>
 
         <!-- Step card + optional gear panel -->
-        <div :class="step === 5 ? 'max-w-[1240px] mx-auto flex gap-5 items-start' : 'max-w-2xl mx-auto'">
+        <div :class="(step === 5 || step === 6) ? 'max-w-[1240px] mx-auto flex gap-5 items-start' : 'max-w-2xl mx-auto'">
         <div class="card-aged p-6 flex-1 min-w-0">
 
           <!-- Step 1: 基本資訊 -->
@@ -379,6 +379,65 @@
             </div>
           </div>
 
+          <!-- Step 6: Food -->
+          <div v-else-if="step === 6" class="space-y-4">
+            <h2 class="font-heading text-xl text-ink mb-2">糧食清單</h2>
+
+            <!-- 編輯模式提示 -->
+            <div v-if="activeFoodIndex !== null"
+              class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-body"
+              style="background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary); border: 1px solid color-mix(in srgb, var(--c-primary) 25%, transparent);">
+              <PencilIcon :size="12" />
+              編輯模式 — 修改後點擊「更新糧食」
+            </div>
+
+            <!-- 名稱 -->
+            <input v-model="newFood.name" type="text" class="input-field text-sm" placeholder="食物名稱 *" @keyup.enter="submitFood" />
+
+            <!-- 重量 + 數量 + 價格 + 備註 -->
+            <div class="grid grid-cols-[80px_60px_90px_1fr] gap-2">
+              <div>
+                <label class="field-label">重量 (g)</label>
+                <input v-model.number="newFood.weight" type="number" min="0" class="input-field text-sm font-mono no-spinner" placeholder="0" @keyup.enter="submitFood" />
+              </div>
+              <div>
+                <label class="field-label">數量</label>
+                <input v-model.number="newFood.quantity" type="number" min="1" class="input-field text-sm font-mono no-spinner" placeholder="1" @keyup.enter="submitFood" />
+              </div>
+              <div>
+                <label class="field-label">價格</label>
+                <input v-model.number="newFood.price" type="number" min="0" class="input-field text-sm font-mono no-spinner" placeholder="0" />
+              </div>
+              <div>
+                <label class="field-label">備註</label>
+                <input v-model="newFood.note" type="text" class="input-field text-sm" placeholder="選填" @keyup.enter="submitFood" />
+              </div>
+            </div>
+
+            <!-- 參考連結 -->
+            <div>
+              <label class="field-label">參考連結</label>
+              <input v-model="newFood.referenceUrl" type="url" class="input-field text-sm font-mono" placeholder="https://…" />
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                v-if="activeFoodIndex !== null"
+                type="button"
+                class="px-3 py-1.5 rounded-lg text-xs font-body font-medium cursor-pointer card-aged text-inkMuted hover:text-ink transition-colors duration-200"
+                @click="cancelFoodEdit"
+              >取消</button>
+              <button
+                class="flex items-center gap-1.5 btn-cta text-xs font-semibold font-body px-3 py-1.5 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="!newFood.name.trim()" @click="submitFood"
+              >
+                <SaveIcon v-if="activeFoodIndex !== null" :size="13" />
+                <PlusIcon v-else :size="13" />
+                {{ activeFoodIndex !== null ? '更新糧食' : '加入清單' }}
+              </button>
+            </div>
+          </div>
+
           <!-- Navigation -->
           <div class="flex justify-between mt-8 pt-6 border-t border-border/40">
             <button v-if="step > 1"
@@ -417,6 +476,18 @@
               @mark-delete="markGearDelete"
               @remove-new="(i) => gearsToAdd.splice(i, 1)"
               @undo-delete="undoGearDelete"
+            />
+          </div>
+        </Transition>
+
+        <!-- Food quick-pick panel: appears only on step 6 -->
+        <Transition name="gear-panel">
+          <div v-if="step === 6" class="w-[480px] shrink-0 self-start card-aged p-4">
+            <FoodQuickPick
+              :new-foods="foodsToSave"
+              :active-new-index="activeFoodIndex"
+              @select-new="selectNewFood"
+              @remove-new="(i) => foodsToSave.splice(i, 1)"
             />
           </div>
         </Transition>
@@ -568,19 +639,20 @@ import {
   PlusCircle as PlusCircleIcon,
   ExternalLink as ExternalLinkIcon,
 } from 'lucide-vue-next'
-import type { Photo, Gear, GearDraft } from '../types'
+import type { Photo, Gear, GearDraft, FoodDraft } from '../types'
 import { usePostStore } from '../stores/postStore'
 import CropModal from '../components/CropModal.vue'
 import TagPickerModal from '../components/TagPickerModal.vue'
 import GearQuickPick from '../components/GearQuickPick.vue'
+import FoodQuickPick from '../components/FoodQuickPick.vue'
 
 const route  = useRoute()
 const router = useRouter()
 const store  = usePostStore()
 const id = route.params.id as string
 
-const TOTAL_STEPS = 5
-const stepLabels  = ['基本', 'GPX', '封面', '照片', '裝備']
+const TOTAL_STEPS = 6
+const stepLabels  = ['基本', 'GPX', '封面', '照片', '裝備', '糧食']
 
 // UI state
 const step             = ref(1)
@@ -612,6 +684,11 @@ const pendingGearDeletes = ref<string[]>([])
 const newGear            = ref<GearDraft>({ name: '', weight: 0, note: '', category: '其他', quantity: 1, brand: '', referenceUrl: '', price: null, addedAt: '' })
 const activeGearId       = ref<string | null>(null)
 const activeNewIndex     = ref<number | null>(null)
+
+// Food state
+const foodsToSave     = ref<FoodDraft[]>([])
+const newFood         = ref<FoodDraft>({ name: '', weight: 0, quantity: 1, note: '', referenceUrl: '', price: null })
+const activeFoodIndex = ref<number | null>(null)
 
 // Gear library modal
 const showLibrary    = ref(false)
@@ -743,6 +820,14 @@ onMounted(async () => {
     form.value.peopleCount = p.peopleCount ?? null
     form.value.tags        = p.tags?.length ? [...p.tags] : []
   }
+  foodsToSave.value = store.currentFoods.map(f => ({
+    name:         f.name,
+    weight:       f.weight,
+    quantity:     f.quantity,
+    note:         f.note,
+    referenceUrl: f.referenceUrl ?? '',
+    price:        f.price ?? null,
+  }))
   pageLoading.value = false
 })
 
@@ -828,6 +913,29 @@ function cancelEdit() {
   newGear.value = { name: '', weight: 0, note: '', category: '其他', quantity: 1, brand: '', referenceUrl: '', price: null, addedAt: '' }
 }
 
+// Foods
+function submitFood() {
+  if (!newFood.value.name.trim()) return
+  if (activeFoodIndex.value !== null) {
+    foodsToSave.value[activeFoodIndex.value] = { ...newFood.value }
+    activeFoodIndex.value = null
+  } else {
+    foodsToSave.value.push({ ...newFood.value })
+  }
+  newFood.value = { name: '', weight: 0, quantity: 1, note: '', referenceUrl: '', price: null }
+}
+
+function selectNewFood(food: FoodDraft, index: number) {
+  if (activeFoodIndex.value === index) { cancelFoodEdit(); return }
+  newFood.value         = { ...food }
+  activeFoodIndex.value = index
+}
+
+function cancelFoodEdit() {
+  activeFoodIndex.value = null
+  newFood.value = { name: '', weight: 0, quantity: 1, note: '', referenceUrl: '', price: null }
+}
+
 // Delete post
 async function handleDelete() {
   try {
@@ -841,6 +949,9 @@ async function save() {
   // Auto-commit any in-progress gear edit before saving
   if ((activeGearId.value !== null || activeNewIndex.value !== null) && newGear.value.name.trim()) {
     submitGear()
+  }
+  if (activeFoodIndex.value !== null && newFood.value.name.trim()) {
+    submitFood()
   }
   try {
     await store.updatePost(id, {
@@ -859,6 +970,7 @@ async function save() {
       weather:          form.value.weather    || undefined,
       peopleCount:      form.value.peopleCount,
       tags:             form.value.tags,
+      foods:            foodsToSave.value,
     })
     router.push(`/detail/${id}`)
   } catch { /* error shown via store.error */ }
