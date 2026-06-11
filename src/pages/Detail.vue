@@ -290,10 +290,10 @@
               :gears="store.currentGears"
             />
 
-            <template v-if="activeTab === 'gears'">
-              <h3 class="font-heading text-base text-ink mt-6 mb-3 px-1">糧食清單</h3>
-              <FoodList :foods="store.currentFoods" />
-            </template>
+            <FoodList
+              v-else-if="activeTab === 'foods'"
+              :foods="store.currentFoods"
+            />
           </div>
         </main>
 
@@ -754,7 +754,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   ArrowLeft as ArrowLeftIcon, Pencil as PencilIcon,
-  Camera as CameraIcon, Map as MapIcon, Backpack as BackpackIcon,
+  Camera as CameraIcon, Map as MapIcon, Backpack as BackpackIcon, UtensilsCrossed as FoodIcon,
   Triangle as TriangleIcon, MapPin as MapPinIcon, Home as HomeIcon,
   Calendar as CalendarIcon, Sunrise as SunriseIcon,
   Cloud as CloudIcon, Users as UsersIcon,
@@ -1042,6 +1042,7 @@ const navTabs = [
   { key: 'photos', label: '照片', icon: CameraIcon },
   { key: 'gpx',    label: '地圖', icon: MapIcon },
   { key: 'gears',  label: '裝備', icon: BackpackIcon },
+  { key: 'foods',  label: '糧食', icon: FoodIcon },
 ]
 
 const mapToggles = [
