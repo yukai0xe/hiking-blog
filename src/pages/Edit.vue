@@ -486,6 +486,7 @@
             <FoodQuickPick
               :new-foods="foodsToSave"
               :active-new-index="activeFoodIndex"
+              :show-badge="false"
               @select-new="selectNewFood"
               @remove-new="(i) => foodsToSave.splice(i, 1)"
             />

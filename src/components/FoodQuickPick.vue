@@ -30,7 +30,7 @@
                   class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
                   <ExternalLinkIcon :size="11" />
                 </a>
-                <span class="new-badge">NEW</span>
+                <span v-if="showBadge" class="new-badge">NEW</span>
               </span>
             </td>
             <td class="td font-mono text-inkMuted text-right">
@@ -59,10 +59,11 @@
 import { X as XIcon, ExternalLink as ExternalLinkIcon } from 'lucide-vue-next'
 import type { FoodDraft } from '../types'
 
-defineProps<{
+withDefaults(defineProps<{
   newFoods: FoodDraft[]
   activeNewIndex: number | null
-}>()
+  showBadge?: boolean
+}>(), { showBadge: true })
 
 const emit = defineEmits<{
   selectNew: [food: FoodDraft, index: number]
