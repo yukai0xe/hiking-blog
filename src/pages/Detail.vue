@@ -290,9 +290,12 @@
               :gears="store.currentGears"
             />
 
-            <FoodList
+            <FoodDayPlanner
               v-else-if="activeTab === 'foods'"
               :foods="store.currentFoods"
+              :post-id="store.currentPost!.id"
+              :date-start="store.currentPost?.dateStart"
+              :date-end="store.currentPost?.dateEnd"
             />
           </div>
         </main>
@@ -765,7 +768,7 @@ import {
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
 import GearList from '../components/GearList.vue'
-import FoodList from '../components/FoodList.vue'
+import FoodDayPlanner from '../components/FoodDayPlanner.vue'
 import { usePostStore } from '../stores/postStore'
 import { useThemeStore } from '../stores/themeStore'
 import type { Waypoint } from '../types'
