@@ -45,6 +45,7 @@ export interface WaypointOverride {
   description: string
   isCustom: boolean
   hidden: boolean
+  time?: string | null
 }
 
 export interface Waypoint {
@@ -80,4 +81,24 @@ export type GearDraft = {
   price: number | null;
   addedAt: string;
   _libraryId?: string
+}
+
+export interface Food {
+  id:            string
+  postId:        string
+  name:          string
+  weight:        number
+  quantity:      number
+  note:          string
+  referenceUrl?: string | null
+  price?:        number | null
+}
+
+export type FoodDraft = {
+  name:         string
+  weight:       number
+  quantity:     number
+  note:         string
+  referenceUrl: string
+  price:        number | null
 }

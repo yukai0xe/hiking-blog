@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Post, Photo, Gear, WaypointOverride } from '../types'
+import type { Post, Photo, Gear, WaypointOverride, Food } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -16,6 +16,7 @@ export const usePostStore = defineStore('posts', () => {
   const currentPhotos            = ref<Photo[]>([])
   const currentGears             = ref<Gear[]>([])
   const currentWaypointOverrides = ref<WaypointOverride[]>([])
+  const currentFoods = ref<Food[]>([])
   const availableTags = ref<string[]>([])
   const gearLibrary      = ref<Gear[]>([])
   const gearCategories   = ref<string[]>([])
@@ -103,6 +104,7 @@ export const usePostStore = defineStore('posts', () => {
       currentPhotos.value            = data.photos
       currentGears.value             = data.gears
       currentWaypointOverrides.value = data.waypointOverrides ?? []
+      currentFoods.value = data.foods ?? []
     } catch (e) {
       error.value = (e as Error).message
     } finally {
@@ -117,6 +119,7 @@ export const usePostStore = defineStore('posts', () => {
     gpxFile: File | null
     photoFiles: File[]
     gears: { name: string; weight: number; note: string; category: string; quantity: number; brand?: string; referenceUrl?: string; price?: number | null; addedAt?: string }[]
+    foods?: { name: string; weight: number; quantity: number; note: string; referenceUrl?: string; price?: number | null }[]
     libraryGearIds?: string[]
     dateStart?: string
     dateEnd?: string
@@ -135,6 +138,7 @@ export const usePostStore = defineStore('posts', () => {
           title:          payload.title,
           description:    payload.description ?? '',
           gears:          payload.gears,
+          foods:          payload.foods ?? [],
           libraryGearIds: payload.libraryGearIds ?? [],
           dateStart:      payload.dateStart   ?? null,
           dateEnd:        payload.dateEnd     ?? null,
@@ -184,6 +188,7 @@ export const usePostStore = defineStore('posts', () => {
       gearsToAdd: { name: string; weight: number; note: string; category: string; quantity: number; brand?: string; referenceUrl?: string; price?: number | null; addedAt?: string }[]
       gearsToUpdate: { id: string; name: string; weight: number; note: string; category: string; quantity: number; brand?: string; referenceUrl?: string; price?: number | null; addedAt?: string }[]
       gearIdsToDelete: string[]
+      foods?: { name: string; weight: number; quantity: number; note: string; referenceUrl?: string; price?: number | null }[]
       libraryGearIdsToLink?: string[]
       dateStart?: string
       dateEnd?: string
@@ -223,6 +228,7 @@ export const usePostStore = defineStore('posts', () => {
           gearsToAdd:           payload.gearsToAdd,
           gearsToUpdate:        payload.gearsToUpdate,
           gearIdsToDelete:      payload.gearIdsToDelete,
+          foods:                payload.foods ?? [],
           libraryGearIdsToLink: payload.libraryGearIdsToLink ?? [],
           dateStart:        payload.dateStart   ?? null,
           dateEnd:          payload.dateEnd     ?? null,
@@ -267,6 +273,7 @@ export const usePostStore = defineStore('posts', () => {
     currentPhotos,
     currentGears,
     currentWaypointOverrides,
+    currentFoods,
     availableTags,
     gearLibrary,
     loading,
