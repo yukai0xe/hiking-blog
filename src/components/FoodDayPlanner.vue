@@ -33,7 +33,7 @@
             拖曳糧食至此
           </div>
 
-          <!-- Assigned food entries -->
+          <!-- Assigned food entries (each = 1 unit) -->
           <div
             v-for="(foodId, j) in dayPlans[i]" :key="`${i}-${j}`"
             class="flex items-center gap-1.5 group/item"
@@ -42,7 +42,7 @@
               {{ foodMap[foodId]?.name ?? '—' }}
             </span>
             <span class="text-[11px] font-mono text-inkMuted shrink-0">
-              {{ entryWeight(foodId) }} g
+              {{ foodMap[foodId]?.weight ?? 0 }} g
             </span>
             <button
               class="opacity-0 group-hover/item:opacity-100 text-inkMuted/60 hover:text-red-400 transition-all duration-150 shrink-0 cursor-pointer"
@@ -73,7 +73,7 @@
               <th class="th w-5" />
               <th class="th">名稱</th>
               <th class="th text-right">重量 (g)</th>
-              <th class="th text-right">數量</th>
+              <th class="th text-right">剩餘 / 總量</th>
               <th class="th text-right">總重 (g)</th>
               <th class="th text-right">價格</th>
               <th class="th">備註</th>
@@ -82,16 +82,23 @@
           <tbody>
             <tr
               v-for="food in foods" :key="food.id"
-              draggable="true"
-              class="border-b border-border/50 transition-colors duration-150 cursor-grab active:cursor-grabbing"
-              :class="draggingId === food.id ? 'opacity-50' : 'hover:bg-surface/60'"
-              @dragstart="dragStart(food.id)"
+              :draggable="remainingQty[food.id] > 0"
+              class="border-b border-border/50 transition-colors duration-150"
+              :class="remainingQty[food.id] === 0
+                ? 'opacity-35 cursor-not-allowed'
+                : draggingId === food.id
+                  ? 'opacity-50 cursor-grab'
+                  : 'hover:bg-surface/60 cursor-grab active:cursor-grabbing'"
+              @dragstart="remainingQty[food.id] > 0 && dragStart(food.id)"
               @dragend="draggingId = null"
             >
               <td class="td text-center">
-                <GripVerticalIcon :size="12" class="text-inkMuted/40" />
+                <GripVerticalIcon
+                  :size="12"
+                  :class="remainingQty[food.id] === 0 ? 'text-inkMuted/20' : 'text-inkMuted/40'"
+                />
               </td>
-              <td class="td font-medium text-ink font-body">
+              <td class="td font-medium font-body" :class="remainingQty[food.id] === 0 ? 'text-inkMuted' : 'text-ink'">
                 <span class="flex items-center gap-1.5">
                   {{ food.name }}
                   <a
@@ -105,7 +112,16 @@
                 </span>
               </td>
               <td class="td text-inkMuted font-mono text-right">{{ food.weight }}</td>
-              <td class="td text-inkMuted font-mono text-right">{{ food.quantity }}</td>
+              <td class="td font-mono text-right">
+                <span
+                  :class="remainingQty[food.id] === 0
+                    ? 'text-inkMuted/40'
+                    : remainingQty[food.id] < food.quantity
+                      ? 'text-primary font-semibold'
+                      : 'text-inkMuted'"
+                >{{ remainingQty[food.id] }}</span>
+                <span class="text-inkMuted/50"> / {{ food.quantity }}</span>
+              </td>
               <td class="td text-inkMuted font-mono text-right">{{ food.weight * food.quantity }}</td>
               <td class="td text-inkMuted font-mono text-right">
                 {{ food.price != null ? food.price.toLocaleString() : '—' }}
@@ -157,7 +173,7 @@ const dayLabels = computed(() =>
   })
 )
 
-// ── Food map ──────────────────────────────────────────────────
+// ── Food map & totals ─────────────────────────────────────────
 const foodMap = computed<Record<string, Food>>(() =>
   Object.fromEntries(props.foods.map(f => [f.id, f]))
 )
@@ -166,19 +182,14 @@ const totalWeight = computed(() =>
   props.foods.reduce((s, f) => s + f.weight * f.quantity, 0)
 )
 
-function entryWeight(foodId: string): number {
-  const f = foodMap.value[foodId]
-  return f ? f.weight * f.quantity : 0
-}
-
 // ── Persistent day plans (localStorage) ──────────────────────
+// Each entry in a day array = one assigned unit of that food (foodId).
 const storageKey = computed(() => `fdp-${props.postId}`)
-
-const dayPlans = ref<string[][]>([])
+const dayPlans   = ref<string[][]>([])
 
 function initPlans() {
   try {
-    const raw = localStorage.getItem(storageKey.value)
+    const raw    = localStorage.getItem(storageKey.value)
     const saved: string[][] = raw ? JSON.parse(raw) : []
     dayPlans.value = Array.from({ length: numDays.value }, (_, i) =>
       (saved[i] ?? []).filter(id => !!foodMap.value[id])
@@ -199,9 +210,24 @@ watch(numDays, () => {
   save()
 })
 
-// ── Day totals ────────────────────────────────────────────────
+// ── Remaining quantity per food ───────────────────────────────
+// remainingQty[foodId] = food.quantity minus how many units are already assigned
+const remainingQty = computed<Record<string, number>>(() => {
+  const used: Record<string, number> = {}
+  for (const day of dayPlans.value)
+    for (const id of day)
+      used[id] = (used[id] ?? 0) + 1
+
+  return Object.fromEntries(
+    props.foods.map(f => [f.id, Math.max(0, f.quantity - (used[f.id] ?? 0))])
+  )
+})
+
+// ── Day totals (sum of per-unit weights) ──────────────────────
 const dayTotals = computed(() =>
-  dayPlans.value.map(ids => ids.reduce((s, id) => s + entryWeight(id), 0))
+  dayPlans.value.map(ids =>
+    ids.reduce((s, id) => s + (foodMap.value[id]?.weight ?? 0), 0)
+  )
 )
 
 // ── Drag & Drop ───────────────────────────────────────────────
@@ -214,8 +240,9 @@ function dragStart(foodId: string) {
 
 function dropOnDay(dayIndex: number) {
   dragOverDay.value = null
-  if (!draggingId.value || !foodMap.value[draggingId.value]) return
-  dayPlans.value[dayIndex] = [...(dayPlans.value[dayIndex] ?? []), draggingId.value]
+  const id = draggingId.value
+  if (!id || !foodMap.value[id] || remainingQty.value[id] <= 0) return
+  dayPlans.value[dayIndex] = [...(dayPlans.value[dayIndex] ?? []), id]
   save()
 }
 
