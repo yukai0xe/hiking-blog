@@ -290,7 +290,7 @@
               :gears="store.currentGears"
             />
 
-            <template v-if="activeTab === 'gears' && store.currentFoods.length > 0">
+            <template v-if="activeTab === 'gears'">
               <h3 class="font-heading text-base text-ink mt-6 mb-3 px-1">糧食清單</h3>
               <FoodList :foods="store.currentFoods" />
             </template>
