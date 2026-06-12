@@ -367,6 +367,7 @@ async function loadAndRender() {
         if (ov.name) wpt.name = ov.name           // empty string means no rename yet — keep original GPX name
         if (ov.description) wpt.desc = ov.description
         if (ov.isCustom) wpt.isCustom = true
+        if (ov.time) wpt.time = new Date(ov.time)
       }
       allForEmit.push({ name: wpt.name, desc: wpt.desc, lat: wpt.lat, lng: wpt.lng, ele: wpt.ele, time: wpt.time, hidden: isHidden })
       if (!isHidden) waypoints.value.push(wpt)
@@ -377,7 +378,7 @@ async function loadAndRender() {
       if (ov.isCustom || !ov.hidden) continue
       const alreadyEmitted = allForEmit.some(w => Math.abs(w.lat - ov.lat) < 1e-5 && Math.abs(w.lng - ov.lng) < 1e-5)
       if (!alreadyEmitted)
-        allForEmit.push({ name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: null, hidden: true })
+        allForEmit.push({ name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: ov.time ? new Date(ov.time) : null, hidden: true })
     }
 
     // Add custom waypoints (not in GPX file) from overrides
@@ -386,8 +387,9 @@ async function loadAndRender() {
       if (!ov.isCustom) continue
       const exists = gpxWpts.some(w => Math.abs(w.lat - ov.lat) < 1e-5 && Math.abs(w.lng - ov.lng) < 1e-5)
       if (!exists) {
-        allForEmit.push({ name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: null, hidden: ov.hidden })
-        if (!ov.hidden) waypoints.value.push({ kind: 'waypoint', id: nextId++, name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: null, isCustom: true })
+        const ovTime = ov.time ? new Date(ov.time) : null
+        allForEmit.push({ name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: ovTime, hidden: ov.hidden })
+        if (!ov.hidden) waypoints.value.push({ kind: 'waypoint', id: nextId++, name: ov.name, desc: ov.description, lat: ov.lat, lng: ov.lng, ele: null, time: ovTime, isCustom: true })
       }
     }
 
@@ -536,13 +538,14 @@ async function fetchShelters(coordinates: [number, number][]) {
   } catch { /* Overpass unavailable */ }
 }
 
-function updateWaypoint(lat: number, lng: number, name: string, desc: string) {
+function updateWaypoint(lat: number, lng: number, name: string, desc: string, time?: Date | null) {
   const wpt = waypoints.value.find(
     w => Math.abs(w.lat - lat) < 1e-6 && Math.abs(w.lng - lng) < 1e-6
   )
   if (!wpt) return
   wpt.name = name
   wpt.desc = desc
+  if (time !== undefined) wpt.time = time
   // Refresh marker tooltip
   const marker = wptMarkers.get(wpt.id)
   if (marker) {
@@ -551,7 +554,7 @@ function updateWaypoint(lat: number, lng: number, name: string, desc: string) {
   }
   // If this waypoint is open in the panel, keep it in sync
   if (selected.value?.id === wpt.id && selected.value.kind === 'waypoint') {
-    selected.value = { ...selected.value, name, desc }
+    selected.value = { ...selected.value, name, desc, ...(time !== undefined && { time }) }
   }
 }
 

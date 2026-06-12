@@ -132,6 +132,43 @@
                   重置喜愛
                 </button>
 
+                <!-- Edit gears button (gears tab only) -->
+                <button
+                  v-if="activeTab === 'gears'"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
+                  :style="gearEditMode
+                    ? 'background: var(--c-primary); color: var(--c-base); border: 1px solid var(--c-primary);'
+                    : 'color: var(--c-inkMuted); border: 1px solid var(--c-border);'"
+                  @click="gearEditMode = !gearEditMode"
+                >
+                  <PencilIcon :size="13" />
+                  <span>編輯裝備</span>
+                </button>
+
+                <!-- Reupload GPX button (gpx tab, has file) -->
+                <button
+                  v-if="activeTab === 'gpx' && store.currentPost?.gpxFile"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
+                  style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
+                  @click="showGpxUploadModal = true"
+                >
+                  <UploadIcon :size="13" />
+                  <span>重新上傳</span>
+                </button>
+
+                <!-- Edit foods button (foods tab only) -->
+                <button
+                  v-if="activeTab === 'foods'"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
+                  :style="foodEditMode
+                    ? 'background: var(--c-primary); color: var(--c-base); border: 1px solid var(--c-primary);'
+                    : 'color: var(--c-inkMuted); border: 1px solid var(--c-border);'"
+                  @click="foodEditMode = !foodEditMode"
+                >
+                  <PencilIcon :size="13" />
+                  <span>編輯糧食</span>
+                </button>
+
                 <!-- Sidebar collapse toggle -->
                 <button
                   class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
@@ -150,9 +187,9 @@
               </div>
             </div>
 
-            <!-- Row 2: map layer toggles (gpx only) -->
+            <!-- Row 2: map layer toggles (gpx only, has file) -->
             <div
-              v-if="activeTab === 'gpx'"
+              v-if="activeTab === 'gpx' && store.currentPost?.gpxFile"
               class="flex items-center gap-2 px-4 py-2"
               style="border-top: 1px solid color-mix(in srgb, var(--c-border) 30%, transparent);"
             >
@@ -184,8 +221,34 @@
             />
 
             <template v-else-if="activeTab === 'gpx'">
+
+              <!-- No GPX: upload prompt -->
+              <div
+                v-if="!store.currentPost?.gpxFile"
+                class="flex flex-col items-center justify-center gap-6 p-16 h-full"
+              >
+                <div
+                  class="w-20 h-20 rounded-2xl flex items-center justify-center"
+                  style="background: color-mix(in srgb, var(--c-primary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-primary) 25%, transparent);"
+                >
+                  <UploadIcon :size="32" style="color: var(--c-primary); opacity: 0.7;" />
+                </div>
+                <div class="text-center">
+                  <p class="font-heading text-xl text-ink mb-1.5">尚未上傳 GPX 路線</p>
+                  <p class="text-sm font-body text-inkMuted opacity-60">上傳 .gpx 檔案以顯示地圖與記錄點</p>
+                </div>
+                <button
+                  class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-body cursor-pointer btn-cta transition-colors duration-150"
+                  @click="showGpxUploadModal = true"
+                >
+                  <UploadIcon :size="14" />
+                  上傳 GPX
+                </button>
+              </div>
+
               <!-- Map (fixed height so Leaflet renders correctly) -->
               <GpxViewer
+                v-if="store.currentPost?.gpxFile"
                 ref="gpxViewerRef"
                 data-gpx-map
                 style="height: 100vh;"
@@ -200,7 +263,7 @@
               />
 
               <!-- Waypoint list below the map -->
-              <div class="p-6">
+              <div v-if="store.currentPost?.gpxFile" class="p-6">
                 <div class="flex items-center gap-2 mb-4">
                   <MapPinIcon :size="14" class="text-primary opacity-70" />
                   <span class="text-[10px] font-body uppercase tracking-[0.2em] text-inkMuted">記錄點</span>
@@ -285,13 +348,16 @@
               </div>
             </template>
 
-            <GearList
+            <GearEditor
               v-else-if="activeTab === 'gears'"
+              v-model:editing="gearEditMode"
               :gears="store.currentGears"
+              :post-id="store.currentPost!.id"
             />
 
             <FoodDayPlanner
               v-else-if="activeTab === 'foods'"
+              v-model:editing="foodEditMode"
               :foods="store.currentFoods"
               :post-id="store.currentPost!.id"
               :date-start="store.currentPost?.dateStart"
@@ -580,6 +646,80 @@
       </Transition>
     </Teleport>
 
+    <!-- ── GPX Upload Modal ──────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="export-fade">
+        <div
+          v-if="showGpxUploadModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style="background: color-mix(in srgb, var(--c-base) 60%, transparent); backdrop-filter: blur(4px);"
+          @click.self="showGpxUploadModal = false"
+          @keydown.esc="showGpxUploadModal = false"
+        >
+          <div class="card-aged rounded-xl p-6 w-full max-w-sm shadow-xl space-y-5">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <UploadIcon :size="16" class="text-primary opacity-80" />
+                <span class="font-heading text-lg text-ink tracking-wide">上傳 GPX 路線</span>
+              </div>
+              <button class="wpt-close-btn" @click="showGpxUploadModal = false">
+                <XIcon :size="12" />
+              </button>
+            </div>
+
+            <!-- File drop zone -->
+            <label
+              class="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors duration-150 py-10"
+              :style="gpxUploadFile
+                ? 'border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 6%, transparent);'
+                : 'border-color: var(--c-border); background: transparent;'"
+            >
+              <UploadIcon
+                :size="28"
+                :style="gpxUploadFile ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted); opacity: 0.4;'"
+              />
+              <div class="text-center">
+                <p class="text-sm font-body" :style="gpxUploadFile ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'">
+                  {{ gpxUploadFile ? gpxUploadFile.name : '點擊選擇 .gpx 檔案' }}
+                </p>
+                <p v-if="!gpxUploadFile" class="text-[11px] font-body text-inkMuted opacity-50 mt-1">或拖曳至此</p>
+              </div>
+              <input
+                type="file"
+                accept=".gpx,application/gpx+xml"
+                class="hidden"
+                @change="gpxUploadFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
+              />
+            </label>
+
+            <!-- Error -->
+            <p v-if="gpxUploadError" class="text-xs font-body text-red-400 break-all">{{ gpxUploadError }}</p>
+
+            <!-- Buttons -->
+            <div class="flex gap-2">
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
+                style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                :disabled="gpxUploading"
+                @click="showGpxUploadModal = false; gpxUploadFile = null; gpxUploadError = null"
+              >取消</button>
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
+                :disabled="!gpxUploadFile || gpxUploading"
+                @click="uploadGpx"
+              >
+                <div v-if="gpxUploading" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                {{ gpxUploading ? '上傳中…' : '上傳' }}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- ── Export Modal ─────────────────────────────────────────── -->
     <Teleport to="body">
       <Transition name="export-fade">
@@ -762,12 +902,12 @@ import {
   Calendar as CalendarIcon, Sunrise as SunriseIcon,
   Cloud as CloudIcon, Users as UsersIcon,
   ChevronsRight as ChevronsRightIcon, ChevronsLeft as ChevronsLeftIcon,
-  StarOff as StarOffIcon, Download as DownloadIcon,
+  StarOff as StarOffIcon, Download as DownloadIcon, Upload as UploadIcon,
   Plus as PlusIcon, Eye as EyeIcon, EyeOff as EyeOffIcon, Trash2 as Trash2Icon, X as XIcon,
 } from 'lucide-vue-next'
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
-import GearList from '../components/GearList.vue'
+import GearEditor from '../components/GearEditor.vue'
 import FoodDayPlanner from '../components/FoodDayPlanner.vue'
 import { usePostStore } from '../stores/postStore'
 import { useThemeStore } from '../stores/themeStore'
@@ -779,11 +919,15 @@ const theme = useThemeStore()
 
 const activeTab    = ref('photos')
 const sidebarOpen   = ref(false)
+const foodEditMode  = ref(false)
+const gearEditMode  = ref(false)
 const galleryRef    = ref<InstanceType<typeof PhotoGallery> | null>(null)
 const gpxViewerRef  = ref<InstanceType<typeof GpxViewer> | null>(null)
 
 function setTab(key: string) {
   if (key === 'gpx') sidebarOpen.value = false
+  if (key !== 'foods')  foodEditMode.value = false
+  if (key !== 'gears')  gearEditMode.value = false
   activeTab.value = key
 }
 const showPeaks     = ref(true)
@@ -1041,12 +1185,14 @@ const groupedWaypoints = computed(() => {
   return [...map.entries()]
 })
 
-const navTabs = [
-  { key: 'photos', label: '照片', icon: CameraIcon },
-  { key: 'gpx',    label: '地圖', icon: MapIcon },
-  { key: 'gears',  label: '裝備', icon: BackpackIcon },
-  { key: 'foods',  label: '糧食', icon: FoodIcon },
-]
+const navTabs = computed(() => {
+  const p = store.currentPost
+  const tabs = [{ key: 'photos', label: '照片', icon: CameraIcon }]
+  if (!p || p.showGpx !== false)   tabs.push({ key: 'gpx',   label: '地圖', icon: MapIcon })
+  if (!p || p.showGears !== false) tabs.push({ key: 'gears', label: '裝備', icon: BackpackIcon })
+  if (!p || p.showFoods !== false) tabs.push({ key: 'foods', label: '糧食', icon: FoodIcon })
+  return tabs
+})
 
 const mapToggles = [
   { key: 'peaks',     label: '山頭',    icon: TriangleIcon, active: showPeaks },
@@ -1105,7 +1251,33 @@ onUnmounted(() => {
   if (hintTimer) clearTimeout(hintTimer)
 })
 
-// ── Export ────────────────────────────────────────────────────────
+// ── GPX Upload ───────────────────────────────────────────────────
+const showGpxUploadModal = ref(false)
+const gpxUploading       = ref(false)
+const gpxUploadError     = ref<string | null>(null)
+const gpxUploadFile      = ref<File | null>(null)
+
+async function uploadGpx() {
+  if (!gpxUploadFile.value || gpxUploading.value) return
+  gpxUploading.value   = true
+  gpxUploadError.value = null
+  try {
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+    const fd = new FormData()
+    fd.append('gpxFile', gpxUploadFile.value)
+    const res = await fetch(`${apiBase}/api/Gpx/${store.currentPost!.id}`, { method: 'POST', body: fd })
+    if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
+    await store.fetchPostDetail(store.currentPost!.id)
+    showGpxUploadModal.value = false
+    gpxUploadFile.value      = null
+  } catch (e) {
+    gpxUploadError.value = (e as Error).message
+  } finally {
+    gpxUploading.value = false
+  }
+}
+
+// ── Export ───────────────────────────────────────────────────────
 const showExportModal = ref(false)
 const exportFormat    = ref<'json' | 'pdf'>('json')
 const includeGears    = ref(true)

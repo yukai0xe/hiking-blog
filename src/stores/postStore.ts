@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Post, Photo, Gear, WaypointOverride, Food } from '../types'
+import type { Post, Photo, Gear, WaypointOverride, Food, FoodDraft, FoodDayAssignment } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -17,6 +17,7 @@ export const usePostStore = defineStore('posts', () => {
   const currentGears             = ref<Gear[]>([])
   const currentWaypointOverrides = ref<WaypointOverride[]>([])
   const currentFoods = ref<Food[]>([])
+  const currentFoodDayAssignments = ref<FoodDayAssignment[]>([])
   const availableTags = ref<string[]>([])
   const gearLibrary      = ref<Gear[]>([])
   const gearCategories   = ref<string[]>([])
@@ -104,7 +105,8 @@ export const usePostStore = defineStore('posts', () => {
       currentPhotos.value            = data.photos
       currentGears.value             = data.gears
       currentWaypointOverrides.value = data.waypointOverrides ?? []
-      currentFoods.value = data.foods ?? []
+      currentFoods.value              = data.foods ?? []
+      currentFoodDayAssignments.value = data.foodDayAssignments ?? []
     } catch (e) {
       error.value = (e as Error).message
     } finally {
@@ -126,6 +128,9 @@ export const usePostStore = defineStore('posts', () => {
     weather?: string
     peopleCount?: number | null
     tags?: string[]
+    showGpx?: boolean
+    showGears?: boolean
+    showFoods?: boolean
   }) {
     loading.value = true
     error.value   = null
@@ -145,6 +150,9 @@ export const usePostStore = defineStore('posts', () => {
           weather:        payload.weather     ?? null,
           peopleCount:    payload.peopleCount ?? null,
           tags:           payload.tags        ?? [],
+          showGpx:        payload.showGpx     ?? true,
+          showGears:      payload.showGears   ?? true,
+          showFoods:      payload.showFoods   ?? true,
         }),
       })
       const data = await res.json()
@@ -188,13 +196,16 @@ export const usePostStore = defineStore('posts', () => {
       gearsToAdd: { name: string; weight: number; note: string; category: string; quantity: number; brand?: string; referenceUrl?: string; price?: number | null; addedAt?: string }[]
       gearsToUpdate: { id: string; name: string; weight: number; note: string; category: string; quantity: number; brand?: string; referenceUrl?: string; price?: number | null; addedAt?: string }[]
       gearIdsToDelete: string[]
-      foods?: { name: string; weight: number; quantity: number; note: string; referenceUrl?: string; price?: number | null }[]
+      foods?: { id?: string; name: string; weight: number; quantity: number; note: string; referenceUrl?: string; price?: number | null }[]
       libraryGearIdsToLink?: string[]
       dateStart?: string
       dateEnd?: string
       weather?: string
       peopleCount?: number | null
       tags?: string[]
+      showGpx?: boolean
+      showGears?: boolean
+      showFoods?: boolean
     }
   ) {
     loading.value = true
@@ -235,6 +246,9 @@ export const usePostStore = defineStore('posts', () => {
           weather:          payload.weather     ?? null,
           peopleCount:      payload.peopleCount ?? null,
           tags:             payload.tags        ?? [],
+          showGpx:          payload.showGpx     ?? true,
+          showGears:        payload.showGears   ?? true,
+          showFoods:        payload.showFoods   ?? true,
         }),
       })
 
@@ -250,6 +264,68 @@ export const usePostStore = defineStore('posts', () => {
   async function deletePhoto(photoId: string) {
     await apiFetch(`/api/Photos/${photoId}`, { method: 'DELETE' })
     currentPhotos.value = currentPhotos.value.filter(p => p.id !== photoId)
+  }
+
+  async function saveGearsInPlace(
+    postId: string,
+    opts: {
+      gearsToAdd:           { name: string; weight: number; note: string; category: string; quantity: number; brand: string; referenceUrl: string; price: number | null; addedAt: string }[]
+      gearsToUpdate:        { id: string; name: string; weight: number; note: string; category: string; quantity: number; brand: string; referenceUrl: string; price: number | null; addedAt: string }[]
+      gearIdsToDelete:      string[]
+      libraryGearIdsToLink?: string[]
+    }
+  ) {
+    const post = currentPost.value!
+    await apiFetch(`/api/Posts/${postId}`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title:                post.title,
+        description:          post.description ?? '',
+        photoIdsToDelete:     [],
+        gearsToAdd:           opts.gearsToAdd,
+        gearsToUpdate:        opts.gearsToUpdate,
+        gearIdsToDelete:      opts.gearIdsToDelete,
+        foods:                currentFoods.value.map(f => ({
+          id: f.id, name: f.name, weight: f.weight, quantity: f.quantity,
+          note: f.note, referenceUrl: f.referenceUrl, price: f.price,
+        })),
+        libraryGearIdsToLink: opts.libraryGearIdsToLink ?? [],
+        dateStart:            post.dateStart   ?? null,
+        dateEnd:              post.dateEnd     ?? null,
+        weather:              post.weather     ?? null,
+        peopleCount:          post.peopleCount ?? null,
+        tags:                 post.tags        ?? [],
+        showGpx:              post.showGpx     ?? true,
+        showGears:            post.showGears   ?? true,
+        showFoods:            post.showFoods   ?? true,
+      }),
+    })
+    const res  = await apiFetch(`/api/Posts/${postId}`)
+    const data = await res.json()
+    currentGears.value = data.gears ?? []
+  }
+
+  async function saveFoods(postId: string, foods: FoodDraft[]) {
+    await apiFetch(`/api/Posts/${postId}/foods`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ foods }),
+    })
+    const res  = await apiFetch(`/api/Posts/${postId}`)
+    const data = await res.json()
+    currentFoods.value = data.foods ?? []
+  }
+
+  async function saveFoodDayAssignments(postId: string, assignments: { foodId: string; dayIndex: number }[]) {
+    await apiFetch(`/api/Posts/${postId}/food-day-assignments`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ assignments }),
+    })
+    currentFoodDayAssignments.value = assignments.map(a => ({
+      id: '', postId, foodId: a.foodId, dayIndex: a.dayIndex,
+    }))
   }
 
   async function deletePost(id: string) {
@@ -274,6 +350,10 @@ export const usePostStore = defineStore('posts', () => {
     currentGears,
     currentWaypointOverrides,
     currentFoods,
+    currentFoodDayAssignments,
+    saveGearsInPlace,
+    saveFoods,
+    saveFoodDayAssignments,
     availableTags,
     gearLibrary,
     loading,

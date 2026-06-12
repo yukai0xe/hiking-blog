@@ -12,6 +12,9 @@ export interface Post {
   deletedAt?: string | null
   tags?: string[] | null
   compressedCoverImage?: string | null
+  showGpx?: boolean | null
+  showGears?: boolean | null
+  showFoods?: boolean | null
 }
 
 export interface Photo {
@@ -95,10 +98,18 @@ export interface Food {
 }
 
 export type FoodDraft = {
+  id?:          string
   name:         string
   weight:       number
   quantity:     number
   note:         string
   referenceUrl: string
   price:        number | null
+}
+
+export interface FoodDayAssignment {
+  id:       string
+  postId:   string
+  foodId:   string
+  dayIndex: number
 }
