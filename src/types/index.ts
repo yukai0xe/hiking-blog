@@ -113,3 +113,14 @@ export interface FoodDayAssignment {
   foodId:   string
   dayIndex: number
 }
+
+export interface GpxLibraryEntry {
+  id:              string
+  name:            string
+  gpxFileUrl:      string
+  date?:           string | null
+  difficultyStars?: number | null
+  category?:       string | null
+  peopleCount?:    number | null
+  createdAt:       string
+}
