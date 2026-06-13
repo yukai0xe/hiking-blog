@@ -19,6 +19,13 @@
             <MoonIcon v-else :size="17" />
           </button>
           <router-link
+            to="/gpx-library"
+            class="card-aged flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
+          >
+            <RouteIcon :size="15" />
+            GPX 收藏
+          </router-link>
+          <router-link
             to="/gear-library"
             class="card-aged flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
           >
@@ -142,7 +149,7 @@ import { ref, computed, onMounted } from 'vue'
 import {
   Compass as CompassIcon, Plus as PlusIcon, Map as MapIcon,
   Sun as SunIcon, Moon as MoonIcon, Search as SearchIcon, X as XIcon,
-  Library as LibraryIcon,
+  Library as LibraryIcon, Route as RouteIcon,
 } from 'lucide-vue-next'
 import WaterfallList from '../components/WaterfallList.vue'
 import DateRangePicker from '../components/DateRangePicker.vue'

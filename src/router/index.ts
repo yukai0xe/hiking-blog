@@ -3,6 +3,7 @@ import Home from '../pages/Home.vue'
 import Detail from '../pages/Detail.vue'
 import Create from '../pages/Create.vue'
 import Edit from '../pages/Edit.vue'
+import GpxLibrary from '../pages/GpxLibrary.vue'
 import GearLibrary from '../pages/GearLibrary.vue'
 
 const router = createRouter({
@@ -12,6 +13,7 @@ const router = createRouter({
     { path: '/detail/:id', component: Detail },
     { path: '/create', component: Create },
     { path: '/edit/:id', component: Edit },
+    { path: '/gpx-library', component: GpxLibrary },
     { path: '/gear-library', component: GearLibrary },
   ],
 })
