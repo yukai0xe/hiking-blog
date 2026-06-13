@@ -150,7 +150,7 @@
                   v-if="activeTab === 'gpx' && store.currentPost?.gpxFile"
                   class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                   style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
-                  @click="showGpxUploadModal = true"
+                  @click="openGpxModal"
                 >
                   <UploadIcon :size="13" />
                   <span>重新上傳</span>
@@ -239,7 +239,7 @@
                 </div>
                 <button
                   class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-body cursor-pointer btn-cta transition-colors duration-150"
-                  @click="showGpxUploadModal = true"
+                  @click="openGpxModal"
                 >
                   <UploadIcon :size="14" />
                   上傳 GPX
@@ -656,64 +656,101 @@
           @click.self="showGpxUploadModal = false"
           @keydown.esc="showGpxUploadModal = false"
         >
-          <div class="card-aged rounded-xl p-6 w-full max-w-sm shadow-xl space-y-5">
+          <div class="card-aged rounded-xl p-6 w-full max-w-sm shadow-xl space-y-4">
 
-            <!-- Header -->
+            <!-- Header: tabs + close -->
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5">
-                <UploadIcon :size="16" class="text-primary opacity-80" />
-                <span class="font-heading text-lg text-ink tracking-wide">上傳 GPX 路線</span>
+              <div class="flex gap-1 p-0.5 rounded-lg" style="background: color-mix(in srgb, var(--c-border) 40%, transparent);">
+                <button
+                  class="px-3 py-1 rounded-md text-xs font-body transition-colors duration-150 cursor-pointer"
+                  :class="gpxUploadTab === 'upload' ? 'btn-cta' : 'text-inkMuted hover:text-ink'"
+                  @click="gpxUploadTab = 'upload'"
+                ><UploadIcon :size="11" class="inline mr-1" />上傳檔案</button>
+                <button
+                  class="px-3 py-1 rounded-md text-xs font-body transition-colors duration-150 cursor-pointer"
+                  :class="gpxUploadTab === 'import' ? 'btn-cta' : 'text-inkMuted hover:text-ink'"
+                  @click="gpxUploadTab = 'import'; gpxLibStore.fetchGpxLibrary()"
+                ><BookOpenIcon :size="11" class="inline mr-1" />從 GPX 收藏匯入</button>
               </div>
               <button class="wpt-close-btn" @click="showGpxUploadModal = false">
                 <XIcon :size="12" />
               </button>
             </div>
 
-            <!-- File drop zone -->
-            <label
-              class="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors duration-150 py-10"
-              :style="gpxUploadFile
-                ? 'border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 6%, transparent);'
-                : 'border-color: var(--c-border); background: transparent;'"
-            >
-              <UploadIcon
-                :size="28"
-                :style="gpxUploadFile ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted); opacity: 0.4;'"
-              />
-              <div class="text-center">
-                <p class="text-sm font-body" :style="gpxUploadFile ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'">
-                  {{ gpxUploadFile ? gpxUploadFile.name : '點擊選擇 .gpx 檔案' }}
-                </p>
-                <p v-if="!gpxUploadFile" class="text-[11px] font-body text-inkMuted opacity-50 mt-1">或拖曳至此</p>
-              </div>
-              <input
-                type="file"
-                accept=".gpx,application/gpx+xml"
-                class="hidden"
-                @change="gpxUploadFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
-              />
-            </label>
-
-            <!-- Error -->
-            <p v-if="gpxUploadError" class="text-xs font-body text-red-400 break-all">{{ gpxUploadError }}</p>
-
-            <!-- Buttons -->
-            <div class="flex gap-2">
-              <button
-                class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
-                style="color: var(--c-inkMuted); border-color: var(--c-border);"
-                :disabled="gpxUploading"
-                @click="showGpxUploadModal = false; gpxUploadFile = null; gpxUploadError = null"
-              >取消</button>
-              <button
-                class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
-                :disabled="!gpxUploadFile || gpxUploading"
-                @click="uploadGpx"
+            <!-- ── Upload tab ── -->
+            <template v-if="gpxUploadTab === 'upload'">
+              <label
+                class="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors duration-150 py-10"
+                :style="gpxUploadFile
+                  ? 'border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 6%, transparent);'
+                  : 'border-color: var(--c-border); background: transparent;'"
               >
-                <div v-if="gpxUploading" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                {{ gpxUploading ? '上傳中…' : '上傳' }}
-              </button>
-            </div>
+                <UploadIcon
+                  :size="28"
+                  :style="gpxUploadFile ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted); opacity: 0.4;'"
+                />
+                <div class="text-center">
+                  <p class="text-sm font-body" :style="gpxUploadFile ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'">
+                    {{ gpxUploadFile ? gpxUploadFile.name : '點擊選擇 .gpx 檔案' }}
+                  </p>
+                  <p v-if="!gpxUploadFile" class="text-[11px] font-body text-inkMuted opacity-50 mt-1">或拖曳至此</p>
+                </div>
+                <input
+                  type="file"
+                  accept=".gpx,application/gpx+xml"
+                  class="hidden"
+                  @change="gpxUploadFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
+                />
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" v-model="syncToLibrary" class="rounded accent-primary" />
+                <span class="text-xs font-body text-inkMuted">同步加入到 GPX 收藏</span>
+              </label>
+              <p v-if="gpxUploadError" class="text-xs font-body text-red-400 break-all">{{ gpxUploadError }}</p>
+              <div class="flex gap-2">
+                <button
+                  class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
+                  style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                  :disabled="gpxUploading"
+                  @click="showGpxUploadModal = false"
+                >取消</button>
+                <button
+                  class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
+                  :disabled="!gpxUploadFile || gpxUploading"
+                  @click="uploadGpx"
+                >
+                  <div v-if="gpxUploading" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  {{ gpxUploading ? '上傳中…' : '上傳' }}
+                </button>
+              </div>
+            </template>
+
+            <!-- ── Import tab ── -->
+            <template v-else>
+              <div class="max-h-64 overflow-y-auto space-y-1.5 pr-1">
+                <div v-if="gpxLibStore.loading" class="py-8 text-center text-inkMuted font-body text-sm">載入中…</div>
+                <div v-else-if="gpxLibStore.gpxLibrary.length === 0" class="py-8 text-center text-inkMuted font-body text-sm">GPX 收藏為空</div>
+                <button
+                  v-for="entry in gpxLibStore.gpxLibrary"
+                  :key="entry.id"
+                  class="w-full text-left px-3 py-2.5 rounded-lg card-aged cursor-pointer transition-colors duration-150 hover:border-primary disabled:opacity-50"
+                  :disabled="gpxImporting"
+                  @click="importGpxFromLibrary(entry)"
+                >
+                  <p class="font-body text-sm text-ink leading-snug">{{ entry.name }}</p>
+                  <p class="font-mono text-[10px] text-inkMuted mt-0.5">
+                    {{ entry.date ?? '—' }}<span v-if="entry.category"> · {{ entry.category }}</span>
+                  </p>
+                </button>
+              </div>
+              <p v-if="gpxImportError" class="text-xs font-body text-red-400 break-all">{{ gpxImportError }}</p>
+              <button
+                class="w-full py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
+                style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                :disabled="gpxImporting"
+                @click="showGpxUploadModal = false"
+              >取消</button>
+            </template>
 
           </div>
         </div>
@@ -904,6 +941,7 @@ import {
   ChevronsRight as ChevronsRightIcon, ChevronsLeft as ChevronsLeftIcon,
   StarOff as StarOffIcon, Download as DownloadIcon, Upload as UploadIcon,
   Plus as PlusIcon, Eye as EyeIcon, EyeOff as EyeOffIcon, Trash2 as Trash2Icon, X as XIcon,
+  BookOpen as BookOpenIcon,
 } from 'lucide-vue-next'
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
@@ -911,11 +949,13 @@ import GearEditor from '../components/GearEditor.vue'
 import FoodDayPlanner from '../components/FoodDayPlanner.vue'
 import { usePostStore } from '../stores/postStore'
 import { useThemeStore } from '../stores/themeStore'
-import type { Waypoint } from '../types'
+import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
+import type { Waypoint, GpxLibraryEntry } from '../types'
 
-const route = useRoute()
-const store = usePostStore()
-const theme = useThemeStore()
+const route       = useRoute()
+const store       = usePostStore()
+const theme       = useThemeStore()
+const gpxLibStore = useGpxLibraryStore()
 
 const activeTab    = ref('photos')
 const sidebarOpen   = ref(false)
@@ -1253,9 +1293,22 @@ onUnmounted(() => {
 
 // ── GPX Upload ───────────────────────────────────────────────────
 const showGpxUploadModal = ref(false)
+const gpxUploadTab       = ref<'upload' | 'import'>('upload')
 const gpxUploading       = ref(false)
 const gpxUploadError     = ref<string | null>(null)
 const gpxUploadFile      = ref<File | null>(null)
+const syncToLibrary      = ref(false)
+const gpxImporting       = ref(false)
+const gpxImportError     = ref<string | null>(null)
+
+function openGpxModal() {
+  gpxUploadTab.value   = 'upload'
+  gpxUploadFile.value  = null
+  gpxUploadError.value = null
+  gpxImportError.value = null
+  syncToLibrary.value  = false
+  showGpxUploadModal.value = true
+}
 
 async function uploadGpx() {
   if (!gpxUploadFile.value || gpxUploading.value) return
@@ -1267,13 +1320,38 @@ async function uploadGpx() {
     fd.append('gpxFile', gpxUploadFile.value)
     const res = await fetch(`${apiBase}/api/Gpx/${store.currentPost!.id}`, { method: 'POST', body: fd })
     if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
+    if (syncToLibrary.value) {
+      await gpxLibStore.createGpxRoute({ name: store.currentPost!.title, gpxFile: gpxUploadFile.value })
+    }
     await store.fetchPostDetail(store.currentPost!.id)
     showGpxUploadModal.value = false
     gpxUploadFile.value      = null
+    syncToLibrary.value      = false
   } catch (e) {
     gpxUploadError.value = (e as Error).message
   } finally {
     gpxUploading.value = false
+  }
+}
+
+async function importGpxFromLibrary(entry: GpxLibraryEntry) {
+  gpxImporting.value   = true
+  gpxImportError.value = null
+  try {
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+    const res = await fetch(`${apiBase}/api/Gpx/${store.currentPost!.id}/link`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ url: entry.gpxFileUrl }),
+    })
+    if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
+    await store.fetchPostDetail(store.currentPost!.id)
+    showGpxUploadModal.value = false
+    gpxUploadTab.value       = 'upload'
+  } catch (e) {
+    gpxImportError.value = (e as Error).message
+  } finally {
+    gpxImporting.value = false
   }
 }
 
