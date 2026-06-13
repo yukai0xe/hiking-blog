@@ -87,10 +87,10 @@
             <!-- Map area: square topo preview -->
             <div class="card-map" style="aspect-ratio: 1/1; max-height: 350px; background: #2d3b1e; position: relative; overflow: hidden; flex-shrink: 0;">
               <div class="topo-bg absolute inset-0" />
-              <svg v-if="cardPaths.get(entry.id)" viewBox="0 0 200 200" class="absolute inset-0 w-full h-full">
-                <path :d="cardPaths.get(entry.id)!.d" class="route-line" />
-                <circle :cx="cardPaths.get(entry.id)!.start[0]" :cy="cardPaths.get(entry.id)!.start[1]" r="5" class="dot-start" />
-                <circle :cx="cardPaths.get(entry.id)!.end[0]"   :cy="cardPaths.get(entry.id)!.end[1]"   r="5" class="dot-end" />
+              <svg v-if="cardPaths[entry.id]" viewBox="0 0 200 200" class="absolute inset-0 w-full h-full">
+                <path :d="cardPaths[entry.id].d" class="route-line" />
+                <circle :cx="cardPaths[entry.id].start[0]" :cy="cardPaths[entry.id].start[1]" r="5" class="dot-start" />
+                <circle :cx="cardPaths[entry.id].end[0]"   :cy="cardPaths[entry.id].end[1]"   r="5" class="dot-end" />
               </svg>
               <div v-else class="absolute inset-0 flex items-center justify-center">
                 <div class="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin opacity-40" />
@@ -275,7 +275,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
@@ -321,11 +321,11 @@ function starsDisplay(stars?: number | null): string {
 
 // ── Card GPX SVG loading ──────────────────────────────────
 type CardPath = { d: string; start: [number, number]; end: [number, number] }
-const cardPaths = ref(new Map<string, CardPath>())
+const cardPaths = reactive<Record<string, CardPath>>({})
 
 function loadAllCardGpx() {
   for (const entry of store.gpxLibrary) {
-    if (!cardPaths.value.has(entry.id)) loadCardGpx(entry)
+    if (!cardPaths[entry.id]) loadCardGpx(entry)
   }
 }
 
@@ -334,13 +334,13 @@ async function loadCardGpx(entry: GpxLibraryEntry) {
     const gpxData = await parseGPXFromUrl(entry.gpxFileUrl)
     const sampled = downsampleCoords(gpxData.coordinates, 200)
     const result  = gpxCoordsToSvgPath(sampled)
-    cardPaths.value.set(entry.id, result)
+    cardPaths[entry.id] = result
   } catch { /* silently skip on error */ }
 }
 
 watch(() => store.gpxLibrary, (entries) => {
   for (const e of entries) {
-    if (!cardPaths.value.has(e.id)) loadCardGpx(e)
+    if (!cardPaths[e.id]) loadCardGpx(e)
   }
 }, { deep: false })
 
@@ -408,7 +408,7 @@ async function submitForm() {
     if (editingId.value) {
       await store.updateGpxRoute(editingId.value, { ...payload, gpxFile: form.value.gpxFile })
       if (form.value.gpxFile) {
-        cardPaths.value.delete(editingId.value)
+        delete cardPaths[editingId.value]
         const updated = store.gpxLibrary.find(e => e.id === editingId.value)
         if (updated) loadCardGpx(updated)
       }
@@ -430,6 +430,10 @@ const detailEntry  = ref<GpxLibraryEntry | null>(null)
 const detailMapEl  = ref<HTMLDivElement | null>(null)
 const detailStats  = ref<{ distanceKm: number; totalAscent: number; maxElevation: number; minElevation: number } | null>(null)
 let   leafletMap: L.Map | null = null
+
+onUnmounted(() => {
+  if (leafletMap) { leafletMap.remove(); leafletMap = null }
+})
 
 async function openDetail(entry: GpxLibraryEntry) {
   detailEntry.value = entry
@@ -491,7 +495,7 @@ async function executeDelete() {
   apiError.value = null
   try {
     await store.deleteGpxRoute(deletingEntry.value.id)
-    cardPaths.value.delete(deletingEntry.value.id)
+    delete cardPaths[deletingEntry.value.id]
     deletingEntry.value = null
   } catch (e) {
     apiError.value = (e as Error).message
