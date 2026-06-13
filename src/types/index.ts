@@ -122,5 +122,6 @@ export interface GpxLibraryEntry {
   difficultyStars?: number | null
   category?:       string | null
   peopleCount?:    number | null
+  referenceUrl?:   string | null
   createdAt:       string
 }

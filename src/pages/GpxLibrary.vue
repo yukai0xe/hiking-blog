@@ -164,6 +164,12 @@
               </select>
             </div>
 
+            <!-- 參考連結 -->
+            <div class="mb-3">
+              <label class="field-label">參考連結</label>
+              <input v-model="form.referenceUrl" type="url" class="input-field text-sm font-mono" placeholder="https://..." />
+            </div>
+
             <!-- GPX 檔案 -->
             <div class="mb-4">
               <label class="field-label">GPX 檔案{{ editingId ? '（選填，重新上傳才更新）' : ' *' }}</label>
@@ -240,6 +246,13 @@
             </div>
           </div>
           <div v-else class="py-4 text-center text-inkMuted font-body text-sm">載入路線資料中…</div>
+          <div v-if="detailEntry.referenceUrl" class="px-5 py-3 border-t border-border/40 flex items-center gap-2">
+            <span class="text-[10px] font-body uppercase tracking-widest text-inkMuted shrink-0">參考連結</span>
+            <a :href="detailEntry.referenceUrl" target="_blank" rel="noopener noreferrer"
+               class="text-xs font-mono text-primary hover:opacity-70 truncate transition-opacity">
+              {{ detailEntry.referenceUrl }}
+            </a>
+          </div>
         </div>
       </div>
     </Transition>
@@ -349,7 +362,7 @@ watch(() => store.gpxLibrary, (entries) => {
 // ── Editor panel ──────────────────────────────────────────
 type GpxForm = {
   name: string; date: string; peopleCount: number | null
-  difficultyStars: number | null; category: string; gpxFile: File | null
+  difficultyStars: number | null; category: string; referenceUrl: string; gpxFile: File | null
 }
 
 const panelOpen  = ref(false)
@@ -359,7 +372,7 @@ const apiError   = ref<string | null>(null)
 const fileInputEl = ref<HTMLInputElement | null>(null)
 
 const blankForm = (): GpxForm => ({
-  name: '', date: '', peopleCount: null, difficultyStars: null, category: '', gpxFile: null,
+  name: '', date: '', peopleCount: null, difficultyStars: null, category: '', referenceUrl: '', gpxFile: null,
 })
 const form = ref<GpxForm>(blankForm())
 
@@ -378,6 +391,7 @@ function openEdit(entry: GpxLibraryEntry) {
     peopleCount:     entry.peopleCount ?? null,
     difficultyStars: entry.difficultyStars ?? null,
     category:        entry.category ?? '',
+    referenceUrl:    entry.referenceUrl ?? '',
     gpxFile:         null,
   }
   apiError.value  = null
@@ -406,6 +420,7 @@ async function submitForm() {
       difficultyStars: form.value.difficultyStars ?? null,
       category:        form.value.category || null,
       peopleCount:     form.value.peopleCount ?? null,
+      referenceUrl:    form.value.referenceUrl.trim() || null,
     }
     if (editingId.value) {
       await store.updateGpxRoute(editingId.value, { ...payload, gpxFile: form.value.gpxFile })
