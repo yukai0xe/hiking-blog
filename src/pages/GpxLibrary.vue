@@ -56,28 +56,29 @@
         <AlertCircleIcon :size="14" class="shrink-0" />{{ apiError }}
       </div>
 
-      <!-- Empty state -->
-      <div v-if="store.gpxLibrary.length === 0 && !store.loading" class="card-aged p-16 text-center">
-        <MapIcon :size="44" class="mx-auto mb-4 text-primary opacity-30" />
-        <p class="font-heading text-xl text-ink mb-2">尚無 GPX 路線</p>
-        <p class="text-sm font-body italic text-inkMuted mb-6">點擊「新增 GPX」上傳第一條路線</p>
-        <button class="btn-cta inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer" @click="openCreate">
-          <PlusIcon :size="14" /> 新增第一條路線
-        </button>
-      </div>
+      <!-- Content area + editor panel -->
+      <div class="flex gap-5 items-start">
+        <div class="flex-1">
 
-      <!-- No results after search -->
-      <div v-else-if="filtered.length === 0 && search" class="card-aged p-12 text-center">
-        <SearchIcon :size="36" class="mx-auto mb-4 text-primary opacity-30" />
-        <p class="font-heading text-lg text-ink mb-2">無符合結果</p>
-        <button class="text-sm font-body text-primary hover:opacity-70 cursor-pointer" @click="search = ''">清除搜尋</button>
-      </div>
+          <!-- Empty state -->
+          <div v-if="store.gpxLibrary.length === 0 && !store.loading" class="card-aged p-16 text-center">
+            <MapIcon :size="44" class="mx-auto mb-4 text-primary opacity-30" />
+            <p class="font-heading text-xl text-ink mb-2">尚無 GPX 路線</p>
+            <p class="text-sm font-body italic text-inkMuted mb-6">點擊「新增 GPX」上傳第一條路線</p>
+            <button class="btn-cta inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer" @click="openCreate">
+              <PlusIcon :size="14" /> 新增第一條路線
+            </button>
+          </div>
 
-      <!-- Main content: card grid + editor panel -->
-      <div v-else class="flex gap-5 items-start">
+          <!-- No results after search -->
+          <div v-else-if="filtered.length === 0 && search" class="card-aged p-12 text-center">
+            <SearchIcon :size="36" class="mx-auto mb-4 text-primary opacity-30" />
+            <p class="font-heading text-lg text-ink mb-2">無符合結果</p>
+            <button class="text-sm font-body text-primary hover:opacity-70 cursor-pointer" @click="search = ''">清除搜尋</button>
+          </div>
 
-        <!-- Card grid -->
-        <div class="flex-1 grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(200px, 350px));">
+          <!-- Card grid -->
+          <div v-else class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(200px, 350px));">
           <div
             v-for="entry in filtered" :key="entry.id"
             class="gpx-card cursor-pointer"
@@ -121,6 +122,7 @@
               </div>
             </div>
           </div>
+        </div>
         </div>
 
         <!-- Editor side panel (460px, shown when panelOpen) -->
