@@ -70,14 +70,15 @@ function parseGPXXml(xml: Document): GpxData {
 
   const coordinates: [number, number][] = rawCoords.map(([lng, lat]) => [lat, lng])
   const elevation: number[]             = rawCoords.map(([, , ele]) => ele ?? 0)
-  const times: string[]                 = [feature.properties?.coordTimes ?? []].flat(2)
+  const times: string[]                 = (feature.properties?.coordTimes ?? []) as string[]
   const timestamps: Date[]              = times.map(t => new Date(t))
 
   return { coordinates, elevation, timestamps }
 }
 
 export async function parseGPXFromUrl(url: string): Promise<GpxData> {
-  const res  = await fetch(url)
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Failed to fetch GPX: ${res.statusText}`)
   const text = await res.text()
   const xml  = new DOMParser().parseFromString(text, 'text/xml')
   return parseGPXXml(xml)
