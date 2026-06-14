@@ -361,6 +361,16 @@ export const usePostStore = defineStore('posts', () => {
     return data.id as string
   }
 
+  async function linkGpxRecord(postId: string, recordId: string, url: string): Promise<void> {
+    await apiFetch(`/api/Gpx/${postId}/records/${recordId}/link`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ url }),
+    })
+    const rec = currentGpxRecords.value.find(r => r.id === recordId)
+    if (rec) rec.gpxFileUrl = url
+  }
+
   async function rerouteGpxRecord(postId: string, recordId: string, gpxFile: File): Promise<string> {
     const fd = new FormData()
     fd.append('gpxFile', gpxFile)
@@ -454,6 +464,7 @@ export const usePostStore = defineStore('posts', () => {
     fetchRecordWaypointOverrides,
     createGpxRecord,
     createGpxRecordFromUrl,
+    linkGpxRecord,
     rerouteGpxRecord,
     renameGpxRecord,
     updateGpxRecordDescription,

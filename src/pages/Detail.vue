@@ -720,7 +720,6 @@
                   @click="gpxUploadTab = 'upload'"
                 ><UploadIcon :size="11" class="inline mr-1" />上傳檔案</button>
                 <button
-                  v-if="gpxModalRerouteRecordId === null"
                   class="px-3 py-1 rounded-md text-xs font-body transition-colors duration-150 cursor-pointer"
                   :class="gpxUploadTab === 'import' ? 'btn-cta' : 'text-inkMuted hover:text-ink'"
                   @click="gpxUploadTab = 'import'; gpxLibStore.fetchGpxLibrary()"
@@ -765,7 +764,7 @@
                   @change="gpxUploadFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
                 />
               </label>
-              <label v-if="!gpxModalIsNewRecord && gpxModalRerouteRecordId === null" class="flex items-center gap-2 cursor-pointer select-none">
+              <label class="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" v-model="syncToLibrary" class="rounded accent-primary" />
                 <span class="text-xs font-body text-inkMuted">同步加入到 GPX 收藏</span>
               </label>
@@ -807,7 +806,7 @@
                   :key="entry.id"
                   class="w-full text-left px-3 py-2.5 rounded-lg card-aged cursor-pointer transition-colors duration-150 hover:border-primary disabled:opacity-50"
                   :disabled="gpxImporting"
-                  @click="gpxModalIsNewRecord ? importRecordFromLibrary(entry) : importGpxFromLibrary(entry)"
+                  @click="(gpxModalIsNewRecord || gpxModalRerouteRecordId) ? importRecordFromLibrary(entry) : importGpxFromLibrary(entry)"
                 >
                   <p class="font-body text-sm text-ink leading-snug">{{ entry.name }}</p>
                   <p class="font-mono text-[10px] text-inkMuted mt-0.5">
@@ -1541,16 +1540,18 @@ async function addGpxRecord() {
   if (!gpxUploadFile.value || gpxUploading.value) return
   gpxUploading.value   = true
   gpxUploadError.value = null
+  const file = gpxUploadFile.value
+  const name = gpxRecordName.value.trim() || '新路線'
   try {
-    const newId = await store.createGpxRecord(
-      store.currentPost!.id,
-      gpxRecordName.value.trim() || '新路線',
-      gpxUploadFile.value
-    )
+    const newId = await store.createGpxRecord(store.currentPost!.id, name, file)
+    if (syncToLibrary.value) {
+      await gpxLibStore.createGpxRoute({ name, gpxFile: file })
+    }
     activeGpxRecordId.value  = newId
     showGpxUploadModal.value = false
     gpxUploadFile.value      = null
     gpxRecordName.value      = ''
+    syncToLibrary.value      = false
   } catch (e) {
     gpxUploadError.value = (e as Error).message
   } finally {
@@ -1562,10 +1563,17 @@ async function rerouteRecord() {
   if (!gpxUploadFile.value || gpxUploading.value || !gpxModalRerouteRecordId.value) return
   gpxUploading.value   = true
   gpxUploadError.value = null
+  const file     = gpxUploadFile.value
+  const recordId = gpxModalRerouteRecordId.value
   try {
-    await store.rerouteGpxRecord(store.currentPost!.id, gpxModalRerouteRecordId.value, gpxUploadFile.value)
+    await store.rerouteGpxRecord(store.currentPost!.id, recordId, file)
+    if (syncToLibrary.value) {
+      const rec  = store.currentGpxRecords.find(r => r.id === recordId)
+      await gpxLibStore.createGpxRoute({ name: rec?.name ?? '新路線', gpxFile: file })
+    }
     showGpxUploadModal.value = false
     gpxUploadFile.value      = null
+    syncToLibrary.value      = false
   } catch (e) {
     gpxUploadError.value = (e as Error).message
   } finally {
@@ -1635,11 +1643,15 @@ async function importRecordFromLibrary(entry: GpxLibraryEntry) {
   gpxImporting.value   = true
   gpxImportError.value = null
   try {
-    const name  = gpxRecordName.value.trim() || entry.name
-    const newId = await store.createGpxRecordFromUrl(store.currentPost!.id, name, entry.gpxFileUrl)
-    activeGpxRecordId.value  = newId
+    if (gpxModalRerouteRecordId.value) {
+      await store.linkGpxRecord(store.currentPost!.id, gpxModalRerouteRecordId.value, entry.gpxFileUrl)
+    } else {
+      const name  = gpxRecordName.value.trim() || entry.name
+      const newId = await store.createGpxRecordFromUrl(store.currentPost!.id, name, entry.gpxFileUrl)
+      activeGpxRecordId.value = newId
+      gpxRecordName.value     = ''
+    }
     showGpxUploadModal.value = false
-    gpxRecordName.value      = ''
     gpxUploadTab.value       = 'upload'
   } catch (e) {
     gpxImportError.value = (e as Error).message
