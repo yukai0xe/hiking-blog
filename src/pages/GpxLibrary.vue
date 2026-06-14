@@ -98,13 +98,11 @@
               </div>
               <!-- Action buttons (hover) -->
               <div class="card-actions absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity duration-150">
-                <a
-                  :href="entry.gpxFileUrl"
-                  :download="`${entry.name}${entry.date ? '_' + entry.date : ''}.gpx`"
+                <button
                   class="card-action-btn"
-                  @click.stop
+                  @click.stop="downloadGpx(entry)"
                   title="下載 GPX"
-                >↓</a>
+                >↓</button>
                 <button class="card-action-btn" @click.stop="openEdit(entry)" title="編輯">編輯</button>
                 <button class="card-action-btn card-action-del" @click.stop="confirmDelete(entry)" title="刪除">刪除</button>
               </div>
@@ -496,6 +494,18 @@ async function initDetailMap(entry: GpxLibraryEntry) {
   } catch {
     detailStats.value = null
   }
+}
+
+// ── Download ─────────────────────────────────────────────
+async function downloadGpx(entry: GpxLibraryEntry) {
+  const res  = await fetch(entry.gpxFileUrl)
+  const blob = await res.blob()
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `${entry.name}${entry.date ? '_' + entry.date : ''}.gpx`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 // ── Delete confirm ───────────────────────────────────────
