@@ -46,38 +46,76 @@
             <XIcon :size="13" />
           </button>
         </div>
-      </div>
 
-      <!-- Filter bar -->
-      <div v-if="store.gpxLibrary.length > 0" class="flex flex-wrap items-center gap-2 mb-5">
-        <!-- Category pills -->
-        <button
-          v-for="cat in CATEGORIES" :key="cat"
-          class="px-3 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
-          :style="filterCategory === cat
-            ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
-            : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
-          @click="filterCategory = filterCategory === cat ? '' : cat"
-        >{{ cat }}</button>
+        <!-- Filter button -->
+        <div class="relative">
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body transition-colors duration-150 cursor-pointer border"
+            :style="showFilterPanel || activeFilterCount > 0
+              ? 'border-color: var(--c-primary); color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent);'
+              : 'border-color: var(--c-border); color: var(--c-inkMuted); background: transparent;'"
+            @click="showFilterPanel = !showFilterPanel"
+          >
+            <SlidersHorizontalIcon :size="13" />
+            更多篩選
+            <span
+              v-if="activeFilterCount > 0"
+              class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+              style="background: var(--c-primary); color: var(--c-base);"
+            >{{ activeFilterCount }}</span>
+          </button>
 
-        <div class="w-px h-4 bg-border/50 mx-1" />
+          <!-- Backdrop -->
+          <div v-if="showFilterPanel" class="fixed inset-0 z-10" @click="showFilterPanel = false" />
 
-        <!-- Difficulty star pills -->
-        <button
-          v-for="n in 5" :key="n"
-          class="px-3 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
-          :style="filterStars === n
-            ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
-            : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
-          @click="filterStars = filterStars === n ? null : n"
-        >{{ '★'.repeat(n) }}</button>
+          <!-- Filter panel -->
+          <Transition name="filter-panel">
+            <div
+              v-if="showFilterPanel"
+              class="absolute right-0 mt-2 w-72 card-aged rounded-xl p-4 z-20 shadow-xl"
+              style="border: 1px solid color-mix(in srgb, var(--c-border) 80%, transparent);"
+            >
+              <!-- Category -->
+              <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted mb-2.5">山岳分類</p>
+              <div class="flex flex-wrap gap-1.5 mb-4">
+                <button
+                  v-for="cat in CATEGORIES" :key="cat"
+                  class="px-3 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
+                  :style="filterCategory === cat
+                    ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                    : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                  @click="filterCategory = filterCategory === cat ? '' : cat"
+                >{{ cat }}</button>
+              </div>
 
-        <!-- Clear all -->
-        <button
-          v-if="hasActiveFilter"
-          class="ml-auto text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer flex items-center gap-1"
-          @click="clearFilters"
-        ><XIcon :size="11" />清除篩選</button>
+              <!-- Difficulty -->
+              <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted mb-2.5">難度</p>
+              <div class="flex flex-wrap gap-1.5 mb-4">
+                <button
+                  v-for="n in 5" :key="n"
+                  class="px-2.5 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
+                  :style="filterStars === n
+                    ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                    : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                  @click="filterStars = filterStars === n ? null : n"
+                >{{ '★'.repeat(n) }}</button>
+              </div>
+
+              <!-- Footer -->
+              <div class="flex items-center justify-between pt-3 border-t" style="border-color: var(--c-border);">
+                <button
+                  class="text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer disabled:opacity-30"
+                  :disabled="!hasActiveFilter"
+                  @click="clearFilters"
+                >清除篩選</button>
+                <button
+                  class="px-3 py-1 rounded-lg text-xs font-body btn-cta cursor-pointer"
+                  @click="showFilterPanel = false"
+                >套用</button>
+              </div>
+            </div>
+          </Transition>
+        </div>
       </div>
 
       <!-- Error banner -->
@@ -327,6 +365,7 @@ import {
   ArrowLeft as ArrowLeftIcon, Plus as PlusIcon, Search as SearchIcon,
   X as XIcon, Save as SaveIcon, Trash2 as Trash2Icon,
   AlertCircle as AlertCircleIcon, Map as MapIcon, Upload as UploadIcon,
+  SlidersHorizontal as SlidersHorizontalIcon,
 } from 'lucide-vue-next'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
 import type { GpxLibraryEntry } from '../types'
@@ -348,8 +387,12 @@ const search         = ref('')
 const filterCategory = ref('')
 const filterStars    = ref<number | null>(null)
 
+const showFilterPanel   = ref(false)
+const activeFilterCount = computed(() =>
+  (filterCategory.value ? 1 : 0) + (filterStars.value !== null ? 1 : 0)
+)
 const hasActiveFilter = computed(() =>
-  !!search.value.trim() || !!filterCategory.value || filterStars.value !== null
+  !!search.value.trim() || activeFilterCount.value > 0
 )
 
 function clearFilters() {
@@ -645,6 +688,10 @@ async function executeDelete() {
 .gear-panel-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .gear-panel-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .gear-panel-enter-from, .gear-panel-leave-to { opacity: 0; transform: translateX(20px); }
+
+.filter-panel-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.filter-panel-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
+.filter-panel-enter-from, .filter-panel-leave-to { opacity: 0; transform: translateY(-6px) scale(0.98); }
 
 /* ── Detail modal ─────────────────────────────────────── */
 .modal-backdrop {
