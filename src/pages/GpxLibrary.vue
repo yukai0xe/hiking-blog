@@ -76,7 +76,17 @@
               style="border: 1px solid color-mix(in srgb, var(--c-border) 80%, transparent);"
             >
               <!-- Category -->
-              <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted mb-2.5">山岳分類</p>
+              <div class="flex items-center justify-between mb-2.5">
+                <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">山岳分類</p>
+                <button
+                  class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
+                  :title="filterCategory.length === CATEGORIES.length ? '取消全部' : '選取全部'"
+                  @click="filterCategory = filterCategory.length === CATEGORIES.length ? [] : [...CATEGORIES]"
+                >
+                  <CheckSquareIcon v-if="filterCategory.length === CATEGORIES.length" :size="14" />
+                  <SquareIcon v-else :size="14" />
+                </button>
+              </div>
               <div class="flex flex-wrap gap-1.5 mb-4">
                 <button
                   v-for="cat in CATEGORIES" :key="cat"
@@ -89,7 +99,17 @@
               </div>
 
               <!-- Difficulty -->
-              <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted mb-2.5">難度</p>
+              <div class="flex items-center justify-between mb-2.5">
+                <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">難度</p>
+                <button
+                  class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
+                  :title="filterStars.length === 5 ? '取消全部' : '選取全部'"
+                  @click="filterStars = filterStars.length === 5 ? [] : [1, 2, 3, 4, 5]"
+                >
+                  <CheckSquareIcon v-if="filterStars.length === 5" :size="14" />
+                  <SquareIcon v-else :size="14" />
+                </button>
+              </div>
               <div class="flex flex-wrap gap-1.5 mb-4">
                 <button
                   v-for="n in 5" :key="n"
@@ -366,6 +386,7 @@ import {
   X as XIcon, Save as SaveIcon, Trash2 as Trash2Icon,
   AlertCircle as AlertCircleIcon, Map as MapIcon, Upload as UploadIcon,
   SlidersHorizontal as SlidersHorizontalIcon,
+  Square as SquareIcon, CheckSquare as CheckSquareIcon,
 } from 'lucide-vue-next'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
 import type { GpxLibraryEntry } from '../types'
