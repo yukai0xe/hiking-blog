@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Post, Photo, Gear, WaypointOverride, Food, FoodDraft, FoodDayAssignment } from '../types'
+import type { Post, Photo, Gear, WaypointOverride, Food, FoodDraft, FoodDayAssignment, PostGpxRecord } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -18,6 +18,8 @@ export const usePostStore = defineStore('posts', () => {
   const currentWaypointOverrides = ref<WaypointOverride[]>([])
   const currentFoods = ref<Food[]>([])
   const currentFoodDayAssignments = ref<FoodDayAssignment[]>([])
+  const currentGpxRecords = ref<PostGpxRecord[]>([])
+  const currentRecordWaypointOverrides = ref<WaypointOverride[]>([])
   const availableTags = ref<string[]>([])
   const gearLibrary      = ref<Gear[]>([])
   const gearCategories   = ref<string[]>([])
@@ -328,6 +330,80 @@ export const usePostStore = defineStore('posts', () => {
     }))
   }
 
+  async function fetchGpxRecords(postId: string) {
+    const res = await apiFetch(`/api/Gpx/${postId}/records`)
+    currentGpxRecords.value = await res.json()
+  }
+
+  async function fetchRecordWaypointOverrides(postId: string, recordId: string) {
+    const res = await apiFetch(`/api/Gpx/${postId}/records/${recordId}/waypoints`)
+    currentRecordWaypointOverrides.value = await res.json()
+  }
+
+  async function createGpxRecord(postId: string, name: string, gpxFile: File): Promise<string> {
+    const fd = new FormData()
+    fd.append('name', name)
+    fd.append('gpxFile', gpxFile)
+    const res = await apiFetch(`/api/Gpx/${postId}/records`, { method: 'POST', body: fd })
+    const data = await res.json()
+    await fetchGpxRecords(postId)
+    return data.id as string
+  }
+
+  async function createGpxRecordFromUrl(postId: string, name: string, url: string): Promise<string> {
+    const res = await apiFetch(`/api/Gpx/${postId}/records/link`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, url }),
+    })
+    const data = await res.json()
+    await fetchGpxRecords(postId)
+    return data.id as string
+  }
+
+  async function rerouteGpxRecord(postId: string, recordId: string, gpxFile: File): Promise<string> {
+    const fd = new FormData()
+    fd.append('gpxFile', gpxFile)
+    await apiFetch(`/api/Gpx/${postId}/records/${recordId}/file`, { method: 'POST', body: fd })
+    await fetchGpxRecords(postId)
+    const rec = currentGpxRecords.value.find(r => r.id === recordId)
+    return rec?.gpxFileUrl ?? ''
+  }
+
+  async function renameGpxRecord(postId: string, recordId: string, name: string) {
+    await apiFetch(`/api/Gpx/${postId}/records/${recordId}/name`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name }),
+    })
+    const rec = currentGpxRecords.value.find(r => r.id === recordId)
+    if (rec) rec.name = name
+  }
+
+  async function updateGpxRecordDescription(postId: string, recordId: string, description: string) {
+    await apiFetch(`/api/Gpx/${postId}/records/${recordId}/description`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ description }),
+    })
+    const rec = currentGpxRecords.value.find(r => r.id === recordId)
+    if (rec) rec.description = description
+  }
+
+  async function updateMainRouteDescription(postId: string, description: string) {
+    await apiFetch(`/api/Gpx/${postId}/description`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ description }),
+    })
+    if (currentPost.value) currentPost.value.gpxDescription = description
+  }
+
+  async function deleteGpxRecord(postId: string, recordId: string) {
+    await apiFetch(`/api/Gpx/${postId}/records/${recordId}`, { method: 'DELETE' })
+    currentGpxRecords.value = currentGpxRecords.value.filter(r => r.id !== recordId)
+  }
+
   async function deletePost(id: string) {
     loading.value = true
     error.value   = null
@@ -372,5 +448,16 @@ export const usePostStore = defineStore('posts', () => {
     createLibraryGear,
     updateLibraryGear,
     deleteLibraryGear,
+    currentGpxRecords,
+    currentRecordWaypointOverrides,
+    fetchGpxRecords,
+    fetchRecordWaypointOverrides,
+    createGpxRecord,
+    createGpxRecordFromUrl,
+    rerouteGpxRecord,
+    renameGpxRecord,
+    updateGpxRecordDescription,
+    updateMainRouteDescription,
+    deleteGpxRecord,
   }
 })

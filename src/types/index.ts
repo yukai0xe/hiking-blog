@@ -15,6 +15,7 @@ export interface Post {
   showGpx?: boolean | null
   showGears?: boolean | null
   showFoods?: boolean | null
+  gpxDescription?: string | null
 }
 
 export interface Photo {
@@ -112,6 +113,15 @@ export interface FoodDayAssignment {
   postId:   string
   foodId:   string
   dayIndex: number
+}
+
+export interface PostGpxRecord {
+  id:          string
+  postId:      string
+  name:        string
+  description: string
+  gpxFileUrl:  string
+  createdAt:   string
 }
 
 export interface GpxLibraryEntry {

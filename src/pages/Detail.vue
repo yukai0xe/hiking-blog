@@ -109,8 +109,36 @@
 
             <!-- Row 1: tags + right actions -->
             <div class="flex items-center gap-2 px-4 py-2 flex-wrap">
-              <!-- Tags (always, left side) -->
-              <template v-if="store.currentPost?.tags?.length">
+              <!-- GPX record tabs (gpx tab only) -->
+              <template v-if="activeTab === 'gpx'">
+                <button
+                  class="px-2.5 py-1 rounded-lg text-[11px] font-body transition-colors duration-150 cursor-pointer"
+                  :style="activeGpxRecordId === null
+                    ? 'background: var(--c-primary); color: var(--c-base);'
+                    : 'color: var(--c-inkMuted); border: 1px solid var(--c-border);'"
+                  @click="activeGpxRecordId = null"
+                >主要路線</button>
+                <button
+                  v-for="rec in store.currentGpxRecords"
+                  :key="rec.id"
+                  class="px-2.5 py-1 rounded-lg text-[11px] font-body transition-colors duration-150 cursor-pointer"
+                  :style="activeGpxRecordId === rec.id
+                    ? 'background: var(--c-primary); color: var(--c-base);'
+                    : 'color: var(--c-inkMuted); border: 1px solid var(--c-border);'"
+                  @click="activeGpxRecordId = rec.id"
+                >{{ rec.name }}</button>
+                <button
+                  class="px-2 py-1 rounded-lg text-[11px] font-body transition-colors duration-150 cursor-pointer flex items-center gap-1"
+                  style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
+                  @click="openNewRecordModal"
+                >
+                  <PlusIcon :size="11" />
+                  新增路線
+                </button>
+              </template>
+
+              <!-- Tags (non-gpx tabs) -->
+              <template v-else-if="store.currentPost?.tags?.length">
                 <span
                   v-for="tag in store.currentPost.tags"
                   :key="tag"
@@ -145,12 +173,23 @@
                   <span>編輯裝備</span>
                 </button>
 
-                <!-- Reupload GPX button (gpx tab, has file) -->
+                <!-- Edit route (both main and additional records) -->
                 <button
-                  v-if="activeTab === 'gpx' && store.currentPost?.gpxFile"
+                  v-if="activeTab === 'gpx' && (activeGpxRecordId !== null || store.currentPost?.gpxFile)"
                   class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                   style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
-                  @click="openGpxModal"
+                  @click="openEditRecordModal"
+                >
+                  <PencilIcon :size="13" />
+                  <span>編輯路線</span>
+                </button>
+
+                <!-- Reupload GPX button -->
+                <button
+                  v-if="activeTab === 'gpx' && (activeGpxRecordId !== null || store.currentPost?.gpxFile)"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
+                  style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
+                  @click="activeGpxRecordId !== null ? openRerouteModal() : openGpxModal()"
                 >
                   <UploadIcon :size="13" />
                   <span>重新上傳</span>
@@ -187,9 +226,22 @@
               </div>
             </div>
 
-            <!-- Row 2: map layer toggles (gpx only, has file) -->
+            <!-- Row 2: route description (gpx only, has description) -->
             <div
-              v-if="activeTab === 'gpx' && store.currentPost?.gpxFile"
+              v-if="activeTab === 'gpx' && activeRouteDescription"
+              class="px-4 py-3 flex flex-col gap-2"
+              style="border-top: 1px solid color-mix(in srgb, var(--c-border) 30%, transparent);"
+            >
+              <div class="flex items-center gap-1.5">
+                <AlignLeftIcon :size="11" style="color: var(--c-primary); opacity: 0.7;" />
+                <span class="text-[10px] font-body uppercase tracking-[0.18em]" style="color: var(--c-primary); opacity: 0.7;">路線說明</span>
+              </div>
+              <span class="font-body text-sm text-inkMuted leading-relaxed">{{ activeRouteDescription }}</span>
+            </div>
+
+            <!-- Row 3: map layer toggles (gpx only, has url) -->
+            <div
+              v-if="activeTab === 'gpx' && activeGpxUrl"
               class="flex items-center gap-2 px-4 py-2"
               style="border-top: 1px solid color-mix(in srgb, var(--c-border) 30%, transparent);"
             >
@@ -205,12 +257,12 @@
                 <component :is="tog.icon" :size="12" />
                 {{ tog.label }}
               </button>
-
             </div>
           </div>
 
           <!-- Content area -->
           <div
+            ref="contentScrollRef"
             class="flex-1 min-h-0"
             :class="activeTab !== 'gpx' ? 'overflow-y-auto p-6' : 'overflow-y-auto'"
           >
@@ -222,9 +274,9 @@
 
             <template v-else-if="activeTab === 'gpx'">
 
-              <!-- No GPX: upload prompt -->
+              <!-- No GPX: upload prompt (main record only) -->
               <div
-                v-if="!store.currentPost?.gpxFile"
+                v-if="activeGpxRecordId === null && !store.currentPost?.gpxFile"
                 class="flex flex-col items-center justify-center gap-6 p-16 h-full"
               >
                 <div
@@ -248,22 +300,23 @@
 
               <!-- Map (fixed height so Leaflet renders correctly) -->
               <GpxViewer
-                v-if="store.currentPost?.gpxFile"
+                v-else-if="activeGpxUrl"
                 ref="gpxViewerRef"
                 data-gpx-map
                 style="height: 100vh;"
-                :gpx-url="store.currentPost!.gpxFile"
+                :key="activeGpxUrl"
+                :gpx-url="activeGpxUrl"
                 :show-peaks="showPeaks"
                 :show-waypoints="showWaypoints"
                 :show-shelters="showShelters"
-                :overrides="store.currentWaypointOverrides"
+                :overrides="activeOverrides"
                 :add-mode="addingWpt"
                 @waypoints-ready="gpxWaypoints = $event"
                 @add-waypoint="onMapClick"
               />
 
               <!-- Waypoint list below the map -->
-              <div v-if="store.currentPost?.gpxFile" class="p-6">
+              <div v-if="activeGpxUrl" class="p-6">
                 <div class="flex items-center gap-2 mb-4">
                   <MapPinIcon :size="14" class="text-primary opacity-70" />
                   <span class="text-[10px] font-body uppercase tracking-[0.2em] text-inkMuted">記錄點</span>
@@ -667,6 +720,7 @@
                   @click="gpxUploadTab = 'upload'"
                 ><UploadIcon :size="11" class="inline mr-1" />上傳檔案</button>
                 <button
+                  v-if="gpxModalRerouteRecordId === null"
                   class="px-3 py-1 rounded-md text-xs font-body transition-colors duration-150 cursor-pointer"
                   :class="gpxUploadTab === 'import' ? 'btn-cta' : 'text-inkMuted hover:text-ink'"
                   @click="gpxUploadTab = 'import'; gpxLibStore.fetchGpxLibrary()"
@@ -679,6 +733,15 @@
 
             <!-- ── Upload tab ── -->
             <template v-if="gpxUploadTab === 'upload'">
+              <div v-if="gpxModalIsNewRecord" class="space-y-1.5">
+                <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">路線名稱</label>
+                <input
+                  v-model="gpxRecordName"
+                  class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                  style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                  placeholder="留空預設為「新路線」"
+                />
+              </div>
               <label
                 class="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed cursor-pointer transition-colors duration-150 py-10"
                 :style="gpxUploadFile
@@ -702,7 +765,7 @@
                   @change="gpxUploadFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
                 />
               </label>
-              <label class="flex items-center gap-2 cursor-pointer select-none">
+              <label v-if="!gpxModalIsNewRecord && gpxModalRerouteRecordId === null" class="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" v-model="syncToLibrary" class="rounded accent-primary" />
                 <span class="text-xs font-body text-inkMuted">同步加入到 GPX 收藏</span>
               </label>
@@ -717,16 +780,25 @@
                 <button
                   class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
                   :disabled="!gpxUploadFile || gpxUploading"
-                  @click="uploadGpx"
+                  @click="gpxModalIsNewRecord ? addGpxRecord() : gpxModalRerouteRecordId ? rerouteRecord() : uploadGpx()"
                 >
                   <div v-if="gpxUploading" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  {{ gpxUploading ? '上傳中…' : '上傳' }}
+                  {{ gpxUploading ? '上傳中…' : (gpxModalIsNewRecord ? '新增' : '上傳') }}
                 </button>
               </div>
             </template>
 
             <!-- ── Import tab ── -->
             <template v-else>
+              <div v-if="gpxModalIsNewRecord" class="space-y-1.5">
+                <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">紀錄名稱</label>
+                <input
+                  v-model="gpxRecordName"
+                  class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                  style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                  placeholder="留空預設為「新路線」"
+                />
+              </div>
               <div class="max-h-64 overflow-y-auto space-y-1.5 pr-1">
                 <div v-if="gpxLibStore.loading" class="py-8 text-center text-inkMuted font-body text-sm">載入中…</div>
                 <div v-else-if="gpxLibStore.gpxLibrary.length === 0" class="py-8 text-center text-inkMuted font-body text-sm">GPX 收藏為空</div>
@@ -735,7 +807,7 @@
                   :key="entry.id"
                   class="w-full text-left px-3 py-2.5 rounded-lg card-aged cursor-pointer transition-colors duration-150 hover:border-primary disabled:opacity-50"
                   :disabled="gpxImporting"
-                  @click="importGpxFromLibrary(entry)"
+                  @click="gpxModalIsNewRecord ? importRecordFromLibrary(entry) : importGpxFromLibrary(entry)"
                 >
                   <p class="font-body text-sm text-ink leading-snug">{{ entry.name }}</p>
                   <p class="font-mono text-[10px] text-inkMuted mt-0.5">
@@ -752,6 +824,67 @@
               >取消</button>
             </template>
 
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ── Edit Route Modal ─────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="export-fade">
+        <div
+          v-if="showEditRecordModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style="background: color-mix(in srgb, var(--c-base) 60%, transparent); backdrop-filter: blur(4px);"
+          @click.self="showEditRecordModal = false"
+          @keydown.esc="showEditRecordModal = false"
+        >
+          <div class="card-aged rounded-xl p-6 w-full max-w-lg shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <PencilIcon :size="15" class="text-primary opacity-80" />
+                <span class="font-heading text-lg text-ink tracking-wide">編輯路線</span>
+              </div>
+              <button class="wpt-close-btn" @click="showEditRecordModal = false">
+                <XIcon :size="12" />
+              </button>
+            </div>
+            <div v-if="!editingMainRoute" class="space-y-1.5">
+              <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">路線名稱</label>
+              <input
+                v-model="editRecordName"
+                class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150"
+                style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                placeholder="路線名稱"
+              />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted">說明</label>
+              <textarea
+                v-model="editRecordDescription"
+                rows="10"
+                class="w-full rounded-lg px-3 py-2 text-sm font-body text-ink bg-transparent border outline-none focus:ring-1 transition-all duration-150 resize-none"
+                style="border-color: var(--c-border); --tw-ring-color: color-mix(in srgb, var(--c-primary) 40%, transparent);"
+                placeholder="路線說明（選填）"
+              />
+            </div>
+            <p v-if="editRecordError" class="text-xs font-body text-red-400">{{ editRecordError }}</p>
+            <div class="flex gap-2">
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
+                style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                :disabled="editRecordSaving"
+                @click="showEditRecordModal = false"
+              >取消</button>
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-2"
+                :disabled="editRecordSaving"
+                @click="saveRecordEdit"
+              >
+                <div v-if="editRecordSaving" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                {{ editRecordSaving ? '儲存中…' : '儲存' }}
+              </button>
+            </div>
           </div>
         </div>
       </Transition>
@@ -829,6 +962,18 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- ── Back to Top ───────────────────────────────────────────── -->
+    <Transition name="export-fade">
+      <button
+        v-if="showBackToTop"
+        class="fixed bottom-6 right-6 z-40 w-10 h-10 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-colors duration-150"
+        style="background: var(--c-primary); color: var(--c-base);"
+        @click="scrollToTop"
+      >
+        <ChevronsRightIcon :size="18" style="transform: rotate(-90deg);" />
+      </button>
+    </Transition>
 
     <!-- ── Batch Hide Modal ─────────────────────────────────────── -->
     <Teleport to="body">
@@ -941,7 +1086,7 @@ import {
   ChevronsRight as ChevronsRightIcon, ChevronsLeft as ChevronsLeftIcon,
   StarOff as StarOffIcon, Download as DownloadIcon, Upload as UploadIcon,
   Plus as PlusIcon, Eye as EyeIcon, EyeOff as EyeOffIcon, Trash2 as Trash2Icon, X as XIcon,
-  BookOpen as BookOpenIcon,
+  BookOpen as BookOpenIcon, AlignLeft as AlignLeftIcon,
 } from 'lucide-vue-next'
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
@@ -950,7 +1095,7 @@ import FoodDayPlanner from '../components/FoodDayPlanner.vue'
 import { usePostStore } from '../stores/postStore'
 import { useThemeStore } from '../stores/themeStore'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
-import type { Waypoint, GpxLibraryEntry } from '../types'
+import type { Waypoint, GpxLibraryEntry, PostGpxRecord } from '../types'
 
 const route       = useRoute()
 const store       = usePostStore()
@@ -963,9 +1108,25 @@ const foodEditMode  = ref(false)
 const gearEditMode  = ref(false)
 const galleryRef    = ref<InstanceType<typeof PhotoGallery> | null>(null)
 const gpxViewerRef  = ref<InstanceType<typeof GpxViewer> | null>(null)
+const contentScrollRef = ref<HTMLElement | null>(null)
+const showBackToTop    = ref(false)
+
+function onWindowScroll() {
+  const winScroll = window.scrollY
+  const divScroll = contentScrollRef.value?.scrollTop ?? 0
+  showBackToTop.value = winScroll > 200 || divScroll > 200
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  contentScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 function setTab(key: string) {
-  if (key === 'gpx') sidebarOpen.value = false
+  if (key === 'gpx') {
+    sidebarOpen.value = false
+    if (store.currentPost) store.fetchGpxRecords(store.currentPost.id)
+  }
   if (key !== 'foods')  foodEditMode.value = false
   if (key !== 'gears')  gearEditMode.value = false
   activeTab.value = key
@@ -1063,7 +1224,6 @@ function openWptEdit(wpt: Waypoint) {
 async function saveWptEdit() {
   if (!editingWpt.value || wptSaving.value) return
   const wpt  = editingWpt.value
-  const post = store.currentPost!
   const name = wptDraft.value.name
   const desc = wptDraft.value.desc
   const { date: time, iso: timeIso } = parseDate(wptDraft.value.wptDate)
@@ -1075,16 +1235,14 @@ async function saveWptEdit() {
   wpt.desc = desc
   wpt.time = time
   gpxViewerRef.value?.updateWaypoint(wpt.lat, wpt.lng, name, desc, time)
-  const existing = store.currentWaypointOverrides.find(
-    o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
-  )
+  const ovList = activeOverrides.value
+  const existing = ovList.find(o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5)
   if (existing) { existing.name = name; existing.description = desc; existing.time = timeIso }
-  else store.currentWaypointOverrides.push({ lat: wpt.lat, lng: wpt.lng, name, description: desc, isCustom: false, hidden: false, time: timeIso })
+  else ovList.push({ lat: wpt.lat, lng: wpt.lng, name, description: desc, isCustom: false, hidden: false, time: timeIso })
   editingWpt.value = null
 
   try {
-    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
-    const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
+    const res = await fetch(waypointApiUrl(''), {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name, desc, time: timeIso }),
@@ -1098,7 +1256,7 @@ async function saveWptEdit() {
 }
 
 function isCustomWpt(wpt: Waypoint): boolean {
-  return store.currentWaypointOverrides.some(
+  return activeOverrides.value.some(
     o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5 && o.isCustom
   )
 }
@@ -1123,15 +1281,14 @@ async function createWpt() {
 
   // Immediate UI update
   const newWpt: Waypoint = { name, desc, lat, lng, ele: null, time }
+  const ovList = activeOverrides.value
   gpxWaypoints.value.push(newWpt)
-  store.currentWaypointOverrides.push({ lat, lng, name, description: desc, isCustom: true, hidden: false, time: timeIso })
+  ovList.push({ lat, lng, name, description: desc, isCustom: true, hidden: false, time: timeIso })
   gpxViewerRef.value?.addWaypointMarker(lat, lng, name, desc)
   showAddWptModal.value = false
 
   try {
-    const post    = store.currentPost!
-    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
-    const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
+    const res = await fetch(waypointApiUrl(''), {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ lat, lng, name, desc, time: timeIso }),
@@ -1142,9 +1299,8 @@ async function createWpt() {
     gpxWaypoints.value = gpxWaypoints.value.filter(
       w => !(Math.abs(w.lat - lat) < 1e-5 && Math.abs(w.lng - lng) < 1e-5)
     )
-    store.currentWaypointOverrides = store.currentWaypointOverrides.filter(
-      o => !(Math.abs(o.lat - lat) < 1e-5 && Math.abs(o.lng - lng) < 1e-5)
-    )
+    const idx = ovList.findIndex(o => Math.abs(o.lat - lat) < 1e-5 && Math.abs(o.lng - lng) < 1e-5)
+    if (idx !== -1) ovList.splice(idx, 1)
     gpxViewerRef.value?.removeWaypointMarker(lat, lng)
     addWptError.value = (e as Error).message
     showAddWptModal.value = true
@@ -1155,16 +1311,13 @@ async function createWpt() {
 
 async function toggleWptHidden(wpt: Waypoint) {
   const newHidden = !wpt.hidden
-  const post      = store.currentPost!
-  const apiBase   = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+  const ovList    = activeOverrides.value
 
   // Immediate UI update
   wpt.hidden = newHidden
-  const ov = store.currentWaypointOverrides.find(
-    o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5
-  )
+  const ov = ovList.find(o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5)
   if (ov) ov.hidden = newHidden
-  else store.currentWaypointOverrides.push({ lat: wpt.lat, lng: wpt.lng, name: wpt.name, description: wpt.desc, isCustom: false, hidden: newHidden })
+  else ovList.push({ lat: wpt.lat, lng: wpt.lng, name: wpt.name, description: wpt.desc, isCustom: false, hidden: newHidden })
   if (newHidden) {
     gpxViewerRef.value?.removeWaypointMarker(wpt.lat, wpt.lng)
   } else {
@@ -1172,7 +1325,7 @@ async function toggleWptHidden(wpt: Waypoint) {
   }
 
   try {
-    const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
+    const res = await fetch(waypointApiUrl(''), {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name: wpt.name, desc: wpt.desc, hidden: newHidden }),
@@ -1182,20 +1335,18 @@ async function toggleWptHidden(wpt: Waypoint) {
 }
 
 async function deleteWpt(wpt: Waypoint) {
-  const post    = store.currentPost!
-  const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+  const ovList = activeOverrides.value
 
   // Immediate UI update
   gpxWaypoints.value = gpxWaypoints.value.filter(
     w => !(Math.abs(w.lat - wpt.lat) < 1e-5 && Math.abs(w.lng - wpt.lng) < 1e-5)
   )
-  store.currentWaypointOverrides = store.currentWaypointOverrides.filter(
-    o => !(Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5)
-  )
+  const idx = ovList.findIndex(o => Math.abs(o.lat - wpt.lat) < 1e-5 && Math.abs(o.lng - wpt.lng) < 1e-5)
+  if (idx !== -1) ovList.splice(idx, 1)
   gpxViewerRef.value?.removeWaypointMarker(wpt.lat, wpt.lng)
 
   try {
-    const res = await fetch(`${apiBase}/api/Gpx/${post.id}/waypoint`, {
+    const res = await fetch(waypointApiUrl(''), {
       method:  'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng }),
@@ -1268,7 +1419,12 @@ const hasMeta = computed(() => {
   return !!(dateRange.value || p?.weather || p?.peopleCount)
 })
 
-onMounted(() => store.fetchPostDetail(route.params.id as string))
+onMounted(async () => {
+  const id = route.params.id as string
+  await store.fetchPostDetail(id)
+  await store.fetchGpxRecords(id)
+  window.addEventListener('scroll', onWindowScroll, { passive: true })
+})
 
 // ── SSE: listen for background GPX sync completion ───────────────
 let sseSource: EventSource | null = null
@@ -1289,6 +1445,7 @@ watch(() => store.currentPost?.id, (id) => {
 onUnmounted(() => {
   sseSource?.close()
   if (hintTimer) clearTimeout(hintTimer)
+  window.removeEventListener('scroll', onWindowScroll)
 })
 
 // ── GPX Upload ───────────────────────────────────────────────────
@@ -1301,13 +1458,153 @@ const syncToLibrary      = ref(false)
 const gpxImporting       = ref(false)
 const gpxImportError     = ref<string | null>(null)
 
-function openGpxModal() {
-  gpxUploadTab.value   = 'upload'
-  gpxUploadFile.value  = null
+// ── GPX Records ──────────────────────────────────────────────────
+const activeGpxRecordId      = ref<string | null>(null)
+const showEditRecordModal     = ref(false)
+const editRecordName          = ref('')
+const editRecordDescription   = ref('')
+const editingMainRoute        = ref(false)
+const editRecordSaving        = ref(false)
+const editRecordError         = ref<string | null>(null)
+
+function openEditRecordModal() {
+  if (activeGpxRecordId.value === null) {
+    editRecordName.value        = ''
+    editRecordDescription.value = store.currentPost?.gpxDescription ?? ''
+    editingMainRoute.value      = true
+  } else {
+    const rec = store.currentGpxRecords.find((r: PostGpxRecord) => r.id === activeGpxRecordId.value)
+    editRecordName.value        = rec?.name ?? ''
+    editRecordDescription.value = rec?.description ?? ''
+    editingMainRoute.value      = false
+  }
+  editRecordError.value     = null
+  showEditRecordModal.value = true
+}
+
+async function saveRecordEdit() {
+  if (editRecordSaving.value) return
+  editRecordSaving.value = true
+  editRecordError.value  = null
+  const description = editRecordDescription.value.trim()
+  try {
+    if (editingMainRoute.value) {
+      await store.updateMainRouteDescription(store.currentPost!.id, description)
+    } else {
+      const recordId = activeGpxRecordId.value!
+      const name = editRecordName.value.trim()
+      if (!name) { editRecordError.value = '請輸入路線名稱'; editRecordSaving.value = false; return }
+      await store.renameGpxRecord(store.currentPost!.id, recordId, name)
+      await store.updateGpxRecordDescription(store.currentPost!.id, recordId, description)
+    }
+    showEditRecordModal.value = false
+  } catch (e) {
+    editRecordError.value = (e as Error).message
+  } finally {
+    editRecordSaving.value = false
+  }
+}
+const gpxModalIsNewRecord      = ref(false)
+const gpxModalRerouteRecordId  = ref<string | null>(null)
+const gpxRecordName            = ref('')
+
+const activeGpxUrl = computed(() => {
+  if (!activeGpxRecordId.value) return store.currentPost?.gpxFile ?? ''
+  const rec = store.currentGpxRecords.find((r: PostGpxRecord) => r.id === activeGpxRecordId.value)
+  return rec?.gpxFileUrl ?? ''
+})
+
+const activeOverrides = computed(() =>
+  activeGpxRecordId.value ? store.currentRecordWaypointOverrides : store.currentWaypointOverrides
+)
+
+const activeRouteDescription = computed(() => {
+  if (!activeGpxRecordId.value) return store.currentPost?.gpxDescription ?? ''
+  const rec = store.currentGpxRecords.find((r: PostGpxRecord) => r.id === activeGpxRecordId.value)
+  return rec?.description ?? ''
+})
+
+function waypointApiUrl(segment: string) {
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+  const postId  = store.currentPost!.id
+  if (activeGpxRecordId.value)
+    return `${apiBase}/api/Gpx/${postId}/records/${activeGpxRecordId.value}/waypoint${segment}`
+  return `${apiBase}/api/Gpx/${postId}/waypoint${segment}`
+}
+
+watch(activeGpxRecordId, async (id) => {
+  if (id && store.currentPost)
+    await store.fetchRecordWaypointOverrides(store.currentPost.id, id)
+})
+
+async function addGpxRecord() {
+  if (!gpxUploadFile.value || gpxUploading.value) return
+  gpxUploading.value   = true
   gpxUploadError.value = null
-  gpxImportError.value = null
-  syncToLibrary.value  = false
-  showGpxUploadModal.value = true
+  try {
+    const newId = await store.createGpxRecord(
+      store.currentPost!.id,
+      gpxRecordName.value.trim() || '新路線',
+      gpxUploadFile.value
+    )
+    activeGpxRecordId.value  = newId
+    showGpxUploadModal.value = false
+    gpxUploadFile.value      = null
+    gpxRecordName.value      = ''
+  } catch (e) {
+    gpxUploadError.value = (e as Error).message
+  } finally {
+    gpxUploading.value = false
+  }
+}
+
+async function rerouteRecord() {
+  if (!gpxUploadFile.value || gpxUploading.value || !gpxModalRerouteRecordId.value) return
+  gpxUploading.value   = true
+  gpxUploadError.value = null
+  try {
+    await store.rerouteGpxRecord(store.currentPost!.id, gpxModalRerouteRecordId.value, gpxUploadFile.value)
+    showGpxUploadModal.value = false
+    gpxUploadFile.value      = null
+  } catch (e) {
+    gpxUploadError.value = (e as Error).message
+  } finally {
+    gpxUploading.value = false
+  }
+}
+
+function openGpxModal() {
+  gpxModalIsNewRecord.value     = false
+  gpxModalRerouteRecordId.value = null
+  gpxRecordName.value           = ''
+  gpxUploadTab.value            = 'upload'
+  gpxUploadFile.value           = null
+  gpxUploadError.value          = null
+  gpxImportError.value          = null
+  syncToLibrary.value           = false
+  showGpxUploadModal.value      = true
+}
+
+function openNewRecordModal() {
+  gpxModalIsNewRecord.value     = true
+  gpxModalRerouteRecordId.value = null
+  gpxRecordName.value           = ''
+  gpxUploadTab.value            = 'upload'
+  gpxUploadFile.value           = null
+  gpxUploadError.value          = null
+  syncToLibrary.value           = false
+  showGpxUploadModal.value      = true
+}
+
+function openRerouteModal() {
+  gpxModalIsNewRecord.value     = false
+  gpxModalRerouteRecordId.value = activeGpxRecordId.value
+  gpxRecordName.value           = ''
+  gpxUploadTab.value            = 'upload'
+  gpxUploadFile.value           = null
+  gpxUploadError.value          = null
+  syncToLibrary.value           = false
+  showGpxUploadModal.value      = true
 }
 
 async function uploadGpx() {
@@ -1331,6 +1628,23 @@ async function uploadGpx() {
     gpxUploadError.value = (e as Error).message
   } finally {
     gpxUploading.value = false
+  }
+}
+
+async function importRecordFromLibrary(entry: GpxLibraryEntry) {
+  gpxImporting.value   = true
+  gpxImportError.value = null
+  try {
+    const name  = gpxRecordName.value.trim() || entry.name
+    const newId = await store.createGpxRecordFromUrl(store.currentPost!.id, name, entry.gpxFileUrl)
+    activeGpxRecordId.value  = newId
+    showGpxUploadModal.value = false
+    gpxRecordName.value      = ''
+    gpxUploadTab.value       = 'upload'
+  } catch (e) {
+    gpxImportError.value = (e as Error).message
+  } finally {
+    gpxImporting.value = false
   }
 }
 
