@@ -59,10 +59,10 @@
             <SlidersHorizontalIcon :size="13" />
             更多篩選
             <span
-              v-if="activeFilterCount > 0"
+              v-if="hasActiveFilter"
               class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
               style="background: var(--c-primary); color: var(--c-base);"
-            >{{ activeFilterCount }}</span>
+            >{{ filtered.length }}</span>
           </button>
 
           <!-- Backdrop -->
