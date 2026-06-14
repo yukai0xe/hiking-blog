@@ -48,6 +48,38 @@
         </div>
       </div>
 
+      <!-- Filter bar -->
+      <div v-if="store.gpxLibrary.length > 0" class="flex flex-wrap items-center gap-2 mb-5">
+        <!-- Category pills -->
+        <button
+          v-for="cat in CATEGORIES" :key="cat"
+          class="px-3 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
+          :style="filterCategory === cat
+            ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+            : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+          @click="filterCategory = filterCategory === cat ? '' : cat"
+        >{{ cat }}</button>
+
+        <div class="w-px h-4 bg-border/50 mx-1" />
+
+        <!-- Difficulty star pills -->
+        <button
+          v-for="n in 5" :key="n"
+          class="px-3 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
+          :style="filterStars === n
+            ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+            : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+          @click="filterStars = filterStars === n ? null : n"
+        >{{ '★'.repeat(n) }}</button>
+
+        <!-- Clear all -->
+        <button
+          v-if="hasActiveFilter"
+          class="ml-auto text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer flex items-center gap-1"
+          @click="clearFilters"
+        ><XIcon :size="11" />清除篩選</button>
+      </div>
+
       <!-- Error banner -->
       <div v-if="apiError"
         class="mb-4 px-4 py-2.5 rounded-lg flex items-center gap-2 font-body text-sm"
@@ -70,11 +102,11 @@
             </button>
           </div>
 
-          <!-- No results after search -->
-          <div v-else-if="filtered.length === 0 && search" class="card-aged p-12 text-center">
+          <!-- No results after search/filter -->
+          <div v-else-if="filtered.length === 0 && hasActiveFilter" class="card-aged p-12 text-center">
             <SearchIcon :size="36" class="mx-auto mb-4 text-primary opacity-30" />
             <p class="font-heading text-lg text-ink mb-2">無符合結果</p>
-            <button class="text-sm font-body text-primary hover:opacity-70 cursor-pointer" @click="search = ''">清除搜尋</button>
+            <button class="text-sm font-body text-primary hover:opacity-70 cursor-pointer" @click="clearFilters">清除篩選</button>
           </div>
 
           <!-- Card grid -->
@@ -311,12 +343,29 @@ onMounted(async () => {
   loadAllCardGpx()
 })
 
-// ── Search ───────────────────────────────────────────────
-const search = ref('')
+// ── Search & filters ─────────────────────────────────────
+const search         = ref('')
+const filterCategory = ref('')
+const filterStars    = ref<number | null>(null)
+
+const hasActiveFilter = computed(() =>
+  !!search.value.trim() || !!filterCategory.value || filterStars.value !== null
+)
+
+function clearFilters() {
+  search.value         = ''
+  filterCategory.value = ''
+  filterStars.value    = null
+}
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  if (!q) return store.gpxLibrary
-  return store.gpxLibrary.filter(e => e.name.toLowerCase().includes(q))
+  return store.gpxLibrary.filter(e => {
+    if (q && !e.name.toLowerCase().includes(q)) return false
+    if (filterCategory.value && e.category !== filterCategory.value) return false
+    if (filterStars.value !== null && e.difficultyStars !== filterStars.value) return false
+    return true
+  })
 })
 
 const categoryCounts = computed(() => {
