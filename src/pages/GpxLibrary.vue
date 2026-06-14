@@ -100,7 +100,7 @@
               <div class="card-actions absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity duration-150">
                 <a
                   :href="entry.gpxFileUrl"
-                  :download="`${entry.name}.gpx`"
+                  :download="`${entry.name}${entry.date ? '_' + entry.date : ''}.gpx`"
                   class="card-action-btn"
                   @click.stop
                   title="下載 GPX"
