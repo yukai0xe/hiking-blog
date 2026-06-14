@@ -81,10 +81,10 @@
                 <button
                   v-for="cat in CATEGORIES" :key="cat"
                   class="px-3 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
-                  :style="filterCategory === cat
+                  :style="filterCategory.includes(cat)
                     ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
                     : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
-                  @click="filterCategory = filterCategory === cat ? '' : cat"
+                  @click="toggleCategory(cat)"
                 >{{ cat }}</button>
               </div>
 
@@ -94,10 +94,10 @@
                 <button
                   v-for="n in 5" :key="n"
                   class="px-2.5 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
-                  :style="filterStars === n
+                  :style="filterStars.includes(n)
                     ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
                     : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
-                  @click="filterStars = filterStars === n ? null : n"
+                  @click="toggleStars(n)"
                 >{{ '★'.repeat(n) }}</button>
               </div>
 
@@ -384,29 +384,39 @@ onMounted(async () => {
 
 // ── Search & filters ─────────────────────────────────────
 const search         = ref('')
-const filterCategory = ref('')
-const filterStars    = ref<number | null>(null)
+const filterCategory = ref<string[]>([])
+const filterStars    = ref<number[]>([])
 
 const showFilterPanel   = ref(false)
-const activeFilterCount = computed(() =>
-  (filterCategory.value ? 1 : 0) + (filterStars.value !== null ? 1 : 0)
-)
-const hasActiveFilter = computed(() =>
-  !!search.value.trim() || activeFilterCount.value > 0
-)
+const activeFilterCount = computed(() => filterCategory.value.length + filterStars.value.length)
+const hasActiveFilter   = computed(() => !!search.value.trim() || activeFilterCount.value > 0)
+
+function toggleCategory(cat: string) {
+  const i = filterCategory.value.indexOf(cat)
+  filterCategory.value = i === -1
+    ? [...filterCategory.value, cat]
+    : filterCategory.value.filter(c => c !== cat)
+}
+
+function toggleStars(n: number) {
+  const i = filterStars.value.indexOf(n)
+  filterStars.value = i === -1
+    ? [...filterStars.value, n]
+    : filterStars.value.filter(s => s !== n)
+}
 
 function clearFilters() {
   search.value         = ''
-  filterCategory.value = ''
-  filterStars.value    = null
+  filterCategory.value = []
+  filterStars.value    = []
 }
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return store.gpxLibrary.filter(e => {
     if (q && !e.name.toLowerCase().includes(q)) return false
-    if (filterCategory.value && e.category !== filterCategory.value) return false
-    if (filterStars.value !== null && e.difficultyStars !== filterStars.value) return false
+    if (filterCategory.value.length && !filterCategory.value.includes(e.category ?? '')) return false
+    if (filterStars.value.length && !filterStars.value.includes(e.difficultyStars ?? 0)) return false
     return true
   })
 })
