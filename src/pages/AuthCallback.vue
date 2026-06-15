@@ -18,9 +18,10 @@ const auth   = useAuthStore()
 const error  = ref<string | null>(null)
 
 onMounted(async () => {
-  const code     = route.query.code      as string | undefined
-  const state    = route.query.app_state as string | undefined
-  if (!code || !state) {
+  const code  = route.query.code as string | undefined
+  // State was stored in sessionStorage before the OAuth redirect — no need to pass it through the URL.
+  const state = sessionStorage.getItem('oauth_state') ?? ''
+  if (!code) {
     error.value = '缺少授權參數'
     return
   }
