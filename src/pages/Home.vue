@@ -74,7 +74,7 @@
             >
               <p class="text-xs font-body px-3 py-1 truncate text-inkMuted">{{ auth.user.email }}</p>
               <button
-                @click="auth.logout(); showUserMenu = false"
+                @click="if (confirm('確定要登出嗎？')) { auth.logout(); showUserMenu = false; window.location.reload() }"
                 class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm font-body rounded-lg text-inkMuted hover:text-ink transition-colors duration-200"
               >
                 <LogOutIcon :size="13" />
