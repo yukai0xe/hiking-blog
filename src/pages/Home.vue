@@ -36,6 +36,50 @@
             <PlusIcon :size="15" />
             新增記錄
           </router-link>
+
+          <!-- Not logged in -->
+          <button
+            v-if="!auth.user"
+            @click="auth.login()"
+            class="card-aged flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
+          >
+            <LogInIcon :size="15" />
+            登入
+          </button>
+
+          <!-- Logged in: avatar + dropdown -->
+          <div v-else class="relative">
+            <button
+              @click="showUserMenu = !showUserMenu"
+              class="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center cursor-pointer"
+              style="background: var(--c-primary);"
+            >
+              <img
+                v-if="auth.user.avatarUrl"
+                :src="auth.user.avatarUrl"
+                class="w-full h-full object-cover"
+                alt="avatar"
+              />
+              <span v-else class="font-heading text-sm font-bold" style="color: var(--c-base);">
+                {{ auth.user.name?.[0]?.toUpperCase() ?? '?' }}
+              </span>
+            </button>
+
+            <div
+              v-if="showUserMenu"
+              class="absolute right-0 top-11 card-aged rounded-xl shadow-xl p-2 z-50"
+              style="min-width: 10rem;"
+            >
+              <p class="text-xs font-body px-3 py-1 truncate text-inkMuted">{{ auth.user.email }}</p>
+              <button
+                @click="auth.logout(); showUserMenu = false"
+                class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm font-body rounded-lg text-inkMuted hover:text-ink transition-colors duration-200"
+              >
+                <LogOutIcon :size="13" />
+                登出
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </header>
@@ -150,15 +194,19 @@ import {
   Compass as CompassIcon, Plus as PlusIcon, Map as MapIcon,
   Sun as SunIcon, Moon as MoonIcon, Search as SearchIcon, X as XIcon,
   Library as LibraryIcon, Route as RouteIcon,
+  LogIn as LogInIcon, LogOut as LogOutIcon,
 } from 'lucide-vue-next'
 import WaterfallList from '../components/WaterfallList.vue'
 import DateRangePicker from '../components/DateRangePicker.vue'
 import { usePostStore } from '../stores/postStore'
 import { useThemeStore } from '../stores/themeStore'
+import { useAuthStore } from '../stores/authStore'
 import type { Post } from '../types'
 
 const store = usePostStore()
 const theme = useThemeStore()
+const auth = useAuthStore()
+const showUserMenu = ref(false)
 onMounted(() => store.fetchPosts())
 
 const searchTitle    = ref('')
