@@ -41,6 +41,7 @@
               {{ store.currentPost!.isPublic ? '取消公開' : '公開發布' }}
             </button>
             <router-link
+              v-if="auth.user"
               :to="`/edit/${store.currentPost!.id}`"
               class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
             >
@@ -140,6 +141,7 @@
                   @click="activeGpxRecordId = rec.id"
                 >{{ rec.name }}</button>
                 <button
+                  v-if="auth.user"
                   class="px-2 py-1 rounded-lg text-[11px] font-body transition-colors duration-150 cursor-pointer flex items-center gap-1"
                   style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
                   @click="openNewRecordModal"
@@ -174,7 +176,7 @@
 
                 <!-- Edit gears button (gears tab only) -->
                 <button
-                  v-if="activeTab === 'gears'"
+                  v-if="auth.user && activeTab === 'gears'"
                   class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                   :style="gearEditMode
                     ? 'background: var(--c-primary); color: var(--c-base); border: 1px solid var(--c-primary);'
@@ -187,7 +189,7 @@
 
                 <!-- Edit route (both main and additional records) -->
                 <button
-                  v-if="activeTab === 'gpx' && (activeGpxRecordId !== null || store.currentPost?.gpxFile)"
+                  v-if="auth.user && activeTab === 'gpx' && (activeGpxRecordId !== null || store.currentPost?.gpxFile)"
                   class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                   style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
                   @click="openEditRecordModal"
@@ -198,7 +200,7 @@
 
                 <!-- Reupload GPX button -->
                 <button
-                  v-if="activeTab === 'gpx' && (activeGpxRecordId !== null || store.currentPost?.gpxFile)"
+                  v-if="auth.user && activeTab === 'gpx' && (activeGpxRecordId !== null || store.currentPost?.gpxFile)"
                   class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                   style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
                   @click="activeGpxRecordId !== null ? openRerouteModal() : openGpxModal()"
@@ -209,7 +211,7 @@
 
                 <!-- Edit foods button (foods tab only) -->
                 <button
-                  v-if="activeTab === 'foods'"
+                  v-if="auth.user && activeTab === 'foods'"
                   class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                   :style="foodEditMode
                     ? 'background: var(--c-primary); color: var(--c-base); border: 1px solid var(--c-primary);'
@@ -335,7 +337,7 @@
                   <span v-if="gpxWaypoints.length" class="font-mono text-[10px] text-inkMuted opacity-50">{{ gpxWaypoints.length }}</span>
                   <div class="ml-auto flex items-center gap-2">
                     <button
-                      v-if="gpxWaypoints.length > 0"
+                      v-if="auth.user && gpxWaypoints.length > 0"
                       class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                       style="background: transparent; color: var(--c-inkMuted); border: 1px solid var(--c-border);"
                       @click="openBatchHide"
@@ -344,6 +346,7 @@
                       批次顯示/隱藏
                     </button>
                     <button
+                      v-if="auth.user"
                       class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                       :style="addingWpt
                         ? 'background: var(--c-cta); color: #fff; border: 1px solid var(--c-cta);'

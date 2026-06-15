@@ -22,7 +22,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.path === '/create' || to.path.startsWith('/edit/')) {
+  const protectedPaths = ['/create', '/gpx-library', '/gear-library']
+  if (protectedPaths.includes(to.path) || to.path.startsWith('/edit/')) {
     const auth = useAuthStore()
     if (!auth.user) return '/'
   }

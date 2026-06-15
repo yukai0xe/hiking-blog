@@ -19,6 +19,7 @@
             <MoonIcon v-else :size="17" />
           </button>
           <router-link
+            v-if="auth.user"
             to="/gpx-library"
             class="card-aged flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
           >
@@ -26,13 +27,14 @@
             GPX 收藏
           </router-link>
           <router-link
+            v-if="auth.user"
             to="/gear-library"
             class="card-aged flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
           >
             <LibraryIcon :size="15" />
             裝備庫
           </router-link>
-          <router-link to="/create" class="btn-cta flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg cursor-pointer">
+          <router-link v-if="auth.user" to="/create" class="btn-cta flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg cursor-pointer">
             <PlusIcon :size="15" />
             新增記錄
           </router-link>
