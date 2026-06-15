@@ -28,6 +28,18 @@
             返回
           </button>
           <div class="flex items-center gap-2">
+            <button
+              v-if="auth.user"
+              @click="toggleVisibility"
+              :class="store.currentPost!.isPublic
+                ? 'card-aged text-inkMuted hover:text-ink'
+                : 'btn-cta'"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
+            >
+              <EyeOffIcon v-if="store.currentPost!.isPublic" :size="14" />
+              <GlobeIcon  v-else :size="14" />
+              {{ store.currentPost!.isPublic ? '取消公開' : '公開發布' }}
+            </button>
             <router-link
               :to="`/edit/${store.currentPost!.id}`"
               class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
@@ -1075,7 +1087,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft as ArrowLeftIcon, Pencil as PencilIcon,
   Camera as CameraIcon, Map as MapIcon, Backpack as BackpackIcon, UtensilsCrossed as FoodIcon,
@@ -1085,7 +1097,7 @@ import {
   ChevronsRight as ChevronsRightIcon, ChevronsLeft as ChevronsLeftIcon,
   StarOff as StarOffIcon, Download as DownloadIcon, Upload as UploadIcon,
   Plus as PlusIcon, Eye as EyeIcon, EyeOff as EyeOffIcon, Trash2 as Trash2Icon, X as XIcon,
-  BookOpen as BookOpenIcon, AlignLeft as AlignLeftIcon,
+  BookOpen as BookOpenIcon, AlignLeft as AlignLeftIcon, Globe as GlobeIcon,
 } from 'lucide-vue-next'
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
@@ -1094,12 +1106,15 @@ import FoodDayPlanner from '../components/FoodDayPlanner.vue'
 import { usePostStore } from '../stores/postStore'
 import { useThemeStore } from '../stores/themeStore'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
+import { useAuthStore } from '../stores/authStore'
 import type { Waypoint, GpxLibraryEntry, PostGpxRecord } from '../types'
 
 const route       = useRoute()
+const router      = useRouter()
 const store       = usePostStore()
 const theme       = useThemeStore()
 const gpxLibStore = useGpxLibraryStore()
+const auth        = useAuthStore()
 
 const activeTab    = ref('photos')
 const sidebarOpen   = ref(false)
@@ -1421,6 +1436,10 @@ const hasMeta = computed(() => {
 onMounted(async () => {
   const id = route.params.id as string
   await store.fetchPostDetail(id)
+  if (!store.currentPost?.isPublic && !auth.user) {
+    router.replace('/')
+    return
+  }
   await store.fetchGpxRecords(id)
   window.addEventListener('scroll', onWindowScroll, { passive: true })
 })
@@ -1679,6 +1698,12 @@ async function importGpxFromLibrary(entry: GpxLibraryEntry) {
   } finally {
     gpxImporting.value = false
   }
+}
+
+// ── Visibility toggle ────────────────────────────────────────────
+async function toggleVisibility() {
+  if (!store.currentPost) return
+  await store.updatePostVisibility(store.currentPost.id, !store.currentPost.isPublic)
 }
 
 // ── Export ───────────────────────────────────────────────────────
