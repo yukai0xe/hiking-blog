@@ -189,6 +189,27 @@
         </div>
       </div>
 
+      <!-- Logged in: two sections (已公開 / 草稿) -->
+      <template v-else-if="auth.user">
+        <template v-if="filteredPublicPosts.length > 0">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="font-heading text-xs uppercase tracking-[0.2em] text-inkMuted opacity-60">已公開</span>
+            <span class="flex-1 border-t" style="border-color: var(--c-border);"></span>
+            <span class="font-mono text-[10px] text-inkMuted opacity-40">{{ filteredPublicPosts.length }}</span>
+          </div>
+          <WaterfallList :posts="filteredPublicPosts" class="mb-10" />
+        </template>
+        <template v-if="filteredDraftPosts.length > 0">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="font-heading text-xs uppercase tracking-[0.2em] text-inkMuted opacity-60">草稿</span>
+            <span class="flex-1 border-t" style="border-color: var(--c-border);"></span>
+            <span class="font-mono text-[10px] text-inkMuted opacity-40">{{ filteredDraftPosts.length }}</span>
+          </div>
+          <WaterfallList :posts="filteredDraftPosts" />
+        </template>
+      </template>
+
+      <!-- Not logged in: public posts only, no section headers -->
       <WaterfallList v-else :posts="filteredPosts" />
     </main>
   </div>
@@ -308,6 +329,9 @@ const filteredPosts = computed(() => {
     return true
   })
 })
+
+const filteredPublicPosts = computed(() => filteredPosts.value.filter(p => p.isPublic))
+const filteredDraftPosts  = computed(() => filteredPosts.value.filter(p => !p.isPublic))
 </script>
 
 <style scoped>
