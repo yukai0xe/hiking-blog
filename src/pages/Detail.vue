@@ -406,7 +406,7 @@
                         {{ formatWptTime(wpt.time) }}
                       </p>
                       <Transition name="wpt-hint">
-                        <p v-if="hintWpt === wpt" class="text-[10px] font-body text-inkMuted opacity-60 tracking-wide">
+                        <p v-if="auth.user && hintWpt === wpt" class="text-[10px] font-body text-inkMuted opacity-60 tracking-wide">
                           ✦ 雙擊進入編輯
                         </p>
                       </Transition>
@@ -1221,6 +1221,7 @@ function onWptClick(wpt: Waypoint) {
 }
 
 function onWptDblClick(wpt: Waypoint) {
+  if (!auth.user) return
   openWptEdit(wpt)
 }
 
