@@ -166,10 +166,14 @@
           <MapIcon :size="44" class="mx-auto mb-4 text-primary opacity-40" />
           <p class="font-heading text-2xl text-ink mb-2">記錄尚未開始</p>
           <p class="text-sm mb-6 font-body italic text-inkMuted">每段旅程都值得被記錄</p>
-          <router-link to="/create" class="btn-cta inline-flex items-center gap-2 font-semibold px-6 py-2.5 rounded-lg cursor-pointer">
+          <router-link v-if="auth.user" to="/create" class="btn-cta inline-flex items-center gap-2 font-semibold px-6 py-2.5 rounded-lg cursor-pointer">
             <PlusIcon :size="15" />
             新增第一筆
           </router-link>
+          <button v-else class="btn-cta inline-flex items-center gap-2 font-semibold px-6 py-2.5 rounded-lg cursor-pointer" @click="auth.login()">
+            <LogInIcon :size="15" />
+            登入以開始記錄
+          </button>
         </div>
       </div>
 
