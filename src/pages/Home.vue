@@ -74,7 +74,7 @@
             >
               <p class="text-xs font-body px-3 py-1 truncate text-inkMuted">{{ auth.user.email }}</p>
               <button
-                @click="if (confirm('確定要登出嗎？')) { auth.logout(); showUserMenu = false; window.location.reload() }"
+                @click="confirmLogout"
                 class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm font-body rounded-lg text-inkMuted hover:text-ink transition-colors duration-200"
               >
                 <LogOutIcon :size="13" />
@@ -220,6 +220,13 @@ const filterDateEnd   = ref('')
 const hasActiveFilters = computed(() =>
   !!(searchTitle.value || filterWeather.value || filterDays.value || filterDateStart.value || filterDateEnd.value)
 )
+
+function confirmLogout() {
+  if (!confirm('確定要登出嗎？')) return
+  auth.logout()
+  showUserMenu.value = false
+  window.location.reload()
+}
 
 function clearFilters() {
   searchTitle.value    = ''
