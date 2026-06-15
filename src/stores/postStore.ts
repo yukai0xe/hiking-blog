@@ -433,6 +433,17 @@ export const usePostStore = defineStore('posts', () => {
     }
   }
 
+  async function updatePostVisibility(postId: string, isPublic: boolean): Promise<void> {
+    await apiFetch(`/api/Posts/${postId}/visibility`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ isPublic }),
+    })
+    if (currentPost.value?.id === postId) {
+      currentPost.value = { ...currentPost.value, isPublic }
+    }
+  }
+
   return {
     posts,
     currentPost,
@@ -474,5 +485,6 @@ export const usePostStore = defineStore('posts', () => {
     updateGpxRecordDescription,
     updateMainRouteDescription,
     deleteGpxRecord,
+    updatePostVisibility,
   }
 })
