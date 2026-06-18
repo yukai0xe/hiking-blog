@@ -64,16 +64,8 @@
 
       <!-- ── Category Management ──────────────────────────── -->
       <div class="card-aged px-5 py-4 mb-6">
-        <p class="text-[10px] font-body font-semibold tracking-[0.2em] uppercase text-inkMuted mb-3">類別管理</p>
+        <p class="text-[10px] font-body font-semibold tracking-[0.2em] uppercase text-inkMuted mb-3">自訂類別</p>
         <div class="flex flex-wrap gap-2 items-center">
-          <!-- Global (seeded) categories — read-only chips -->
-          <span
-            v-for="cat in globalCategories"
-            :key="cat"
-            class="px-2.5 py-1 rounded-full text-xs font-body text-inkMuted"
-            style="border: 1px solid var(--c-border);"
-          >{{ cat }}</span>
-
           <!-- User's own (custom) categories — deletable chips -->
           <span
             v-for="cat in store.ownGearCategories"
@@ -397,9 +389,6 @@ const addingCat = ref(false)
 const newCatName = ref('')
 const savingCat = ref(false)
 
-const globalCategories = computed(() =>
-  store.gearCategories.filter(c => !store.ownGearCategories.includes(c))
-)
 
 async function confirmAddCat() {
   const name = newCatName.value.trim()
