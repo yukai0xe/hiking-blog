@@ -487,9 +487,11 @@ const editingId = ref<string | null>(null)
 const saving    = ref(false)
 const apiError  = ref<string | null>(null)
 
+const today = () => new Date().toISOString().slice(0, 10)
+
 const blankForm = (): GearForm => ({
   name: '', weight: '', note: '', category: '其他',
-  quantity: 1, brand: '', referenceUrl: '', price: '', addedAt: '',
+  quantity: 1, brand: '', referenceUrl: '', price: '', addedAt: today(),
 })
 
 const formErrors = computed(() => {
