@@ -58,7 +58,7 @@
 
         <select v-model="filterCategory" class="filter-select">
           <option value="">所有類別</option>
-          <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
+          <option v-for="cat in filterCategories" :key="cat" :value="cat">{{ cat }}</option>
         </select>
       </div>
 
@@ -410,6 +410,14 @@ async function removeCat(name: string) {
 }
 
 // ── Table state ──────────────────────────────────────────
+const filterCategories = computed(() => {
+  const all = new Set([
+    ...store.gearCategories,
+    ...store.gearLibrary.map(g => g.category).filter(Boolean),
+  ])
+  return [...all].sort((a, b) => a.localeCompare(b, 'zh-TW'))
+})
+
 const search         = ref('')
 const filterCategory = ref('')
 const hoveredId      = ref<string | null>(null)
