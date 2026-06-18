@@ -62,6 +62,72 @@
         </select>
       </div>
 
+      <!-- ── Category Management ──────────────────────────── -->
+      <div class="card-aged px-5 py-4 mb-6">
+        <p class="text-[10px] font-body font-semibold tracking-[0.2em] uppercase text-inkMuted mb-3">類別管理</p>
+        <div class="flex flex-wrap gap-2 items-center">
+          <!-- Global (seeded) categories — read-only chips -->
+          <span
+            v-for="cat in globalCategories"
+            :key="cat"
+            class="px-2.5 py-1 rounded-full text-xs font-body text-inkMuted"
+            style="border: 1px solid var(--c-border);"
+          >{{ cat }}</span>
+
+          <!-- User's own (custom) categories — deletable chips -->
+          <span
+            v-for="cat in store.ownGearCategories"
+            :key="cat"
+            class="flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-body text-primary"
+            style="border: 1px solid color-mix(in srgb, var(--c-primary) 30%, transparent); background: color-mix(in srgb, var(--c-primary) 8%, transparent);"
+          >
+            {{ cat }}
+            <button
+              type="button"
+              class="w-4 h-4 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+              @click="removeCat(cat)"
+            ><XIcon :size="9" /></button>
+          </span>
+
+          <!-- Add new category -->
+          <template v-if="addingCat">
+            <div class="flex items-center gap-1.5">
+              <input
+                v-model="newCatName"
+                type="text"
+                class="px-2.5 py-1 rounded-full text-xs font-body text-ink outline-none"
+                style="border: 1px solid var(--c-primary); background: transparent; min-width: 120px;"
+                placeholder="新類別名稱"
+                autofocus
+                @keydown.enter="confirmAddCat"
+                @keydown.escape="addingCat = false; newCatName = ''"
+              />
+              <button
+                type="button"
+                class="w-6 h-6 rounded-full flex items-center justify-center btn-cta cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="!newCatName.trim() || savingCat"
+                @click="confirmAddCat"
+              >
+                <span v-if="savingCat" class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                <CheckIcon v-else :size="11" />
+              </button>
+              <button
+                type="button"
+                class="w-6 h-6 rounded-full flex items-center justify-center card-aged text-inkMuted hover:text-ink transition-colors cursor-pointer"
+                @click="addingCat = false; newCatName = ''"
+              ><XIcon :size="11" /></button>
+            </div>
+          </template>
+          <button
+            v-else
+            type="button"
+            class="px-2.5 py-1 rounded-full text-xs font-body text-inkMuted hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
+            style="border: 1px dashed var(--c-border);"
+            @click="addingCat = true"
+          ><PlusIcon :size="11" /> 新增類別</button>
+        </div>
+      </div>
+
       <!-- Error banner -->
       <div v-if="apiError"
         class="mb-4 px-4 py-2.5 rounded-lg flex items-center gap-2 font-body text-sm"
@@ -202,42 +268,9 @@
               </div>
               <div>
                 <label class="field-label">類別</label>
-                <div v-if="!addingCategory" class="flex gap-1.5">
-                  <select v-model="form.category" class="input-field text-sm font-body flex-1 min-w-0">
-                    <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
-                  </select>
-                  <button
-                    type="button"
-                    class="w-9 h-9 rounded-lg flex items-center justify-center card-aged text-inkMuted hover:text-ink transition-colors cursor-pointer shrink-0"
-                    title="新增類別"
-                    @click="addingCategory = true"
-                  ><PlusIcon :size="14" /></button>
-                </div>
-                <div v-else class="flex gap-1.5">
-                  <input
-                    v-model="newCategoryName"
-                    type="text"
-                    class="input-field text-sm flex-1 min-w-0"
-                    placeholder="類別名稱"
-                    autofocus
-                    @keydown.enter="confirmAddCategory"
-                    @keydown.escape="addingCategory = false; newCategoryName = ''"
-                  />
-                  <button
-                    type="button"
-                    class="w-9 h-9 rounded-lg flex items-center justify-center btn-cta cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    :disabled="!newCategoryName.trim() || savingCategory"
-                    @click="confirmAddCategory"
-                  >
-                    <span v-if="savingCategory" class="w-3 h-3 border-2 rounded-full animate-spin border-current border-t-transparent" />
-                    <CheckIcon v-else :size="14" />
-                  </button>
-                  <button
-                    type="button"
-                    class="w-9 h-9 rounded-lg flex items-center justify-center card-aged text-inkMuted hover:text-ink transition-colors cursor-pointer shrink-0"
-                    @click="addingCategory = false; newCategoryName = ''"
-                  ><XIcon :size="14" /></button>
-                </div>
+                <select v-model="form.category" class="input-field text-sm font-body">
+                  <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
               </div>
             </div>
 
@@ -359,24 +392,32 @@ import { usePostStore } from '../stores/postStore'
 const store = usePostStore()
 onMounted(() => Promise.all([store.fetchGearLibrary(), store.fetchGearCategories()]))
 
-const addingCategory    = ref(false)
-const newCategoryName   = ref('')
-const savingCategory    = ref(false)
+// ── Category management block ─────────────────────────────
+const addingCat = ref(false)
+const newCatName = ref('')
+const savingCat = ref(false)
 
-async function confirmAddCategory() {
-  const name = newCategoryName.value.trim()
-  if (!name || savingCategory.value) return
-  savingCategory.value = true
+const globalCategories = computed(() =>
+  store.gearCategories.filter(c => !store.ownGearCategories.includes(c))
+)
+
+async function confirmAddCat() {
+  const name = newCatName.value.trim()
+  if (!name || savingCat.value) return
+  savingCat.value = true
   try {
     await store.addGearCategory(name)
-    form.value.category   = name
-    addingCategory.value  = false
-    newCategoryName.value = ''
+    addingCat.value = false
+    newCatName.value = ''
   } catch {
     // keep input open on error
   } finally {
-    savingCategory.value = false
+    savingCat.value = false
   }
+}
+
+async function removeCat(name: string) {
+  await store.deleteGearCategory(name)
 }
 
 // ── Table state ──────────────────────────────────────────
@@ -474,9 +515,7 @@ function openEdit(gear: Gear) {
 }
 
 function closeForm() {
-  showForm.value        = false
-  addingCategory.value  = false
-  newCategoryName.value = ''
+  showForm.value = false
 }
 
 async function submitForm() {

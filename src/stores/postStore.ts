@@ -27,6 +27,7 @@ export const usePostStore = defineStore('posts', () => {
   const availableTags = ref<string[]>([])
   const gearLibrary      = ref<Gear[]>([])
   const gearCategories   = ref<string[]>([])
+  const ownGearCategories = ref<string[]>([])
   const loading       = ref(false)
   const error         = ref<string | null>(null)
 
@@ -37,8 +38,10 @@ export const usePostStore = defineStore('posts', () => {
 
   async function fetchGearCategories() {
     if (gearCategories.value.length > 0) return
-    const res            = await apiFetch('/api/Gears/categories')
-    gearCategories.value = await res.json()
+    const res  = await apiFetch('/api/Gears/categories')
+    const data: { name: string; isOwn: boolean }[] = await res.json()
+    gearCategories.value    = data.map(c => c.name)
+    ownGearCategories.value = data.filter(c => c.isOwn).map(c => c.name)
   }
 
   async function addGearCategory(name: string) {
@@ -52,6 +55,17 @@ export const usePostStore = defineStore('posts', () => {
         a.localeCompare(b, 'zh-TW')
       )
     }
+    if (!ownGearCategories.value.includes(name)) {
+      ownGearCategories.value = [...ownGearCategories.value, name].sort((a, b) =>
+        a.localeCompare(b, 'zh-TW')
+      )
+    }
+  }
+
+  async function deleteGearCategory(name: string) {
+    await apiFetch(`/api/Gears/categories/${encodeURIComponent(name)}`, { method: 'DELETE' })
+    gearCategories.value    = gearCategories.value.filter(c => c !== name)
+    ownGearCategories.value = ownGearCategories.value.filter(c => c !== name)
   }
 
   type GearPayload = {
@@ -483,7 +497,9 @@ export const usePostStore = defineStore('posts', () => {
     fetchGearLibrary,
     fetchGearCategories,
     addGearCategory,
+    deleteGearCategory,
     gearCategories,
+    ownGearCategories,
     createLibraryGear,
     updateLibraryGear,
     deleteLibraryGear,
