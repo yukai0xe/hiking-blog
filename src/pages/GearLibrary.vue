@@ -274,7 +274,9 @@
               </div>
               <div>
                 <label class="field-label">價格</label>
-                <input v-model.number="form.price" type="number" min="0" class="input-field text-sm font-mono no-spinner" placeholder="0" />
+                <input v-model="form.price" type="number" min="0" class="input-field text-sm font-mono no-spinner" placeholder="0"
+                  :style="formErrors.price ? { borderColor: '#ef4444' } : {}" />
+                <p v-if="formErrors.price" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.price }}</p>
               </div>
               <div>
                 <label class="field-label">加入時間</label>
@@ -286,7 +288,9 @@
             <div class="grid grid-cols-[80px_70px_1fr] gap-3">
               <div>
                 <label class="field-label">重量 (g)</label>
-                <input v-model.number="form.weight" type="number" min="0" class="input-field text-sm font-mono no-spinner" placeholder="0" />
+                <input v-model="form.weight" type="number" min="0" class="input-field text-sm font-mono no-spinner" placeholder="0"
+                  :style="formErrors.weight ? { borderColor: '#ef4444' } : {}" />
+                <p v-if="formErrors.weight" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.weight }}</p>
               </div>
               <div>
                 <label class="field-label">數量</label>
@@ -301,7 +305,9 @@
             <!-- 參考連結 -->
             <div>
               <label class="field-label">參考連結</label>
-              <input v-model="form.referenceUrl" type="url" class="input-field text-sm font-mono" placeholder="https://…" />
+              <input v-model="form.referenceUrl" type="text" class="input-field text-sm font-mono" placeholder="https://…"
+                :style="formErrors.referenceUrl ? { borderColor: '#ef4444' } : {}" />
+              <p v-if="formErrors.referenceUrl" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.referenceUrl }}</p>
             </div>
           </div>
 
@@ -312,7 +318,7 @@
             >取消</button>
             <button
               class="flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-body font-semibold btn-cta cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="!form.name.trim() || saving"
+              :disabled="!form.name.trim() || hasFormErrors || saving"
               @click="submitForm"
             >
               <span v-if="saving" class="w-3.5 h-3.5 border-2 rounded-full animate-spin border-current border-t-transparent" />
@@ -472,8 +478,8 @@ const categoryCount    = computed(() => new Set(store.gearLibrary.map(g => g.cat
 
 // ── Form modal ───────────────────────────────────────────
 type GearForm = {
-  name: string; weight: number; note: string; category: string
-  quantity: number; brand: string; referenceUrl: string; price: number | null; addedAt: string
+  name: string; weight: string; note: string; category: string
+  quantity: number; brand: string; referenceUrl: string; price: string; addedAt: string
 }
 
 const showForm  = ref(false)
@@ -482,9 +488,24 @@ const saving    = ref(false)
 const apiError  = ref<string | null>(null)
 
 const blankForm = (): GearForm => ({
-  name: '', weight: 0, note: '', category: '其他',
-  quantity: 1, brand: '', referenceUrl: '', price: null, addedAt: '',
+  name: '', weight: '', note: '', category: '其他',
+  quantity: 1, brand: '', referenceUrl: '', price: '', addedAt: '',
 })
+
+const formErrors = computed(() => {
+  const e: Partial<Record<'weight' | 'price' | 'referenceUrl', string>> = {}
+  const w = form.value.weight.trim()
+  if (w !== '' && (isNaN(Number(w)) || Number(w) < 0))
+    e.weight = '重量需為有效數字'
+  const p = form.value.price.trim()
+  if (p !== '' && (isNaN(Number(p)) || Number(p) < 0))
+    e.price = '價格需為有效數字'
+  const url = form.value.referenceUrl.trim()
+  if (url && !/^https?:\/\//.test(url))
+    e.referenceUrl = '需以 http:// 或 https:// 開頭'
+  return e
+})
+const hasFormErrors = computed(() => Object.keys(formErrors.value).length > 0)
 const form = ref<GearForm>(blankForm())
 
 function openCreate() {
@@ -498,13 +519,13 @@ function openEdit(gear: Gear) {
   editingId.value = gear.id
   form.value = {
     name:         gear.name,
-    weight:       gear.weight ?? 0,
+    weight:       gear.weight != null ? String(gear.weight) : '',
     note:         gear.note ?? '',
     category:     gear.category,
     quantity:     gear.quantity ?? 1,
     brand:        gear.brand ?? '',
     referenceUrl: gear.referenceUrl ?? '',
-    price:        gear.price ?? null,
+    price:        gear.price != null ? String(gear.price) : '',
     addedAt:      gear.addedAt ?? '',
   }
   apiError.value = null
@@ -516,19 +537,19 @@ function closeForm() {
 }
 
 async function submitForm() {
-  if (!form.value.name.trim()) return
+  if (!form.value.name.trim() || hasFormErrors.value) return
   saving.value   = true
   apiError.value = null
   try {
     const payload = {
       name:         form.value.name.trim(),
-      weight:       form.value.weight ?? 0,
+      weight:       form.value.weight.trim() ? Number(form.value.weight) : 0,
       note:         form.value.note,
       category:     form.value.category,
       quantity:     form.value.quantity ?? 1,
       brand:        form.value.brand || null,
-      referenceUrl: form.value.referenceUrl || null,
-      price:        form.value.price ?? null,
+      referenceUrl: form.value.referenceUrl.trim() || null,
+      price:        form.value.price.trim() ? Number(form.value.price) : null,
       addedAt:      form.value.addedAt || null,
     }
     if (editingId.value) {
