@@ -41,6 +41,19 @@ export const usePostStore = defineStore('posts', () => {
     gearCategories.value = await res.json()
   }
 
+  async function addGearCategory(name: string) {
+    await apiFetch('/api/Gears/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (!gearCategories.value.includes(name)) {
+      gearCategories.value = [...gearCategories.value, name].sort((a, b) =>
+        a.localeCompare(b, 'zh-TW')
+      )
+    }
+  }
+
   type GearPayload = {
     name: string; weight: number; note: string; category: string
     quantity: number; brand?: string | null; referenceUrl?: string | null
@@ -469,6 +482,7 @@ export const usePostStore = defineStore('posts', () => {
     deletePost,
     fetchGearLibrary,
     fetchGearCategories,
+    addGearCategory,
     gearCategories,
     createLibraryGear,
     updateLibraryGear,

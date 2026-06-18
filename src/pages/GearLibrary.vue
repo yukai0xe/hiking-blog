@@ -184,11 +184,11 @@
   <!-- ── Add / Edit Modal ───────────────────────────────── -->
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="showForm" class="modal-backdrop" @click.self="showForm = false">
+      <div v-if="showForm" class="modal-backdrop" @click.self="closeForm">
         <div class="form-modal">
           <div class="flex items-center justify-between px-6 py-4 border-b border-border/50">
             <h2 class="font-heading text-lg text-ink tracking-wide">{{ editingId ? '編輯裝備' : '新增裝備' }}</h2>
-            <button class="text-inkMuted hover:text-ink transition-colors cursor-pointer" @click="showForm = false">
+            <button class="text-inkMuted hover:text-ink transition-colors cursor-pointer" @click="closeForm">
               <XIcon :size="18" />
             </button>
           </div>
@@ -202,9 +202,42 @@
               </div>
               <div>
                 <label class="field-label">類別</label>
-                <select v-model="form.category" class="input-field text-sm font-body">
-                  <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
-                </select>
+                <div v-if="!addingCategory" class="flex gap-1.5">
+                  <select v-model="form.category" class="input-field text-sm font-body flex-1 min-w-0">
+                    <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
+                  </select>
+                  <button
+                    type="button"
+                    class="w-9 h-9 rounded-lg flex items-center justify-center card-aged text-inkMuted hover:text-ink transition-colors cursor-pointer shrink-0"
+                    title="新增類別"
+                    @click="addingCategory = true"
+                  ><PlusIcon :size="14" /></button>
+                </div>
+                <div v-else class="flex gap-1.5">
+                  <input
+                    v-model="newCategoryName"
+                    type="text"
+                    class="input-field text-sm flex-1 min-w-0"
+                    placeholder="類別名稱"
+                    autofocus
+                    @keydown.enter="confirmAddCategory"
+                    @keydown.escape="addingCategory = false; newCategoryName = ''"
+                  />
+                  <button
+                    type="button"
+                    class="w-9 h-9 rounded-lg flex items-center justify-center btn-cta cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    :disabled="!newCategoryName.trim() || savingCategory"
+                    @click="confirmAddCategory"
+                  >
+                    <span v-if="savingCategory" class="w-3 h-3 border-2 rounded-full animate-spin border-current border-t-transparent" />
+                    <CheckIcon v-else :size="14" />
+                  </button>
+                  <button
+                    type="button"
+                    class="w-9 h-9 rounded-lg flex items-center justify-center card-aged text-inkMuted hover:text-ink transition-colors cursor-pointer shrink-0"
+                    @click="addingCategory = false; newCategoryName = ''"
+                  ><XIcon :size="14" /></button>
+                </div>
               </div>
             </div>
 
@@ -250,7 +283,7 @@
           <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border/50">
             <button
               class="px-4 py-2 rounded-lg text-sm font-body font-medium cursor-pointer card-aged text-inkMuted hover:text-ink transition-colors"
-              @click="showForm = false"
+              @click="closeForm"
             >取消</button>
             <button
               class="flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-body font-semibold btn-cta cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -318,12 +351,33 @@ import {
   ChevronUp as ChevronUpIcon,
   ChevronDown as ChevronDownIcon,
   ChevronsUpDown as ChevronsUpDownIcon,
+  Check as CheckIcon,
 } from 'lucide-vue-next'
 import type { Gear } from '../types'
 import { usePostStore } from '../stores/postStore'
 
 const store = usePostStore()
 onMounted(() => Promise.all([store.fetchGearLibrary(), store.fetchGearCategories()]))
+
+const addingCategory    = ref(false)
+const newCategoryName   = ref('')
+const savingCategory    = ref(false)
+
+async function confirmAddCategory() {
+  const name = newCategoryName.value.trim()
+  if (!name || savingCategory.value) return
+  savingCategory.value = true
+  try {
+    await store.addGearCategory(name)
+    form.value.category   = name
+    addingCategory.value  = false
+    newCategoryName.value = ''
+  } catch {
+    // keep input open on error
+  } finally {
+    savingCategory.value = false
+  }
+}
 
 // ── Table state ──────────────────────────────────────────
 const search         = ref('')
@@ -419,6 +473,12 @@ function openEdit(gear: Gear) {
   showForm.value = true
 }
 
+function closeForm() {
+  showForm.value        = false
+  addingCategory.value  = false
+  newCategoryName.value = ''
+}
+
 async function submitForm() {
   if (!form.value.name.trim()) return
   saving.value   = true
@@ -440,7 +500,7 @@ async function submitForm() {
     } else {
       await store.createLibraryGear(payload)
     }
-    showForm.value = false
+    closeForm()
   } catch (e) {
     apiError.value = (e as Error).message
   } finally {
