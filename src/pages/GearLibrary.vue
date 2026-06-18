@@ -679,7 +679,7 @@ async function executeDelete() {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 560px;
+  max-width: 720px;
   max-height: 90vh;
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);
