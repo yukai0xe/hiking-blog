@@ -261,7 +261,7 @@
               <div>
                 <label class="field-label">類別</label>
                 <select v-model="form.category" class="input-field text-sm font-body">
-                  <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
+                  <option v-for="cat in filterCategories" :key="cat" :value="cat">{{ cat }}</option>
                 </select>
               </div>
             </div>
