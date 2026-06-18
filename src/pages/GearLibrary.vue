@@ -252,8 +252,8 @@
           </div>
 
           <div class="px-6 py-5 space-y-4 overflow-y-auto flex-1">
-            <!-- 名稱 + 類別 -->
-            <div class="grid grid-cols-[1fr_130px] gap-3">
+            <!-- 第一行：名稱 + 類別 -->
+            <div class="grid grid-cols-[1fr_160px] gap-3">
               <div>
                 <label class="field-label">名稱 *</label>
                 <input v-model="form.name" type="text" class="input-field text-sm" placeholder="裝備名稱" />
@@ -266,8 +266,8 @@
               </div>
             </div>
 
-            <!-- 品牌 + 價格 + 加入時間 -->
-            <div class="grid grid-cols-3 gap-3">
+            <!-- 第二行：品牌 + 價格 + 重量 + 數量 -->
+            <div class="grid grid-cols-4 gap-3">
               <div>
                 <label class="field-label">品牌</label>
                 <input v-model="form.brand" type="text" class="input-field text-sm" placeholder="品牌" />
@@ -279,14 +279,6 @@
                 <p v-if="formErrors.price" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.price }}</p>
               </div>
               <div>
-                <label class="field-label">加入時間</label>
-                <input v-model="form.addedAt" type="date" class="input-field text-sm font-mono" />
-              </div>
-            </div>
-
-            <!-- 重量 + 數量 + 備註 -->
-            <div class="grid grid-cols-[80px_70px_1fr] gap-3">
-              <div>
                 <label class="field-label">重量 (g)</label>
                 <input v-model="form.weight" type="text" inputmode="numeric" class="input-field text-sm font-mono" placeholder="0"
                   :style="formErrors.weight ? { borderColor: '#ef4444' } : {}" />
@@ -296,18 +288,26 @@
                 <label class="field-label">數量</label>
                 <input v-model.number="form.quantity" type="number" min="1" class="input-field text-sm font-mono no-spinner" placeholder="1" />
               </div>
+            </div>
+
+            <!-- 第三行：加入時間 + 參考連結 -->
+            <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="field-label">備註</label>
-                <input v-model="form.note" type="text" class="input-field text-sm" placeholder="選填" />
+                <label class="field-label">加入時間</label>
+                <input v-model="form.addedAt" type="date" class="input-field text-sm font-mono" />
+              </div>
+              <div>
+                <label class="field-label">參考連結</label>
+                <input v-model="form.referenceUrl" type="text" class="input-field text-sm font-mono" placeholder="https://…"
+                  :style="formErrors.referenceUrl ? { borderColor: '#ef4444' } : {}" />
+                <p v-if="formErrors.referenceUrl" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.referenceUrl }}</p>
               </div>
             </div>
 
-            <!-- 參考連結 -->
+            <!-- 第四行：備註 -->
             <div>
-              <label class="field-label">參考連結</label>
-              <input v-model="form.referenceUrl" type="text" class="input-field text-sm font-mono" placeholder="https://…"
-                :style="formErrors.referenceUrl ? { borderColor: '#ef4444' } : {}" />
-              <p v-if="formErrors.referenceUrl" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.referenceUrl }}</p>
+              <label class="field-label">備註</label>
+              <textarea v-model="form.note" rows="3" class="input-field text-sm resize-none" placeholder="選填" />
             </div>
           </div>
 
