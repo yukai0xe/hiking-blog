@@ -274,7 +274,7 @@
               </div>
               <div>
                 <label class="field-label">價格</label>
-                <input v-model="form.price" type="number" min="0" class="input-field text-sm font-mono no-spinner" placeholder="0"
+                <input v-model="form.price" type="text" inputmode="numeric" class="input-field text-sm font-mono" placeholder="0"
                   :style="formErrors.price ? { borderColor: '#ef4444' } : {}" />
                 <p v-if="formErrors.price" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.price }}</p>
               </div>
@@ -288,7 +288,7 @@
             <div class="grid grid-cols-[80px_70px_1fr] gap-3">
               <div>
                 <label class="field-label">重量 (g)</label>
-                <input v-model="form.weight" type="number" min="0" class="input-field text-sm font-mono no-spinner" placeholder="0"
+                <input v-model="form.weight" type="text" inputmode="numeric" class="input-field text-sm font-mono" placeholder="0"
                   :style="formErrors.weight ? { borderColor: '#ef4444' } : {}" />
                 <p v-if="formErrors.weight" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.weight }}</p>
               </div>
