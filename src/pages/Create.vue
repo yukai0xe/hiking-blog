@@ -116,6 +116,18 @@
                 <input v-model.number="form.peopleCount" type="number" min="1" max="999" class="input-field" placeholder="隊員人數" />
               </div>
             </div>
+            <div>
+              <label class="field-label">難度</label>
+              <div class="flex gap-2 mt-1">
+                <button
+                  v-for="n in 5" :key="n"
+                  type="button"
+                  class="text-xl leading-none transition-colors duration-100 cursor-pointer"
+                  :class="n <= (form.difficultyStars ?? 0) ? 'text-primary' : 'text-inkMuted opacity-30'"
+                  @click="form.difficultyStars = form.difficultyStars === n ? null : n"
+                >★</button>
+              </div>
+            </div>
           </div>
 
           <!-- Step 2: 封面 -->
@@ -290,9 +302,10 @@ const form = ref({
   description:  '',
   dateStart:    '',
   dateEnd:      '',
-  weather:      '',
-  peopleCount:  null as number | null,
-  coverFile:    null as File | null,
+  weather:         '',
+  peopleCount:     null as number | null,
+  difficultyStars: null as number | null,
+  coverFile:       null as File | null,
   photoFiles:   [] as File[],
   tags:         [] as string[],
   showGpx:      true,
@@ -341,9 +354,10 @@ async function submit() {
       foods:          [],
       dateStart:      form.value.dateStart  || undefined,
       dateEnd:        form.value.dateEnd    || undefined,
-      weather:        form.value.weather    || undefined,
-      peopleCount:    form.value.peopleCount,
-      tags:           form.value.tags,
+      weather:         form.value.weather         || undefined,
+      peopleCount:     form.value.peopleCount,
+      difficultyStars: form.value.difficultyStars,
+      tags:            form.value.tags,
       showGpx:        form.value.showGpx,
       showGears:      form.value.showGears,
       showFoods:      form.value.showFoods,

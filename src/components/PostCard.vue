@@ -106,6 +106,7 @@
       <div class="date-row">
         <span class="date-tick" />
         <span class="card-date">{{ dateDisplay }}</span>
+        <span v-if="post.difficultyStars" class="card-stars">{{ '★'.repeat(post.difficultyStars) }}</span>
       </div>
     </div>
   </div>
@@ -379,5 +380,12 @@ const dateDisplay = computed(() => {
   font-size: 11px;
   color: var(--c-inkMuted);
   letter-spacing: 0.08em;
+}
+.card-stars {
+  font-size: 10px;
+  color: var(--c-primary);
+  letter-spacing: -1px;
+  margin-left: auto;
+  opacity: 0.8;
 }
 </style>

@@ -84,6 +84,9 @@
             <UsersIcon :size="11" class="meta-chip-icon" />
             <span>{{ store.currentPost.peopleCount }} 人</span>
           </div>
+          <div v-if="store.currentPost.difficultyStars" class="meta-chip">
+            <span class="text-primary" style="font-size:11px;letter-spacing:-1px;">{{ '★'.repeat(store.currentPost.difficultyStars) }}</span>
+          </div>
         </div>
       </header>
 
@@ -462,6 +465,11 @@
                 <UsersIcon :size="13" class="meta-icon" />
                 <span class="meta-label">人數</span>
                 <span class="meta-value">{{ store.currentPost.peopleCount }} 人</span>
+              </div>
+              <div v-if="store.currentPost.difficultyStars" class="meta-item">
+                <span class="meta-icon text-primary" style="font-size:13px;line-height:1;">★</span>
+                <span class="meta-label">難度</span>
+                <span class="meta-value text-primary" style="letter-spacing:-1px;">{{ '★'.repeat(store.currentPost.difficultyStars) }}{{ '☆'.repeat(5 - store.currentPost.difficultyStars) }}</span>
               </div>
             </div>
           </div>
@@ -1434,7 +1442,7 @@ const tripDays = computed(() => {
 
 const hasMeta = computed(() => {
   const p = store.currentPost
-  return !!(dateRange.value || p?.weather || p?.peopleCount)
+  return !!(dateRange.value || p?.weather || p?.peopleCount || p?.difficultyStars)
 })
 
 onMounted(async () => {

@@ -17,6 +17,7 @@ export interface Post {
   showFoods?: boolean | null
   gpxDescription?: string | null
   isPublic?: boolean | null
+  difficultyStars?: number | null
 }
 
 export interface Photo {

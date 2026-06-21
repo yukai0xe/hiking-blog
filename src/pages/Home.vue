@@ -120,6 +120,16 @@
           <option>下雪</option>
         </select>
 
+        <!-- Difficulty -->
+        <select v-model.number="filterDifficulty" class="filter-select">
+          <option :value="0">所有難度</option>
+          <option :value="1">★☆☆☆☆</option>
+          <option :value="2">★★☆☆☆</option>
+          <option :value="3">★★★☆☆</option>
+          <option :value="4">★★★★☆</option>
+          <option :value="5">★★★★★</option>
+        </select>
+
         <!-- Days -->
         <select v-model="filterDays" class="filter-select">
           <option value="">所有天數</option>
@@ -269,13 +279,14 @@ const showLogoutModal  = ref(false)
 onMounted(() => store.fetchPosts())
 
 const searchTitle    = ref('')
-const filterWeather  = ref('')
-const filterDays     = ref('')
+const filterWeather    = ref('')
+const filterDays       = ref('')
+const filterDifficulty = ref(0)
 const filterDateStart = ref('')
 const filterDateEnd   = ref('')
 
 const hasActiveFilters = computed(() =>
-  !!(searchTitle.value || filterWeather.value || filterDays.value || filterDateStart.value || filterDateEnd.value)
+  !!(searchTitle.value || filterWeather.value || filterDays.value || filterDifficulty.value || filterDateStart.value || filterDateEnd.value)
 )
 
 function confirmLogout() {
@@ -289,11 +300,12 @@ function doLogout() {
 }
 
 function clearFilters() {
-  searchTitle.value    = ''
-  filterWeather.value  = ''
-  filterDays.value     = ''
-  filterDateStart.value = ''
-  filterDateEnd.value   = ''
+  searchTitle.value      = ''
+  filterWeather.value    = ''
+  filterDays.value       = ''
+  filterDifficulty.value = 0
+  filterDateStart.value  = ''
+  filterDateEnd.value    = ''
 }
 
 function calcDays(post: Post): number {
@@ -310,6 +322,9 @@ const filteredPosts = computed(() => {
       return false
 
     if (filterWeather.value && post.weather !== filterWeather.value)
+      return false
+
+    if (filterDifficulty.value && post.difficultyStars !== filterDifficulty.value)
       return false
 
     if (filterDays.value) {

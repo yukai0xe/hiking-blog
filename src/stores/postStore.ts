@@ -195,6 +195,7 @@ export const usePostStore = defineStore('posts', () => {
     dateEnd?: string
     weather?: string
     peopleCount?: number | null
+    difficultyStars?: number | null
     tags?: string[]
     showGpx?: boolean
     showGears?: boolean
@@ -215,12 +216,13 @@ export const usePostStore = defineStore('posts', () => {
           libraryGearIds: payload.libraryGearIds ?? [],
           dateStart:      payload.dateStart   ?? null,
           dateEnd:        payload.dateEnd     ?? null,
-          weather:        payload.weather     ?? null,
-          peopleCount:    payload.peopleCount ?? null,
-          tags:           payload.tags        ?? [],
-          showGpx:        payload.showGpx     ?? true,
-          showGears:      payload.showGears   ?? true,
-          showFoods:      payload.showFoods   ?? true,
+          weather:         payload.weather         ?? null,
+          peopleCount:     payload.peopleCount     ?? null,
+          difficultyStars: payload.difficultyStars ?? null,
+          tags:            payload.tags            ?? [],
+          showGpx:         payload.showGpx         ?? true,
+          showGears:       payload.showGears        ?? true,
+          showFoods:       payload.showFoods        ?? true,
         }),
       })
       const data = await res.json()
@@ -270,6 +272,7 @@ export const usePostStore = defineStore('posts', () => {
       dateEnd?: string
       weather?: string
       peopleCount?: number | null
+      difficultyStars?: number | null
       tags?: string[]
       showGpx?: boolean
       showGears?: boolean
@@ -311,12 +314,13 @@ export const usePostStore = defineStore('posts', () => {
           libraryGearIdsToLink: payload.libraryGearIdsToLink ?? [],
           dateStart:        payload.dateStart   ?? null,
           dateEnd:          payload.dateEnd     ?? null,
-          weather:          payload.weather     ?? null,
-          peopleCount:      payload.peopleCount ?? null,
-          tags:             payload.tags        ?? [],
-          showGpx:          payload.showGpx     ?? true,
-          showGears:        payload.showGears   ?? true,
-          showFoods:        payload.showFoods   ?? true,
+          weather:          payload.weather         ?? null,
+          peopleCount:      payload.peopleCount     ?? null,
+          difficultyStars:  payload.difficultyStars ?? null,
+          tags:             payload.tags            ?? [],
+          showGpx:          payload.showGpx         ?? true,
+          showGears:        payload.showGears        ?? true,
+          showFoods:        payload.showFoods        ?? true,
         }),
       })
 
@@ -361,9 +365,10 @@ export const usePostStore = defineStore('posts', () => {
         libraryGearIdsToLink: opts.libraryGearIdsToLink ?? [],
         dateStart:            post.dateStart   ?? null,
         dateEnd:              post.dateEnd     ?? null,
-        weather:              post.weather     ?? null,
-        peopleCount:          post.peopleCount ?? null,
-        tags:                 post.tags        ?? [],
+        weather:              post.weather         ?? null,
+        peopleCount:          post.peopleCount     ?? null,
+        difficultyStars:      post.difficultyStars ?? null,
+        tags:                 post.tags            ?? [],
         showGpx:              post.showGpx     ?? true,
         showGears:            post.showGears   ?? true,
         showFoods:            post.showFoods   ?? true,

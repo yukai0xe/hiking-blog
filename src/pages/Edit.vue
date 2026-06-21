@@ -189,6 +189,18 @@
                 <input v-model.number="form.peopleCount" type="number" min="1" max="999" class="input-field no-spinner" placeholder="隊員人數" />
               </div>
             </div>
+            <div>
+              <label class="field-label">難度</label>
+              <div class="flex gap-2 mt-1">
+                <button
+                  v-for="n in 5" :key="n"
+                  type="button"
+                  class="text-xl leading-none transition-colors duration-100 cursor-pointer"
+                  :class="n <= (form.difficultyStars ?? 0) ? 'text-primary' : 'text-inkMuted opacity-30'"
+                  @click="form.difficultyStars = form.difficultyStars === n ? null : n"
+                >★</button>
+              </div>
+            </div>
           </div>
 
           <!-- Step 2: 封面 -->
@@ -415,9 +427,10 @@ const form = ref({
   description: '',
   dateStart:   '',
   dateEnd:     '',
-  weather:     '',
-  peopleCount: null as number | null,
-  tags:        [] as string[],
+  weather:         '',
+  peopleCount:     null as number | null,
+  difficultyStars: null as number | null,
+  tags:            [] as string[],
   showGpx:     true,
   showGears:   true,
   showFoods:   true,
@@ -442,9 +455,10 @@ onMounted(async () => {
     form.value.description = p.description ?? ''
     form.value.dateStart   = toDateInput(p.dateStart)
     form.value.dateEnd     = toDateInput(p.dateEnd)
-    form.value.weather     = p.weather     ?? ''
-    form.value.peopleCount = p.peopleCount ?? null
-    form.value.tags        = p.tags?.length ? [...p.tags] : []
+    form.value.weather         = p.weather         ?? ''
+    form.value.peopleCount     = p.peopleCount     ?? null
+    form.value.difficultyStars = p.difficultyStars ?? null
+    form.value.tags            = p.tags?.length ? [...p.tags] : []
     form.value.showGpx     = p.showGpx  !== false
     form.value.showGears   = p.showGears !== false
     form.value.showFoods   = p.showFoods !== false
@@ -507,8 +521,9 @@ async function save() {
       gearIdsToDelete:  [],
       dateStart:        form.value.dateStart  || undefined,
       dateEnd:          form.value.dateEnd    || undefined,
-      weather:          form.value.weather    || undefined,
+      weather:          form.value.weather         || undefined,
       peopleCount:      form.value.peopleCount,
+      difficultyStars:  form.value.difficultyStars,
       tags:             form.value.tags,
       foods:            store.currentFoods.map(f => ({
         id:           f.id,
