@@ -43,6 +43,11 @@ export interface Gear {
   addedAt?: string | null
 }
 
+export interface GearImage {
+  id:  string
+  url: string
+}
+
 export interface WaypointOverride {
   lat: number
   lng: number

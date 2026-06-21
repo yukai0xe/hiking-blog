@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Post, Photo, Gear, WaypointOverride, Food, FoodDraft, FoodDayAssignment, PostGpxRecord } from '../types'
+import type { Post, Photo, Gear, GearImage, WaypointOverride, Food, FoodDraft, FoodDayAssignment, PostGpxRecord } from '../types'
 import { useAuthStore } from './authStore'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
@@ -97,6 +97,41 @@ export const usePostStore = defineStore('posts', () => {
   async function deleteLibraryGear(id: string): Promise<void> {
     await apiFetch(`/api/Gears/${id}`, { method: 'DELETE' })
     gearLibrary.value = gearLibrary.value.filter(g => g.id !== id)
+  }
+
+  async function fetchGearImages(id: string): Promise<GearImage[]> {
+    const res = await apiFetch(`/api/Gears/${id}/images`)
+    return res.json()
+  }
+
+  async function deleteGearImage(gearId: string, imageId: string): Promise<void> {
+    await apiFetch(`/api/Gears/${gearId}/images/${imageId}`, { method: 'DELETE' })
+  }
+
+  function uploadGearImageWithProgress(
+    gearId: string,
+    file: File,
+    onProgress: (pct: number) => void,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const fd  = new FormData()
+      fd.append('files', file)
+      const auth = useAuthStore()
+      const xhr  = new XMLHttpRequest()
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) { onProgress(100); resolve() }
+        else reject(new Error(xhr.responseText || `HTTP ${xhr.status}`))
+      }
+      xhr.onerror = () => reject(new Error('上傳失敗'))
+
+      xhr.open('POST', `${API_BASE}/api/Gears/${gearId}/images`)
+      if (auth.token) xhr.setRequestHeader('Authorization', `Bearer ${auth.token}`)
+      xhr.send(fd)
+    })
   }
 
   async function fetchTags() {
@@ -503,6 +538,9 @@ export const usePostStore = defineStore('posts', () => {
     createLibraryGear,
     updateLibraryGear,
     deleteLibraryGear,
+    fetchGearImages,
+    deleteGearImage,
+    uploadGearImageWithProgress,
     currentGpxRecords,
     currentRecordWaypointOverrides,
     fetchGpxRecords,

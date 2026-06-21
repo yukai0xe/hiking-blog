@@ -1,37 +1,39 @@
 <template>
   <div>
-    <div v-if="photos.length === 0" class="text-center text-inkMuted py-16 font-body italic">
-      — 尚無照片 —
-    </div>
-    <div v-else>
-    <div class="columns-1 sm:columns-2 lg:columns-3 gap-3 space-y-3">
-      <div
-        v-for="(photo, i) in displayPhotos"
-        :key="photo.id"
-        class="relative break-inside-avoid cursor-pointer overflow-hidden group"
-        @click="openPhoto(i)"
-      >
-        <img
-          :src="photo.url"
-          alt=""
-          loading="lazy"
-          class="w-full object-cover opacity-90 group-hover:opacity-100 transition-all duration-300 group-hover:scale-[1.02]"
-        />
-        <!-- Star / favourite -->
-        <button
-          class="absolute top-2 right-2 w-7 h-7 rounded-full backdrop-blur-sm border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 cursor-pointer z-10"
-          :class="favoriteIds.has(photo.id)
-            ? 'opacity-100 bg-base/70 border-border/60'
-            : 'bg-base/70 border-border/60 text-inkMuted hover:bg-base'"
-          :style="favoriteIds.has(photo.id) ? 'color: #F2BB05;' : ''"
-          @click.stop="toggleFavorite(photo.id)"
-          aria-label="加入最愛"
-        >
-          <StarIcon :size="13" :fill="favoriteIds.has(photo.id) ? '#F2BB05' : 'none'" :color="favoriteIds.has(photo.id) ? '#F2BB05' : 'currentColor'" />
-        </button>
+    <template v-if="!headless">
+      <div v-if="photos.length === 0" class="text-center text-inkMuted py-16 font-body italic">
+        — 尚無照片 —
       </div>
-    </div>
-    </div>
+      <div v-else>
+        <div class="columns-1 sm:columns-2 lg:columns-3 gap-3 space-y-3">
+          <div
+            v-for="(photo, i) in displayPhotos"
+            :key="photo.id"
+            class="relative break-inside-avoid cursor-pointer overflow-hidden group"
+            @click="openPhoto(i)"
+          >
+            <img
+              :src="photo.url"
+              alt=""
+              loading="lazy"
+              class="w-full object-cover opacity-90 group-hover:opacity-100 transition-all duration-300 group-hover:scale-[1.02]"
+            />
+            <!-- Star / favourite -->
+            <button
+              class="absolute top-2 right-2 w-7 h-7 rounded-full backdrop-blur-sm border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 cursor-pointer z-10"
+              :class="favoriteIds.has(photo.id)
+                ? 'opacity-100 bg-base/70 border-border/60'
+                : 'bg-base/70 border-border/60 text-inkMuted hover:bg-base'"
+              :style="favoriteIds.has(photo.id) ? 'color: #F2BB05;' : ''"
+              @click.stop="toggleFavorite(photo.id)"
+              aria-label="加入最愛"
+            >
+              <StarIcon :size="13" :fill="favoriteIds.has(photo.id) ? '#F2BB05' : 'none'" :color="favoriteIds.has(photo.id) ? '#F2BB05' : 'currentColor'" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <!-- Lightbox -->
     <Teleport to="body">
@@ -166,9 +168,10 @@ import {
   Maximize2 as Maximize2Icon,
   Download as DownloadIcon,
 } from 'lucide-vue-next'
-import type { Photo } from '../types'
-
-const props = defineProps<{ photos: Photo[] }>()
+const props = defineProps<{
+  photos:    { id: string; url: string }[]
+  headless?: boolean
+}>()
 
 // ── Favourite ────────────────────────────────────────────
 const STORAGE_KEY = 'photo-favorites'
@@ -354,7 +357,7 @@ async function downloadPhoto() {
   }
 }
 
-defineExpose({ hasFavorites: computed(() => favoriteIds.value.size > 0), resetFavorites })
+defineExpose({ hasFavorites: computed(() => favoriteIds.value.size > 0), resetFavorites, openPhoto })
 </script>
 
 <style scoped>

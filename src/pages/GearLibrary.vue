@@ -183,47 +183,76 @@
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="gear in filtered" :key="gear.id"
-                class="group border-b border-border/20 transition-colors duration-100"
-                style="--hover-bg: color-mix(in srgb, var(--c-primary) 5%, transparent);"
-                :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
-                @mouseenter="hoveredId = gear.id"
-                @mouseleave="hoveredId = null"
-              >
-                <td class="td font-medium text-ink">
-                  <span class="flex items-center gap-1.5">
-                    {{ gear.name }}
-                    <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
-                      class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
-                      <ExternalLinkIcon :size="11" />
-                    </a>
-                  </span>
-                </td>
-                <td class="td"><span class="cat-badge">{{ gear.category || '其他' }}</span></td>
-                <td class="td font-mono text-right">
-                  {{ (gear.weight ?? 0) * (gear.quantity ?? 1) }} g
-                  <span class="text-[11px] opacity-50 ml-1">×{{ gear.quantity ?? 1 }}</span>
-                </td>
-                <td class="td text-inkMuted">{{ gear.brand || '—' }}</td>
-                <td class="td font-mono text-inkMuted text-right">{{ gear.price != null ? gear.price.toLocaleString() : '—' }}</td>
-                <td class="td text-inkMuted">{{ gear.addedAt || '—' }}</td>
-                <td class="td note-cell text-inkMuted/70 italic">{{ gear.note || '—' }}</td>
-                <td class="td text-right">
-                  <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                    <button
-                      class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer"
-                      @click="openEdit(gear)"
-                      aria-label="編輯"
-                    ><PencilIcon :size="13" /></button>
-                    <button
-                      class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
-                      @click="confirmDelete(gear)"
-                      aria-label="刪除"
-                    ><Trash2Icon :size="13" /></button>
-                  </div>
-                </td>
-              </tr>
+              <template v-for="gear in filtered" :key="gear.id">
+                <tr
+                  class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
+                  :class="{ 'border-border/0': expandedIds.has(gear.id) }"
+                  :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
+                  @mouseenter="hoveredId = gear.id"
+                  @mouseleave="hoveredId = null"
+                  @click="toggleExpand(gear.id)"
+                >
+                  <td class="td font-medium text-ink">
+                    <span class="flex items-center gap-1.5">
+                      <ChevronRightIcon
+                        :size="13"
+                        class="text-inkMuted transition-transform duration-150 shrink-0"
+                        :class="{ 'rotate-90': expandedIds.has(gear.id) }"
+                      />
+                      {{ gear.name }}
+                      <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
+                        class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
+                        <ExternalLinkIcon :size="11" />
+                      </a>
+                    </span>
+                  </td>
+                  <td class="td"><span class="cat-badge">{{ gear.category || '其他' }}</span></td>
+                  <td class="td font-mono text-right">
+                    {{ (gear.weight ?? 0) * (gear.quantity ?? 1) }} g
+                    <span class="text-[11px] opacity-50 ml-1">×{{ gear.quantity ?? 1 }}</span>
+                  </td>
+                  <td class="td text-inkMuted">{{ gear.brand || '—' }}</td>
+                  <td class="td font-mono text-inkMuted text-right">{{ gear.price != null ? gear.price.toLocaleString() : '—' }}</td>
+                  <td class="td text-inkMuted">{{ gear.addedAt || '—' }}</td>
+                  <td class="td note-cell text-inkMuted/70 italic">{{ gear.note || '—' }}</td>
+                  <td class="td text-right" @click.stop>
+                    <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <button
+                        class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer"
+                        @click="openEdit(gear)"
+                        aria-label="編輯"
+                      ><PencilIcon :size="13" /></button>
+                      <button
+                        class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+                        @click="confirmDelete(gear)"
+                        aria-label="刪除"
+                      ><Trash2Icon :size="13" /></button>
+                    </div>
+                  </td>
+                </tr>
+                <!-- Expanded image row -->
+                <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
+                  <td colspan="8" class="px-5 py-3"
+                    style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
+                    <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1">
+                      <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                      載入中…
+                    </div>
+                    <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">
+                      此裝備無圖片
+                    </div>
+                    <div v-else class="flex flex-wrap gap-2">
+                      <img
+                        v-for="(img, i) in gearImages[gear.id]"
+                        :key="img.id"
+                        :src="img.url"
+                        class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200"
+                        @click.stop="openGearLightbox(gear.id, i)"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -309,6 +338,58 @@
               <label class="field-label">備註</label>
               <textarea v-model="form.note" rows="3" class="input-field text-sm resize-none" placeholder="選填" />
             </div>
+
+            <!-- 圖片 -->
+            <div>
+              <label class="field-label">圖片（選填）</label>
+              <div v-if="loadingImages" class="text-xs font-body text-inkMuted flex items-center gap-1.5 mb-2">
+                <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                載入圖片中…
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <!-- Existing images (not yet deleted) -->
+                <div v-for="img in editingImages" :key="img.id" class="gear-img-thumb">
+                  <img :src="img.url" class="w-full h-full object-cover" />
+                  <button type="button" class="gear-img-remove" @click="removeExistingImage(img.id)">
+                    <XIcon :size="10" />
+                  </button>
+                </div>
+                <!-- New image previews -->
+                <div v-for="(preview, i) in newImagePreviews" :key="preview" class="gear-img-thumb">
+                  <img :src="preview" class="w-full h-full object-cover"
+                    :class="saving ? 'opacity-50' : 'opacity-75'" />
+                  <button type="button" class="gear-img-remove" :disabled="saving" @click="removeNewImage(i)">
+                    <XIcon :size="10" />
+                  </button>
+                  <!-- Per-file upload progress overlay -->
+                  <div v-if="saving" class="absolute inset-0 flex flex-col items-center justify-center gap-1"
+                    style="background: rgba(0,0,0,0.45);">
+                    <template v-if="newImageProgress[i] >= 100">
+                      <CheckIcon :size="16" class="text-green-400" />
+                    </template>
+                    <template v-else>
+                      <span class="text-white text-[10px] font-mono font-bold leading-none">{{ newImageProgress[i] }}%</span>
+                      <div class="w-10 h-0.5 rounded-full overflow-hidden" style="background: rgba(255,255,255,0.25);">
+                        <div class="h-full rounded-full transition-all duration-100"
+                          style="background: white;"
+                          :style="{ width: `${newImageProgress[i]}%` }" />
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <!-- Add button -->
+                <button
+                  type="button"
+                  class="w-16 h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-inkMuted hover:text-primary hover:border-primary transition-colors cursor-pointer"
+                  style="border: 1px dashed var(--c-border);"
+                  @click="triggerImageInput"
+                >
+                  <ImageIcon :size="18" class="opacity-50" />
+                  <span class="text-[10px] font-body">上傳</span>
+                </button>
+              </div>
+              <input ref="imageInputRef" type="file" accept="image/*" multiple class="hidden" @change="onImagesSelected" />
+            </div>
           </div>
 
           <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border/50">
@@ -330,6 +411,9 @@
       </div>
     </Transition>
   </Teleport>
+
+  <!-- ── Gear image lightbox ──────────────────────────────── -->
+  <PhotoGallery ref="gearLightboxRef" :headless="true" :photos="lightboxImages" />
 
   <!-- ── Delete Confirm Modal ───────────────────────────── -->
   <Teleport to="body">
@@ -367,7 +451,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   ArrowLeft as ArrowLeftIcon,
   Search as SearchIcon,
@@ -381,11 +465,14 @@ import {
   AlertCircle as AlertCircleIcon,
   ChevronUp as ChevronUpIcon,
   ChevronDown as ChevronDownIcon,
+  ChevronRight as ChevronRightIcon,
   ChevronsUpDown as ChevronsUpDownIcon,
   Check as CheckIcon,
+  Image as ImageIcon,
 } from 'lucide-vue-next'
-import type { Gear } from '../types'
+import type { Gear, GearImage } from '../types'
 import { usePostStore } from '../stores/postStore'
+import PhotoGallery from '../components/PhotoGallery.vue'
 
 const store = usePostStore()
 onMounted(() => Promise.all([store.fetchGearLibrary(), store.fetchGearCategories()]))
@@ -476,6 +563,68 @@ const totalWeightKg    = computed(() => (gramsOf(store.gearLibrary) / 1000).toFi
 const filteredWeightKg = computed(() => (gramsOf(filtered.value) / 1000).toFixed(2))
 const categoryCount    = computed(() => new Set(store.gearLibrary.map(g => g.category)).size)
 
+// ── Row expansion + image cache ──────────────────────────
+const expandedIds = ref(new Set<string>())
+const gearImages  = ref<Record<string, GearImage[] | null>>({})
+
+async function toggleExpand(id: string) {
+  const next = new Set(expandedIds.value)
+  if (next.has(id)) { next.delete(id); expandedIds.value = next; return }
+  next.add(id)
+  expandedIds.value = next
+  if (!(id in gearImages.value)) {
+    gearImages.value[id] = null
+    try { gearImages.value[id] = await store.fetchGearImages(id) }
+    catch { gearImages.value[id] = [] }
+  }
+}
+
+// ── Gear lightbox ────────────────────────────────────────
+const gearLightboxRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
+const lightboxImages  = ref<{ id: string; url: string }[]>([])
+
+function openGearLightbox(gearId: string, index: number) {
+  const imgs = gearImages.value[gearId]
+  if (!imgs?.length) return
+  lightboxImages.value = imgs
+  gearLightboxRef.value?.openPhoto(index)
+}
+
+// ── Image management in edit modal ───────────────────────
+const editingImages     = ref<GearImage[]>([])
+const deletingImageIds  = ref<string[]>([])
+const newImageFiles     = ref<File[]>([])
+const newImagePreviews  = ref<string[]>([])
+const newImageProgress  = ref<number[]>([])
+const loadingImages     = ref(false)
+const imageInputRef     = ref<HTMLInputElement | null>(null)
+
+function triggerImageInput() { imageInputRef.value?.click() }
+
+function onImagesSelected(e: Event) {
+  const files = Array.from((e.target as HTMLInputElement).files ?? [])
+  for (const file of files) {
+    newImageFiles.value.push(file)
+    newImagePreviews.value.push(URL.createObjectURL(file))
+    newImageProgress.value.push(0)
+  }
+  if (imageInputRef.value) imageInputRef.value.value = ''
+}
+
+function removeExistingImage(imgId: string) {
+  deletingImageIds.value.push(imgId)
+  editingImages.value = editingImages.value.filter(img => img.id !== imgId)
+}
+
+function removeNewImage(index: number) {
+  URL.revokeObjectURL(newImagePreviews.value[index])
+  newImageFiles.value.splice(index, 1)
+  newImagePreviews.value.splice(index, 1)
+  newImageProgress.value.splice(index, 1)
+}
+
+onUnmounted(() => { newImagePreviews.value.forEach(u => URL.revokeObjectURL(u)) })
+
 // ── Form modal ───────────────────────────────────────────
 type GearForm = {
   name: string; weight: string; note: string; category: string
@@ -511,14 +660,25 @@ const hasFormErrors = computed(() => Object.keys(formErrors.value).length > 0)
 const form = ref<GearForm>(blankForm())
 
 function openCreate() {
-  editingId.value = null
-  form.value      = blankForm()
-  apiError.value  = null
-  showForm.value  = true
+  editingId.value      = null
+  form.value           = blankForm()
+  editingImages.value    = []
+  deletingImageIds.value = []
+  newImageFiles.value    = []
+  newImagePreviews.value = []
+  newImageProgress.value = []
+  loadingImages.value    = false
+  apiError.value         = null
+  showForm.value         = true
 }
 
-function openEdit(gear: Gear) {
-  editingId.value = gear.id
+async function openEdit(gear: Gear) {
+  editingId.value        = gear.id
+  editingImages.value    = []
+  deletingImageIds.value = []
+  newImageFiles.value    = []
+  newImagePreviews.value = []
+  newImageProgress.value = []
   form.value = {
     name:         gear.name,
     weight:       gear.weight != null ? String(gear.weight) : '',
@@ -530,12 +690,23 @@ function openEdit(gear: Gear) {
     price:        gear.price != null ? String(gear.price) : '',
     addedAt:      gear.addedAt ?? '',
   }
-  apiError.value = null
-  showForm.value = true
+  apiError.value      = null
+  showForm.value      = true
+  loadingImages.value = true
+  try { editingImages.value = await store.fetchGearImages(gear.id) }
+  catch { /* silently ignore — user can still save */ }
+  finally { loadingImages.value = false }
 }
 
 function closeForm() {
-  showForm.value = false
+  newImagePreviews.value.forEach(u => URL.revokeObjectURL(u))
+  newImageFiles.value    = []
+  newImagePreviews.value = []
+  newImageProgress.value = []
+  deletingImageIds.value = []
+  editingImages.value    = []
+  loadingImages.value    = false
+  showForm.value         = false
 }
 
 async function submitForm() {
@@ -554,11 +725,22 @@ async function submitForm() {
       price:        form.value.price.trim() ? Number(form.value.price) : null,
       addedAt:      form.value.addedAt || null,
     }
+    let gearId: string
     if (editingId.value) {
       await store.updateLibraryGear(editingId.value, payload)
+      gearId = editingId.value
     } else {
-      await store.createLibraryGear(payload)
+      gearId = await store.createLibraryGear(payload)
     }
+    for (const imgId of deletingImageIds.value) {
+      await store.deleteGearImage(gearId, imgId)
+    }
+    for (let i = 0; i < newImageFiles.value.length; i++) {
+      await store.uploadGearImageWithProgress(gearId, newImageFiles.value[i], (pct) => {
+        newImageProgress.value[i] = pct
+      })
+    }
+    delete gearImages.value[gearId]
     closeForm()
   } catch (e) {
     apiError.value = (e as Error).message
@@ -726,4 +908,27 @@ async function executeDelete() {
 .modal-enter-from, .modal-leave-to { opacity: 0; }
 .modal-enter-from .form-modal,
 .modal-enter-from .delete-modal { transform: translateY(12px) scale(0.98); }
+
+/* ── Image thumbnails ────────────────────────────────── */
+.gear-img-thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--c-border);
+}
+.gear-img-remove {
+  position: absolute;
+  top: 3px; right: 3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.60);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.gear-img-remove:hover { background: rgba(0,0,0,0.85); }
 </style>
