@@ -27,9 +27,16 @@
       <div class="card-aged px-5 py-4 mb-6 flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-5 mr-auto">
           <div class="text-center">
-            <p class="font-heading text-2xl font-bold text-ink leading-none mb-0.5">{{ store.gearLibrary.length }}</p>
+            <p class="font-heading text-2xl font-bold text-ink leading-none mb-0.5">{{ ownedInLibrary.length }}</p>
             <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">件裝備</p>
           </div>
+          <template v-if="wishlistCount > 0">
+            <div class="w-px h-8 bg-border/40" />
+            <div class="text-center">
+              <p class="font-heading text-2xl font-bold leading-none mb-0.5" style="color: var(--c-primary);">{{ wishlistCount }}</p>
+              <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">願望清單</p>
+            </div>
+          </template>
           <div class="w-px h-8 bg-border/40" />
           <div class="text-center">
             <p class="font-heading text-2xl font-bold text-ink leading-none mb-0.5">{{ totalWeightKg }}</p>
@@ -154,8 +161,8 @@
         </button>
       </div>
 
-      <!-- Table -->
-      <div v-else class="card-aged overflow-hidden">
+      <!-- Table: no wishlist items in library → single section -->
+      <div v-else-if="!hasWishlist" class="card-aged overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
@@ -194,11 +201,8 @@
                 >
                   <td class="td font-medium text-ink">
                     <span class="flex items-center gap-1.5">
-                      <ChevronRightIcon
-                        :size="13"
-                        class="text-inkMuted transition-transform duration-150 shrink-0"
-                        :class="{ 'rotate-90': expandedIds.has(gear.id) }"
-                      />
+                      <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0"
+                        :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
                       {{ gear.name }}
                       <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
                         class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
@@ -217,38 +221,23 @@
                   <td class="td note-cell text-inkMuted/70 italic">{{ gear.note || '—' }}</td>
                   <td class="td text-right" @click.stop>
                     <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                      <button
-                        class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer"
-                        @click="openEdit(gear)"
-                        aria-label="編輯"
-                      ><PencilIcon :size="13" /></button>
-                      <button
-                        class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
-                        @click="confirmDelete(gear)"
-                        aria-label="刪除"
-                      ><Trash2Icon :size="13" /></button>
+                      <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer"
+                        @click="openEdit(gear)" aria-label="編輯"><PencilIcon :size="13" /></button>
+                      <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+                        @click="confirmDelete(gear)" aria-label="刪除"><Trash2Icon :size="13" /></button>
                     </div>
                   </td>
                 </tr>
-                <!-- Expanded image row -->
                 <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
-                  <td colspan="8" class="px-5 py-3"
-                    style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
+                  <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
                     <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1">
-                      <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                      載入中…
+                      <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…
                     </div>
-                    <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">
-                      此裝備無圖片
-                    </div>
+                    <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
                     <div v-else class="flex flex-wrap gap-2">
-                      <img
-                        v-for="(img, i) in gearImages[gear.id]"
-                        :key="img.id"
-                        :src="img.url"
+                      <img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url"
                         class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200"
-                        @click.stop="openGearLightbox(gear.id, i)"
-                      />
+                        @click.stop="openGearLightbox(gear.id, i)" />
                     </div>
                   </td>
                 </tr>
@@ -256,14 +245,207 @@
             </tbody>
           </table>
         </div>
-
         <div class="px-5 py-3 border-t border-border/30 flex items-center justify-between">
-          <span class="text-xs font-body text-inkMuted">
-            顯示 <span class="text-ink font-semibold">{{ filtered.length }}</span> / {{ store.gearLibrary.length }} 件
-          </span>
+          <span class="text-xs font-body text-inkMuted">顯示 <span class="text-ink font-semibold">{{ filtered.length }}</span> / {{ store.gearLibrary.length }} 件</span>
           <span class="text-xs font-mono text-inkMuted">合計 {{ filteredWeightKg }} kg</span>
         </div>
       </div>
+
+      <!-- Tables: library has wishlist items → two separate sections -->
+      <template v-else>
+        <!-- 已擁有 section -->
+        <div class="card-aged overflow-hidden mb-5">
+          <div class="section-title-bar">
+            <span>已擁有</span>
+            <span class="section-title-count">{{ filteredOwned.length }} 件</span>
+          </div>
+          <div v-if="filteredOwned.length === 0" class="px-5 py-6 text-sm font-body italic text-inkMuted">
+            無符合條件的已擁有裝備
+          </div>
+          <div v-else class="overflow-x-auto">
+            <table class="w-full">
+              <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
+                <tr class="border-b border-border/50">
+                  <th class="th cursor-pointer select-none" @click="setSort('name')">
+                    <span class="flex items-center gap-1">名稱 <component :is="sortIcon('name')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th cursor-pointer select-none" @click="setSort('category')">
+                    <span class="flex items-center gap-1">類別 <component :is="sortIcon('category')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th text-right cursor-pointer select-none" @click="setSort('weight')">
+                    <span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="sortIcon('weight')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th cursor-pointer select-none" @click="setSort('brand')">
+                    <span class="flex items-center gap-1">品牌 <component :is="sortIcon('brand')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th text-right cursor-pointer select-none" @click="setSort('price')">
+                    <span class="flex items-center justify-end gap-1">價格 <component :is="sortIcon('price')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th cursor-pointer select-none" @click="setSort('addedAt')">
+                    <span class="flex items-center gap-1">加入時間 <component :is="sortIcon('addedAt')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th">備註</th>
+                  <th class="w-16" />
+                </tr>
+              </thead>
+              <tbody>
+                <template v-for="gear in filteredOwned" :key="gear.id">
+                  <tr
+                    class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
+                    :class="{ 'border-border/0': expandedIds.has(gear.id) }"
+                    :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
+                    @mouseenter="hoveredId = gear.id"
+                    @mouseleave="hoveredId = null"
+                    @click="toggleExpand(gear.id)"
+                  >
+                    <td class="td font-medium text-ink">
+                      <span class="flex items-center gap-1.5">
+                        <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0"
+                          :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
+                        {{ gear.name }}
+                        <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
+                          class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
+                          <ExternalLinkIcon :size="11" />
+                        </a>
+                      </span>
+                    </td>
+                    <td class="td"><span class="cat-badge">{{ gear.category || '其他' }}</span></td>
+                    <td class="td font-mono text-right">
+                      {{ (gear.weight ?? 0) * (gear.quantity ?? 1) }} g
+                      <span class="text-[11px] opacity-50 ml-1">×{{ gear.quantity ?? 1 }}</span>
+                    </td>
+                    <td class="td text-inkMuted">{{ gear.brand || '—' }}</td>
+                    <td class="td font-mono text-inkMuted text-right">{{ gear.price != null ? gear.price.toLocaleString() : '—' }}</td>
+                    <td class="td text-inkMuted">{{ gear.addedAt || '—' }}</td>
+                    <td class="td note-cell text-inkMuted/70 italic">{{ gear.note || '—' }}</td>
+                    <td class="td text-right" @click.stop>
+                      <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer"
+                          @click="openEdit(gear)" aria-label="編輯"><PencilIcon :size="13" /></button>
+                        <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+                          @click="confirmDelete(gear)" aria-label="刪除"><Trash2Icon :size="13" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
+                    <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
+                      <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1">
+                        <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…
+                      </div>
+                      <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
+                      <div v-else class="flex flex-wrap gap-2">
+                        <img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url"
+                          class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200"
+                          @click.stop="openGearLightbox(gear.id, i)" />
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="filteredOwned.length > 0" class="px-5 py-3 border-t border-border/30 flex items-center justify-between">
+            <span class="text-xs font-body text-inkMuted">顯示 <span class="text-ink font-semibold">{{ filteredOwned.length }}</span> / {{ ownedInLibrary.length }} 件</span>
+            <span class="text-xs font-mono text-inkMuted">合計 {{ filteredWeightKg }} kg</span>
+          </div>
+        </div>
+
+        <!-- 願望清單 section -->
+        <div class="card-aged overflow-hidden" style="border-color: color-mix(in srgb, var(--c-primary) 25%, var(--c-border));">
+          <div class="section-title-bar section-title-bar--wishlist">
+            <span class="flex items-center gap-1.5"><BookmarkIcon :size="13" /> 願望清單</span>
+            <span class="section-title-count">{{ filteredWishlist.length }} 件</span>
+          </div>
+          <div v-if="filteredWishlist.length === 0" class="px-5 py-6 text-sm font-body italic text-inkMuted">
+            無符合條件的願望清單裝備
+          </div>
+          <div v-else class="overflow-x-auto">
+            <table class="w-full">
+              <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
+                <tr class="border-b border-border/50">
+                  <th class="th cursor-pointer select-none" @click="setSort('name')">
+                    <span class="flex items-center gap-1">名稱 <component :is="sortIcon('name')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th cursor-pointer select-none" @click="setSort('category')">
+                    <span class="flex items-center gap-1">類別 <component :is="sortIcon('category')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th text-right cursor-pointer select-none" @click="setSort('weight')">
+                    <span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="sortIcon('weight')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th cursor-pointer select-none" @click="setSort('brand')">
+                    <span class="flex items-center gap-1">品牌 <component :is="sortIcon('brand')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th text-right cursor-pointer select-none" @click="setSort('price')">
+                    <span class="flex items-center justify-end gap-1">價格 <component :is="sortIcon('price')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th cursor-pointer select-none" @click="setSort('addedAt')">
+                    <span class="flex items-center gap-1">加入時間 <component :is="sortIcon('addedAt')" :size="11" class="opacity-40 shrink-0" /></span>
+                  </th>
+                  <th class="th">備註</th>
+                  <th class="w-16" />
+                </tr>
+              </thead>
+              <tbody>
+                <template v-for="gear in filteredWishlist" :key="gear.id">
+                  <tr
+                    class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
+                    :class="{ 'border-border/0': expandedIds.has(gear.id) }"
+                    :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
+                    @mouseenter="hoveredId = gear.id"
+                    @mouseleave="hoveredId = null"
+                    @click="toggleExpand(gear.id)"
+                  >
+                    <td class="td font-medium text-ink">
+                      <span class="flex items-center gap-1.5">
+                        <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0"
+                          :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
+                        {{ gear.name }}
+                        <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
+                          class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
+                          <ExternalLinkIcon :size="11" />
+                        </a>
+                      </span>
+                    </td>
+                    <td class="td"><span class="cat-badge">{{ gear.category || '其他' }}</span></td>
+                    <td class="td font-mono text-right">
+                      {{ (gear.weight ?? 0) * (gear.quantity ?? 1) }} g
+                      <span class="text-[11px] opacity-50 ml-1">×{{ gear.quantity ?? 1 }}</span>
+                    </td>
+                    <td class="td text-inkMuted">{{ gear.brand || '—' }}</td>
+                    <td class="td font-mono text-inkMuted text-right">{{ gear.price != null ? gear.price.toLocaleString() : '—' }}</td>
+                    <td class="td text-inkMuted">{{ gear.addedAt || '—' }}</td>
+                    <td class="td note-cell text-inkMuted/70 italic">{{ gear.note || '—' }}</td>
+                    <td class="td text-right" @click.stop>
+                      <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer"
+                          @click="openEdit(gear)" aria-label="編輯"><PencilIcon :size="13" /></button>
+                        <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+                          @click="confirmDelete(gear)" aria-label="刪除"><Trash2Icon :size="13" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
+                    <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
+                      <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1">
+                        <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…
+                      </div>
+                      <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
+                      <div v-else class="flex flex-wrap gap-2">
+                        <img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url"
+                          class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200"
+                          @click.stop="openGearLightbox(gear.id, i)" />
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="filteredWishlist.length > 0" class="px-5 py-3 border-t border-border/30 flex items-center justify-between">
+            <span class="text-xs font-body text-inkMuted">顯示 <span class="text-ink font-semibold">{{ filteredWishlist.length }}</span> / {{ wishlistCount }} 件</span>
+          </div>
+        </div>
+      </template>
 
     </div>
   </div>
@@ -337,6 +519,24 @@
             <div>
               <label class="field-label">備註</label>
               <textarea v-model="form.note" rows="3" class="input-field text-sm resize-none" placeholder="選填" />
+            </div>
+
+            <!-- 願望清單開關 -->
+            <div class="flex items-center justify-between py-1">
+              <div class="flex items-center gap-2">
+                <BookmarkIcon :size="14" class="text-inkMuted" />
+                <span class="text-sm font-body text-ink">加入願望清單</span>
+                <span class="text-xs font-body text-inkMuted">（尚未購買的裝備）</span>
+              </div>
+              <button
+                type="button"
+                class="wishlist-toggle"
+                :class="{ 'wishlist-toggle--on': form.isWishlist }"
+                @click="form.isWishlist = !form.isWishlist"
+                :aria-pressed="form.isWishlist"
+              >
+                <span class="wishlist-toggle-thumb" />
+              </button>
             </div>
 
             <!-- 圖片 -->
@@ -469,6 +669,7 @@ import {
   ChevronsUpDown as ChevronsUpDownIcon,
   Check as CheckIcon,
   Image as ImageIcon,
+  Bookmark as BookmarkIcon,
 } from 'lucide-vue-next'
 import type { Gear, GearImage } from '../types'
 import { usePostStore } from '../stores/postStore'
@@ -559,8 +760,16 @@ const filtered = computed(() => {
 function gramsOf(list: Gear[]) {
   return list.reduce((s, g) => s + (g.weight ?? 0) * (g.quantity ?? 1), 0)
 }
-const totalWeightKg    = computed(() => (gramsOf(store.gearLibrary) / 1000).toFixed(2))
-const filteredWeightKg = computed(() => (gramsOf(filtered.value) / 1000).toFixed(2))
+
+const hasWishlist      = computed(() => store.gearLibrary.some(g => g.isWishlist))
+const filteredOwned    = computed(() => filtered.value.filter(g => !g.isWishlist))
+const filteredWishlist = computed(() => filtered.value.filter(g => g.isWishlist))
+const ownedInLibrary   = computed(() => store.gearLibrary.filter(g => !g.isWishlist))
+const wishlistCount    = computed(() => store.gearLibrary.filter(g => g.isWishlist).length)
+
+
+const totalWeightKg    = computed(() => (gramsOf(ownedInLibrary.value) / 1000).toFixed(2))
+const filteredWeightKg = computed(() => (gramsOf(filteredOwned.value) / 1000).toFixed(2))
 const categoryCount    = computed(() => new Set(store.gearLibrary.map(g => g.category)).size)
 
 // ── Row expansion + image cache ──────────────────────────
@@ -629,6 +838,7 @@ onUnmounted(() => { newImagePreviews.value.forEach(u => URL.revokeObjectURL(u)) 
 type GearForm = {
   name: string; weight: string; note: string; category: string
   quantity: number; brand: string; referenceUrl: string; price: string; addedAt: string
+  isWishlist: boolean
 }
 
 const showForm  = ref(false)
@@ -641,6 +851,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 const blankForm = (): GearForm => ({
   name: '', weight: '', note: '', category: '其他',
   quantity: 1, brand: '', referenceUrl: '', price: '', addedAt: today(),
+  isWishlist: false,
 })
 
 const formErrors = computed(() => {
@@ -689,6 +900,7 @@ async function openEdit(gear: Gear) {
     referenceUrl: gear.referenceUrl ?? '',
     price:        gear.price != null ? String(gear.price) : '',
     addedAt:      gear.addedAt ?? '',
+    isWishlist:   gear.isWishlist ?? false,
   }
   apiError.value      = null
   showForm.value      = true
@@ -724,6 +936,7 @@ async function submitForm() {
       referenceUrl: form.value.referenceUrl.trim() || null,
       price:        form.value.price.trim() ? Number(form.value.price) : null,
       addedAt:      form.value.addedAt || null,
+      isWishlist:   form.value.isWishlist,
     }
     let gearId: string
     if (editingId.value) {
@@ -931,4 +1144,63 @@ async function executeDelete() {
   transition: background 0.12s ease;
 }
 .gear-img-remove:hover { background: rgba(0,0,0,0.85); }
+
+/* ── Wishlist toggle switch ──────────────────────────── */
+.wishlist-toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--c-border) 80%, transparent);
+  border: 1px solid var(--c-border);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+.wishlist-toggle--on {
+  background: color-mix(in srgb, var(--c-primary) 70%, transparent);
+  border-color: var(--c-primary);
+}
+.wishlist-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c-inkMuted);
+  transition: transform 0.18s ease, background 0.2s ease;
+}
+.wishlist-toggle--on .wishlist-toggle-thumb {
+  transform: translateX(18px);
+  background: var(--c-primary);
+}
+
+/* ── Section title bars ──────────────────────────────── */
+.section-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 7px;
+  font-size: 11px;
+  font-family: Inter, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-inkMuted);
+  background: color-mix(in srgb, var(--c-card) 70%, var(--c-border) 30%);
+  border-bottom: 1px solid var(--c-border);
+}
+.section-title-bar--wishlist {
+  color: var(--c-primary);
+  background: color-mix(in srgb, var(--c-primary) 6%, var(--c-card));
+  border-bottom-color: color-mix(in srgb, var(--c-primary) 20%, transparent);
+}
+.section-title-count {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.6;
+  letter-spacing: 0.05em;
+  text-transform: none;
+}
 </style>

@@ -41,6 +41,7 @@ export interface Gear {
   referenceUrl?: string | null
   price?: number | null
   addedAt?: string | null
+  isWishlist?: boolean
 }
 
 export interface GearImage {
