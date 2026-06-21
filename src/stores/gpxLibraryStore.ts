@@ -1,11 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { GpxLibraryEntry } from '../types'
+import { useAuthStore } from './authStore'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
 async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const res = await fetch(`${API_BASE}${path}`, init)
+  const auth    = useAuthStore()
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> ?? {}) }
+  if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers })
   if (!res.ok) throw new Error(await res.text())
   return res
 }

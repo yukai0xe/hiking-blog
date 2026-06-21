@@ -136,6 +136,31 @@
             </div>
           </Transition>
         </div>
+
+        <!-- View mode toggle -->
+        <div class="flex items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="viewMode === 'simple'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="viewMode = 'simple'"
+          >
+            <LayoutListIcon :size="13" />
+            簡單
+          </button>
+          <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="viewMode === 'advanced'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="viewMode = 'advanced'"
+          >
+            <BarChart2Icon :size="13" />
+            進階
+          </button>
+        </div>
       </div>
 
       <!-- Error banner -->
@@ -175,30 +200,26 @@
             style="max-width: 350px;"
             @click="openDetail(entry)"
           >
-            <!-- Map area: square topo preview -->
-            <div class="card-map" style="aspect-ratio: 1/1; max-height: 350px; background: #2d3b1e; position: relative; overflow: hidden; flex-shrink: 0;">
-              <div class="topo-bg absolute inset-0" />
-              <svg v-if="cardPaths[entry.id]" viewBox="0 0 200 200" class="absolute inset-0 w-full h-full">
-                <path :d="cardPaths[entry.id].d" class="route-line" />
-                <circle :cx="cardPaths[entry.id].start[0]" :cy="cardPaths[entry.id].start[1]" r="5" class="dot-start" />
-                <circle :cx="cardPaths[entry.id].end[0]"   :cy="cardPaths[entry.id].end[1]"   r="5" class="dot-end" />
-              </svg>
-              <div v-else class="absolute inset-0 flex items-center justify-center">
+            <!-- Elevation chart preview (advanced mode only) -->
+            <div v-if="viewMode === 'advanced'" class="card-map" style="height: 110px; background: #0e0c09; position: relative; overflow: hidden; flex-shrink: 0;">
+              <!-- Loading -->
+              <div v-if="!(entry.id in cardElevations)" class="absolute inset-0 flex items-center justify-center">
                 <div class="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin opacity-40" />
               </div>
-              <!-- Action buttons (hover) -->
-              <div class="card-actions absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity duration-150">
-                <button
-                  class="card-action-btn"
-                  @click.stop="downloadGpx(entry)"
-                  title="下載 GPX"
-                >↓</button>
-                <button class="card-action-btn" @click.stop="openEdit(entry)" title="編輯">編輯</button>
-                <button class="card-action-btn card-action-del" @click.stop="confirmDelete(entry)" title="刪除">刪除</button>
+              <!-- No elevation data (parse failed) -->
+              <div v-else-if="!cardElevations[entry.id]?.length" class="absolute inset-0 flex items-center justify-center">
+                <span class="text-[10px] font-mono text-inkMuted opacity-30">no elevation</span>
               </div>
+              <!-- Chart -->
+              <ElevationChart
+                v-else
+                :elevation="cardElevations[entry.id]!"
+                :mini="true"
+                class="absolute inset-0 w-full h-full"
+              />
             </div>
             <!-- Footer -->
-            <div class="card-footer" style="background: #1a1510; border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px 11px;">
+            <div class="card-footer" style="background: #1a1510; border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px 11px; position: relative;">
               <p class="card-name font-heading font-bold text-ink mb-1.5" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ entry.name }}</p>
               <div class="flex flex-wrap gap-1 mb-1.5">
                 <span v-if="entry.category" class="tag-cat">{{ entry.category }}</span>
@@ -207,6 +228,12 @@
               <div class="flex items-center justify-between">
                 <span class="text-primary" style="font-size: 12px;">{{ starsDisplay(entry.difficultyStars) }}</span>
                 <span class="font-mono text-inkMuted" style="font-size: 10px;">{{ entry.date ?? '—' }}</span>
+              </div>
+              <!-- Action buttons (hover) -->
+              <div class="card-actions absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity duration-150">
+                <button class="card-action-btn" @click.stop="downloadGpx(entry)" title="下載 GPX">↓</button>
+                <button class="card-action-btn" @click.stop="openEdit(entry)" title="編輯">編輯</button>
+                <button class="card-action-btn card-action-del" @click.stop="confirmDelete(entry)" title="刪除">刪除</button>
               </div>
             </div>
           </div>
@@ -387,20 +414,32 @@ import {
   AlertCircle as AlertCircleIcon, Map as MapIcon, Upload as UploadIcon,
   SlidersHorizontal as SlidersHorizontalIcon,
   Square as SquareIcon, CheckSquare as CheckSquareIcon,
+  LayoutList as LayoutListIcon, BarChart2 as BarChart2Icon,
 } from 'lucide-vue-next'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
 import type { GpxLibraryEntry } from '../types'
 import {
-  parseGPXFromUrl, downsampleCoords, gpxCoordsToSvgPath,
+  parseGPXFromUrl,
   computeElevationStats, computeTotalDistanceKm,
 } from '../services/gpx'
+import ElevationChart from '../components/ElevationChart.vue'
 
 const CATEGORIES = ['郊山', '中級山', '高山', '百岳', '技術路線'] as const
 
 const store = useGpxLibraryStore()
+
+const VIEW_MODE_KEY = 'gpx-library-view-mode'
+const viewMode = ref<'simple' | 'advanced'>(
+  (localStorage.getItem(VIEW_MODE_KEY) as 'simple' | 'advanced' | null) ?? 'simple'
+)
+watch(viewMode, (mode) => {
+  localStorage.setItem(VIEW_MODE_KEY, mode)
+  if (mode === 'advanced') loadAllCardGpx()
+})
+
 onMounted(async () => {
   await store.fetchGpxLibrary()
-  loadAllCardGpx()
+  if (viewMode.value === 'advanced') loadAllCardGpx()
 })
 
 // ── Search & filters ─────────────────────────────────────
@@ -455,28 +494,28 @@ function starsDisplay(stars?: number | null): string {
   return '★'.repeat(stars) + '☆'.repeat(5 - stars)
 }
 
-// ── Card GPX SVG loading ──────────────────────────────────
-type CardPath = { d: string; start: [number, number]; end: [number, number] }
-const cardPaths = reactive<Record<string, CardPath>>({})
+// ── Card elevation data loading ───────────────────────────
+const cardElevations = reactive<Record<string, number[] | null>>({})
 
 function loadAllCardGpx() {
   for (const entry of store.gpxLibrary) {
-    if (!cardPaths[entry.id]) loadCardGpx(entry)
+    if (!(entry.id in cardElevations)) loadCardGpx(entry)
   }
 }
 
 async function loadCardGpx(entry: GpxLibraryEntry) {
   try {
     const gpxData = await parseGPXFromUrl(entry.gpxFileUrl)
-    const sampled = downsampleCoords(gpxData.coordinates, 200)
-    const result  = gpxCoordsToSvgPath(sampled)
-    cardPaths[entry.id] = result
-  } catch { /* silently skip on error */ }
+    cardElevations[entry.id] = gpxData.elevation
+  } catch {
+    cardElevations[entry.id] = null
+  }
 }
 
 watch(() => store.gpxLibrary, (entries) => {
+  if (viewMode.value !== 'advanced') return
   for (const e of entries) {
-    if (!cardPaths[e.id]) loadCardGpx(e)
+    if (!(e.id in cardElevations)) loadCardGpx(e)
   }
 }, { deep: false })
 
@@ -546,7 +585,7 @@ async function submitForm() {
     if (editingId.value) {
       await store.updateGpxRoute(editingId.value, { ...payload, gpxFile: form.value.gpxFile })
       if (form.value.gpxFile) {
-        delete cardPaths[editingId.value]
+        delete cardElevations[editingId.value]
         const updated = store.gpxLibrary.find(e => e.id === editingId.value)
         if (updated) loadCardGpx(updated)
       }
@@ -645,7 +684,7 @@ async function executeDelete() {
   apiError.value = null
   try {
     await store.deleteGpxRoute(deletingEntry.value.id)
-    delete cardPaths[deletingEntry.value.id]
+    delete cardElevations[deletingEntry.value.id]
     deletingEntry.value = null
   } catch (e) {
     apiError.value = (e as Error).message
@@ -669,19 +708,6 @@ async function executeDelete() {
 .gpx-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
 .gpx-card:hover .card-actions { opacity: 1 !important; }
 
-.topo-bg {
-  background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(140,120,80,0.14) 10px, rgba(140,120,80,0.14) 11px),
-    repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(140,120,80,0.07) 10px, rgba(140,120,80,0.07) 11px);
-}
-
-.route-line {
-  fill: none; stroke: #f4a261; stroke-width: 3;
-  stroke-linecap: round; stroke-linejoin: round;
-  filter: drop-shadow(0 0 6px rgba(244,162,97,0.5));
-}
-.dot-start { fill: #7fcf7f; filter: drop-shadow(0 0 3px rgba(127,207,127,0.6)); }
-.dot-end   { fill: #e07070; filter: drop-shadow(0 0 3px rgba(220,112,112,0.6)); }
 
 .card-actions { opacity: 0; }
 .card-action-btn {
