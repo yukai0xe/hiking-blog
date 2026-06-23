@@ -98,5 +98,16 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
     gpxLibrary.value = gpxLibrary.value.filter(e => e.id !== id)
   }
 
-  return { gpxLibrary, loading, error, fetchGpxLibrary, createGpxRoute, updateGpxRoute, deleteGpxRoute }
+  async function capDifficulty(max: number): Promise<void> {
+    await apiFetch('/api/GpxLibrary/cap-difficulty', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ maxDifficulty: max }),
+    })
+    gpxLibrary.value.forEach(e => {
+      if (e.difficultyStars && e.difficultyStars > max) e.difficultyStars = max
+    })
+  }
+
+  return { gpxLibrary, loading, error, fetchGpxLibrary, createGpxRoute, updateGpxRoute, deleteGpxRoute, capDifficulty }
 })

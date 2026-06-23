@@ -511,6 +511,19 @@ export const usePostStore = defineStore('posts', () => {
     }
   }
 
+  async function capDifficulty(max: number) {
+    await apiFetch('/api/Posts/cap-difficulty', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ maxDifficulty: max }),
+    })
+    posts.value.forEach(p => {
+      if (p.difficultyStars && p.difficultyStars > max) p.difficultyStars = max
+    })
+    if (currentPost.value?.difficultyStars && currentPost.value.difficultyStars > max)
+      currentPost.value = { ...currentPost.value, difficultyStars: max }
+  }
+
   return {
     posts,
     currentPost,
@@ -559,5 +572,6 @@ export const usePostStore = defineStore('posts', () => {
     updateMainRouteDescription,
     deleteGpxRecord,
     updatePostVisibility,
+    capDifficulty,
   }
 })

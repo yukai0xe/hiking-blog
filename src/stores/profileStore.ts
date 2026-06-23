@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './authStore'
+import { usePostStore } from './postStore'
+import { useGpxLibraryStore } from './gpxLibraryStore'
 
 export type ThemeMode = 'dark' | 'light' | 'auto'
 
@@ -117,10 +119,16 @@ export const useProfileStore = defineStore('profile', () => {
   }
 
   function setDifficultyMax(max: number) {
-    difficultyMax.value = Math.max(1, max)
+    const clamped = Math.max(1, max)
+    const wasHigher = clamped < difficultyMax.value
+    difficultyMax.value = clamped
     ensureLabels(difficultyMax.value)
     persistLocal()
     scheduleSave()
+    if (wasHigher) {
+      usePostStore().capDifficulty(clamped).catch(() => {})
+      useGpxLibraryStore().capDifficulty(clamped).catch(() => {})
+    }
   }
 
   function setDifficultyLabel(index: number, label: string) {

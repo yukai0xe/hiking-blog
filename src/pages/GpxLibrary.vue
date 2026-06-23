@@ -119,6 +119,7 @@
                   :style="filterStars.includes(n)
                     ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
                     : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                  :title="profile.difficultyLabels[n - 1] || undefined"
                   @click="toggleStars(n)"
                 >{{ n <= 10 ? '★'.repeat(n) : `★×${n}` }}</button>
               </div>

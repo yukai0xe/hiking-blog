@@ -106,7 +106,7 @@
       <div class="date-row">
         <span class="date-tick" />
         <span class="card-date">{{ dateDisplay }}</span>
-        <span v-if="post.difficultyStars" class="card-stars">{{ '★'.repeat(post.difficultyStars) }}</span>
+        <span v-if="post.difficultyStars" class="card-stars">{{ '★'.repeat(Math.min(post.difficultyStars, profile.difficultyMax)) }}</span>
       </div>
     </div>
   </div>
@@ -115,8 +115,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { Post } from '../types'
+import { useProfileStore } from '../stores/profileStore'
 
-const props = defineProps<{ post: Post }>()
+const props   = defineProps<{ post: Post }>()
+const profile = useProfileStore()
 
 interface SvgData {
   d: string

@@ -85,7 +85,7 @@
             <span>{{ store.currentPost.peopleCount }} 人</span>
           </div>
           <div v-if="store.currentPost.difficultyStars" class="meta-chip">
-            <span class="text-primary" style="font-size:11px;letter-spacing:-1px;">{{ '★'.repeat(store.currentPost.difficultyStars) }}</span>
+            <span class="text-primary" style="font-size:11px;letter-spacing:-1px;">{{ '★'.repeat(Math.min(store.currentPost.difficultyStars, profile.difficultyMax)) }}</span>
           </div>
         </div>
       </header>
@@ -469,7 +469,7 @@
               <div v-if="store.currentPost.difficultyStars" class="meta-item">
                 <span class="meta-icon text-primary" style="font-size:13px;line-height:1;">★</span>
                 <span class="meta-label">難度</span>
-                <span class="meta-value text-primary" style="letter-spacing:-1px;">{{ '★'.repeat(store.currentPost.difficultyStars) }}</span>
+                <span class="meta-value text-primary" style="letter-spacing:-1px;">{{ '★'.repeat(Math.min(store.currentPost.difficultyStars, profile.difficultyMax)) }}</span>
               </div>
             </div>
           </div>
@@ -1118,6 +1118,7 @@ import { usePostStore } from '../stores/postStore'
 import { useThemeStore } from '../stores/themeStore'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
 import { useAuthStore } from '../stores/authStore'
+import { useProfileStore } from '../stores/profileStore'
 import type { Waypoint, GpxLibraryEntry, PostGpxRecord } from '../types'
 
 const route       = useRoute()
@@ -1126,6 +1127,7 @@ const store       = usePostStore()
 const theme       = useThemeStore()
 const gpxLibStore = useGpxLibraryStore()
 const auth        = useAuthStore()
+const profile     = useProfileStore()
 
 const activeTab    = ref('photos')
 const sidebarOpen   = ref(false)
@@ -1576,7 +1578,7 @@ async function addGpxRecord() {
   try {
     const newId = await store.createGpxRecord(store.currentPost!.id, name, file)
     if (syncToLibrary.value) {
-      await gpxLibStore.createGpxRoute({ name, gpxFile: file })
+      await gpxLibStore.createGpxRoute({ name, gpxFile: file, difficultyStars: store.currentPost!.difficultyStars ?? null })
     }
     activeGpxRecordId.value  = newId
     showGpxUploadModal.value = false
@@ -1600,7 +1602,7 @@ async function rerouteRecord() {
     await store.rerouteGpxRecord(store.currentPost!.id, recordId, file)
     if (syncToLibrary.value) {
       const rec  = store.currentGpxRecords.find(r => r.id === recordId)
-      await gpxLibStore.createGpxRoute({ name: rec?.name ?? '新路線', gpxFile: file })
+      await gpxLibStore.createGpxRoute({ name: rec?.name ?? '新路線', gpxFile: file, difficultyStars: store.currentPost!.difficultyStars ?? null })
     }
     showGpxUploadModal.value = false
     gpxUploadFile.value      = null
@@ -1654,10 +1656,12 @@ async function uploadGpx() {
     const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
     const fd = new FormData()
     fd.append('gpxFile', gpxUploadFile.value)
-    const res = await fetch(`${apiBase}/api/Gpx/${store.currentPost!.id}`, { method: 'POST', body: fd })
+    const headers: Record<string, string> = {}
+    if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
+    const res = await fetch(`${apiBase}/api/Gpx/${store.currentPost!.id}`, { method: 'POST', body: fd, headers })
     if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
     if (syncToLibrary.value) {
-      await gpxLibStore.createGpxRoute({ name: store.currentPost!.title, gpxFile: gpxUploadFile.value })
+      await gpxLibStore.createGpxRoute({ name: store.currentPost!.title, gpxFile: gpxUploadFile.value, difficultyStars: store.currentPost!.difficultyStars ?? null })
     }
     await store.fetchPostDetail(store.currentPost!.id)
     showGpxUploadModal.value = false
