@@ -919,10 +919,10 @@
           v-if="showExportModal"
           class="fixed inset-0 z-50 flex items-center justify-center p-4"
           style="background: color-mix(in srgb, var(--c-base) 60%, transparent); backdrop-filter: blur(4px);"
-          @click.self="showExportModal = false"
-          @keydown.esc="showExportModal = false"
+          @click.self="!exporting && (showExportModal = false)"
+          @keydown.esc="!exporting && (showExportModal = false)"
         >
-          <div class="card-aged rounded-xl p-6 w-full max-w-sm shadow-xl">
+          <div class="card-aged rounded-xl p-6 w-full max-w-sm shadow-xl relative overflow-hidden">
 
             <!-- Header -->
             <div class="flex items-center gap-2.5 mb-5">
@@ -1009,22 +1009,39 @@
               </label>
             </div>
 
+            <!-- Error message -->
+            <p v-if="exportError" class="text-xs font-body text-red-400 mb-3 break-all">{{ exportError }}</p>
+
             <!-- Footer buttons -->
             <div class="flex gap-2">
               <button
                 class="flex-1 py-2 rounded-lg text-sm font-body cursor-pointer transition-colors duration-150 border"
                 style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                :disabled="exporting"
                 @click="showExportModal = false"
               >
                 取消
               </button>
               <button
                 class="flex-1 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer btn-cta transition-colors duration-150"
+                :disabled="exporting"
                 @click="doExport"
               >
                 匯出
               </button>
             </div>
+
+            <!-- Loading overlay -->
+            <Transition name="export-fade">
+              <div
+                v-if="exporting"
+                class="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl"
+                style="background: color-mix(in srgb, var(--c-base) 88%, transparent); backdrop-filter: blur(2px);"
+              >
+                <div class="export-spinner" />
+                <span class="text-sm font-body text-inkMuted">匯出中...</span>
+              </div>
+            </Transition>
 
           </div>
         </div>
@@ -1769,18 +1786,30 @@ async function toggleVisibility() {
 }
 
 // ── Export ───────────────────────────────────────────────────────
-const showExportModal         = ref(false)
-const exportFormat            = ref<'json' | 'pdf'>('json')
-const includeGears            = ref(true)
-const includeFoods            = ref(true)
+const showExportModal           = ref(false)
+const exportFormat              = ref<'json' | 'pdf'>('json')
+const includeGears              = ref(true)
+const includeFoods              = ref(true)
 const includeFoodDayAssignments = ref(true)
-const includeGpx              = ref(false)
+const includeGpx                = ref(false)
+const exporting                 = ref(false)
+const exportError               = ref<string | null>(null)
 
-function doExport() {
-  showExportModal.value = false
-  if (includeGpx.value) void exportAsZip()
-  else if (exportFormat.value === 'json') exportAsJson()
-  else void exportAsPdf()
+watch(showExportModal, (v) => { if (v) exportError.value = null })
+
+async function doExport() {
+  exporting.value  = true
+  exportError.value = null
+  try {
+    if (includeGpx.value) await exportAsZip()
+    else if (exportFormat.value === 'json') exportAsJson()
+    else await exportAsPdf()
+    showExportModal.value = false
+  } catch (e) {
+    exportError.value = (e as Error).message || '匯出失敗，請稍後再試'
+  } finally {
+    exporting.value = false
+  }
 }
 
 function exportAsJson() {
@@ -1837,10 +1866,7 @@ async function exportAsPdf() {
   const headers: Record<string, string> = {}
   if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
   const res = await fetch(url, { headers })
-  if (!res.ok) {
-    console.error('PDF export failed:', res.status, await res.text())
-    return
-  }
+  if (!res.ok) throw new Error(`PDF 匯出失敗 (${res.status})`)
 
   const blob      = await res.blob()
   const objectUrl = URL.createObjectURL(blob)
@@ -1860,10 +1886,7 @@ async function exportAsZip() {
   const headers: Record<string, string> = {}
   if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
   const res = await fetch(url, { headers })
-  if (!res.ok) {
-    console.error('ZIP export failed:', res.status, await res.text())
-    return
-  }
+  if (!res.ok) throw new Error(`ZIP 匯出失敗 (${res.status})`)
 
   const blob      = await res.blob()
   const objectUrl = URL.createObjectURL(blob)
@@ -1926,6 +1949,16 @@ function parseDate(dateStr: string): { date: Date | null; iso: string | null } {
 .export-fade-leave-active { transition: opacity 0.15s ease; }
 .export-fade-enter-from,
 .export-fade-leave-to    { opacity: 0; }
+
+.export-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--c-primary) 25%, transparent);
+  border-top-color: var(--c-primary);
+  animation: export-spin 0.7s linear infinite;
+}
+@keyframes export-spin { to { transform: rotate(360deg); } }
 
 .wpt-card-selected {
   box-shadow:
