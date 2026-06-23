@@ -469,7 +469,7 @@
               <div v-if="store.currentPost.difficultyStars" class="meta-item">
                 <span class="meta-icon text-primary" style="font-size:13px;line-height:1;">★</span>
                 <span class="meta-label">難度</span>
-                <span class="meta-value text-primary" style="letter-spacing:-1px;">{{ '★'.repeat(store.currentPost.difficultyStars) }}{{ '☆'.repeat(5 - store.currentPost.difficultyStars) }}</span>
+                <span class="meta-value text-primary" style="letter-spacing:-1px;">{{ '★'.repeat(store.currentPost.difficultyStars) }}</span>
               </div>
             </div>
           </div>

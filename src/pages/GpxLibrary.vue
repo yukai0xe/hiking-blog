@@ -491,7 +491,7 @@ const categoryCounts = computed(() => {
 
 function starsDisplay(stars?: number | null): string {
   if (!stars) return '—'
-  return '★'.repeat(stars) + '☆'.repeat(5 - stars)
+  return '★'.repeat(stars)
 }
 
 // ── Card elevation data loading ───────────────────────────
