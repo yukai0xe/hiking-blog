@@ -191,14 +191,18 @@
             </div>
             <div>
               <label class="field-label">難度</label>
-              <div class="flex gap-2 mt-1">
+              <div class="flex items-center gap-2 mt-1">
                 <button
-                  v-for="n in 5" :key="n"
+                  v-for="n in profile.difficultyMax" :key="n"
                   type="button"
                   class="text-xl leading-none transition-colors duration-100 cursor-pointer"
                   :class="n <= (form.difficultyStars ?? 0) ? 'text-primary' : 'text-inkMuted opacity-30'"
                   @click="form.difficultyStars = form.difficultyStars === n ? null : n"
                 >★</button>
+                <span v-if="form.difficultyStars && profile.difficultyLabels[form.difficultyStars - 1]"
+                  class="text-xs font-body text-inkMuted ml-1">
+                  {{ profile.difficultyLabels[form.difficultyStars - 1] }}
+                </span>
               </div>
             </div>
           </div>
@@ -389,8 +393,11 @@ import {
 } from 'lucide-vue-next'
 import type { Photo } from '../types'
 import { usePostStore } from '../stores/postStore'
+import { useProfileStore } from '../stores/profileStore'
 import CropModal from '../components/CropModal.vue'
 import TagPickerModal from '../components/TagPickerModal.vue'
+
+const profile = useProfileStore()
 
 const route  = useRoute()
 const router = useRouter()

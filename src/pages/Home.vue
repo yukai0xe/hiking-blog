@@ -73,6 +73,14 @@
               style="min-width: 10rem;"
             >
               <p class="text-xs font-body px-3 py-1 truncate text-inkMuted">{{ auth.user.email }}</p>
+              <router-link
+                to="/profile"
+                @click="showUserMenu = false"
+                class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm font-body rounded-lg text-inkMuted hover:text-ink transition-colors duration-200"
+              >
+                <SettingsIcon :size="13" />
+                設定
+              </router-link>
               <button
                 @click="confirmLogout"
                 class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm font-body rounded-lg text-inkMuted hover:text-ink transition-colors duration-200"
@@ -263,6 +271,7 @@ import {
   Sun as SunIcon, Moon as MoonIcon, Search as SearchIcon, X as XIcon,
   Library as LibraryIcon, Route as RouteIcon,
   LogIn as LogInIcon, LogOut as LogOutIcon,
+  Settings as SettingsIcon,
 } from 'lucide-vue-next'
 import WaterfallList from '../components/WaterfallList.vue'
 import DateRangePicker from '../components/DateRangePicker.vue'

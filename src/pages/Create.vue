@@ -118,14 +118,18 @@
             </div>
             <div>
               <label class="field-label">難度</label>
-              <div class="flex gap-2 mt-1">
+              <div class="flex items-center gap-2 mt-1">
                 <button
-                  v-for="n in 5" :key="n"
+                  v-for="n in profile.difficultyMax" :key="n"
                   type="button"
                   class="text-xl leading-none transition-colors duration-100 cursor-pointer"
                   :class="n <= (form.difficultyStars ?? 0) ? 'text-primary' : 'text-inkMuted opacity-30'"
                   @click="form.difficultyStars = form.difficultyStars === n ? null : n"
                 >★</button>
+                <span v-if="form.difficultyStars && profile.difficultyLabels[form.difficultyStars - 1]"
+                  class="text-xs font-body text-inkMuted ml-1">
+                  {{ profile.difficultyLabels[form.difficultyStars - 1] }}
+                </span>
               </div>
             </div>
           </div>
@@ -277,8 +281,11 @@ import {
   AlertCircle as AlertCircleIcon, X as XIcon, Tag as TagIcon,
 } from 'lucide-vue-next'
 import { usePostStore } from '../stores/postStore'
+import { useProfileStore } from '../stores/profileStore'
 import TagPickerModal from '../components/TagPickerModal.vue'
 import defaultCoverUrl from '../assets/cover_default.jpg'
+
+const profile = useProfileStore()
 
 const router = useRouter()
 const store  = usePostStore()

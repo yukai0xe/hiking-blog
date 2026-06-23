@@ -5,6 +5,7 @@ import Create       from '../pages/Create.vue'
 import Edit         from '../pages/Edit.vue'
 import GpxLibrary   from '../pages/GpxLibrary.vue'
 import GearLibrary  from '../pages/GearLibrary.vue'
+import Profile      from '../pages/Profile.vue'
 import AuthCallback from '../pages/AuthCallback.vue'
 import { useAuthStore } from '../stores/authStore'
 
@@ -17,12 +18,13 @@ const router = createRouter({
     { path: '/edit/:id',     component: Edit },
     { path: '/gpx-library',  component: GpxLibrary },
     { path: '/gear-library', component: GearLibrary },
+    { path: '/profile',      component: Profile },
     { path: '/auth/callback', component: AuthCallback },
   ],
 })
 
 router.beforeEach((to) => {
-  const protectedPaths = ['/create', '/gpx-library', '/gear-library']
+  const protectedPaths = ['/create', '/gpx-library', '/gear-library', '/profile']
   if (protectedPaths.includes(to.path) || to.path.startsWith('/edit/')) {
     const auth = useAuthStore()
     if (!auth.user) return '/'
