@@ -131,11 +131,10 @@
         <!-- Difficulty -->
         <select v-model.number="filterDifficulty" class="filter-select">
           <option :value="0">所有難度</option>
-          <option :value="1">★☆☆☆☆</option>
-          <option :value="2">★★☆☆☆</option>
-          <option :value="3">★★★☆☆</option>
-          <option :value="4">★★★★☆</option>
-          <option :value="5">★★★★★</option>
+          <option v-for="n in profile.difficultyMax" :key="n" :value="n">
+            {{ '★'.repeat(n) }}
+            <template v-if="profile.difficultyLabels[n - 1]"> — {{ profile.difficultyLabels[n - 1] }}</template>
+          </option>
         </select>
 
         <!-- Days -->
@@ -265,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
   Compass as CompassIcon, Plus as PlusIcon, Map as MapIcon,
   Sun as SunIcon, Moon as MoonIcon, Search as SearchIcon, X as XIcon,
@@ -278,11 +277,13 @@ import DateRangePicker from '../components/DateRangePicker.vue'
 import { usePostStore } from '../stores/postStore'
 import { useThemeStore } from '../stores/themeStore'
 import { useAuthStore } from '../stores/authStore'
+import { useProfileStore } from '../stores/profileStore'
 import type { Post } from '../types'
 
-const store = usePostStore()
-const theme = useThemeStore()
-const auth = useAuthStore()
+const store   = usePostStore()
+const theme   = useThemeStore()
+const auth    = useAuthStore()
+const profile = useProfileStore()
 const showUserMenu     = ref(false)
 const showLogoutModal  = ref(false)
 onMounted(() => store.fetchPosts())
@@ -293,6 +294,10 @@ const filterDays       = ref('')
 const filterDifficulty = ref(0)
 const filterDateStart = ref('')
 const filterDateEnd   = ref('')
+
+watch(() => profile.difficultyMax, (max) => {
+  if (filterDifficulty.value > max) filterDifficulty.value = 0
+})
 
 const hasActiveFilters = computed(() =>
   !!(searchTitle.value || filterWeather.value || filterDays.value || filterDifficulty.value || filterDateStart.value || filterDateEnd.value)
