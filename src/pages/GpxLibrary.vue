@@ -25,13 +25,6 @@
             <p class="font-heading text-2xl font-bold text-ink leading-none mb-0.5">{{ store.gpxLibrary.length }}</p>
             <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">條路線</p>
           </div>
-          <template v-for="(count, cat) in categoryCounts" :key="cat">
-            <div class="w-px h-8 bg-border/40" />
-            <div class="text-center">
-              <p class="font-heading text-2xl font-bold text-ink leading-none mb-0.5">{{ count }}</p>
-              <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">{{ cat }}</p>
-            </div>
-          </template>
         </div>
         <div class="relative flex-1 min-w-[180px]">
           <SearchIcon :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-inkMuted pointer-events-none" />
@@ -75,29 +68,6 @@
               class="absolute right-0 mt-2 w-72 card-aged rounded-xl p-4 z-20 shadow-xl"
               style="border: 1px solid color-mix(in srgb, var(--c-border) 80%, transparent);"
             >
-              <!-- Category -->
-              <div class="flex items-center justify-between mb-2.5">
-                <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">山岳分類</p>
-                <button
-                  class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
-                  :title="filterCategory.length === CATEGORIES.length ? '取消全部' : '選取全部'"
-                  @click="filterCategory = filterCategory.length === CATEGORIES.length ? [] : [...CATEGORIES]"
-                >
-                  <CheckSquareIcon v-if="filterCategory.length === CATEGORIES.length" :size="14" />
-                  <SquareIcon v-else :size="14" />
-                </button>
-              </div>
-              <div class="flex flex-wrap gap-1.5 mb-4">
-                <button
-                  v-for="cat in CATEGORIES" :key="cat"
-                  class="px-3 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
-                  :style="filterCategory.includes(cat)
-                    ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
-                    : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
-                  @click="toggleCategory(cat)"
-                >{{ cat }}</button>
-              </div>
-
               <!-- Difficulty -->
               <div class="flex items-center justify-between mb-2.5">
                 <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">難度</p>
@@ -123,6 +93,31 @@
                   @click="toggleStars(n)"
                 >{{ n <= 10 ? '★'.repeat(n) : `★×${n}` }}</button>
               </div>
+
+              <!-- Tags -->
+              <template v-if="postStore.availableTags.length">
+                <div class="flex items-center justify-between mb-2.5">
+                  <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">標籤</p>
+                  <button
+                    class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
+                    :title="filterTags.length === postStore.availableTags.length ? '取消全部' : '選取全部'"
+                    @click="filterTags = filterTags.length === postStore.availableTags.length ? [] : [...postStore.availableTags]"
+                  >
+                    <CheckSquareIcon v-if="filterTags.length === postStore.availableTags.length" :size="14" />
+                    <SquareIcon v-else :size="14" />
+                  </button>
+                </div>
+                <div class="flex flex-wrap gap-1.5 mb-4">
+                  <button
+                    v-for="tag in postStore.availableTags" :key="tag"
+                    class="px-2.5 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
+                    :style="filterTags.includes(tag)
+                      ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                      : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                    @click="toggleTag(tag)"
+                  >{{ tag }}</button>
+                </div>
+              </template>
 
               <!-- Footer -->
               <div class="flex items-center justify-between pt-3 border-t" style="border-color: var(--c-border);">
@@ -225,8 +220,8 @@
             <div class="card-footer" style="background: #1a1510; border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px 11px; position: relative;">
               <p class="card-name font-heading font-bold text-ink mb-1.5" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ entry.name }}</p>
               <div class="flex flex-wrap gap-1 mb-1.5">
-                <span v-if="entry.category" class="tag-cat">{{ entry.category }}</span>
                 <span v-if="entry.peopleCount" class="tag-ppl">👤 {{ entry.peopleCount }}</span>
+                <span v-for="tag in entry.tags" :key="tag" class="tag-label">{{ tag }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-primary" style="font-size: 12px;">{{ starsDisplay(entry.difficultyStars) }}</span>
@@ -273,19 +268,36 @@
               </div>
             </div>
 
-            <!-- 山岳分類 -->
-            <div class="mb-3">
-              <label class="field-label">山岳分類</label>
-              <select v-model="form.category" class="input-field text-sm font-body">
-                <option value="">— 選擇分類 —</option>
-                <option v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
-              </select>
-            </div>
-
             <!-- 參考連結 -->
             <div class="mb-3">
               <label class="field-label">參考連結</label>
               <input v-model="form.referenceUrl" type="url" class="input-field text-sm font-mono" placeholder="https://..." />
+            </div>
+
+            <!-- 標籤 -->
+            <div class="mb-3">
+              <label class="field-label">標籤</label>
+              <div class="flex flex-wrap gap-1.5 mb-1.5">
+                <span
+                  v-for="tag in form.tags" :key="tag"
+                  class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-body border"
+                  style="background: color-mix(in srgb, var(--c-primary) 28%, transparent); border-color: var(--c-primary); color: var(--c-ink); font-weight: 600;"
+                >
+                  <button type="button" class="cursor-pointer opacity-60 hover:opacity-100 transition-opacity" @click="form.tags.splice(form.tags.indexOf(tag), 1)">
+                    <XIcon :size="10" />
+                  </button>
+                  {{ tag }}
+                </span>
+                <button
+                  type="button"
+                  class="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-body cursor-pointer transition-all duration-150 border border-dashed"
+                  style="color: var(--c-inkMuted); border-color: color-mix(in srgb, var(--c-border) 80%, transparent);"
+                  @click="tagModalOpen = true"
+                >
+                  <TagIcon :size="11" /> 選擇標籤
+                </button>
+              </div>
+              <TagPickerModal :open="tagModalOpen" v-model="form.tags" @close="tagModalOpen = false" />
             </div>
 
             <!-- GPX 檔案 -->
@@ -418,20 +430,22 @@ import {
   SlidersHorizontal as SlidersHorizontalIcon,
   Square as SquareIcon, CheckSquare as CheckSquareIcon,
   LayoutList as LayoutListIcon, BarChart2 as BarChart2Icon,
+  Tag as TagIcon,
 } from 'lucide-vue-next'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
 import { useProfileStore } from '../stores/profileStore'
+import { usePostStore } from '../stores/postStore'
 import type { GpxLibraryEntry } from '../types'
+import TagPickerModal from '../components/TagPickerModal.vue'
 import {
   parseGPXFromUrl,
   computeElevationStats, computeTotalDistanceKm,
 } from '../services/gpx'
 import ElevationChart from '../components/ElevationChart.vue'
 
-const CATEGORIES = ['郊山', '中級山', '高山', '百岳', '技術路線'] as const
-
-const store   = useGpxLibraryStore()
-const profile = useProfileStore()
+const store     = useGpxLibraryStore()
+const profile   = useProfileStore()
+const postStore = usePostStore()
 
 const VIEW_MODE_KEY = 'gpx-library-view-mode'
 const viewMode = ref<'simple' | 'advanced'>(
@@ -444,28 +458,22 @@ watch(viewMode, (mode) => {
 
 onMounted(async () => {
   await store.fetchGpxLibrary()
+  postStore.fetchTags()
   if (viewMode.value === 'advanced') loadAllCardGpx()
 })
 
 // ── Search & filters ─────────────────────────────────────
 const search         = ref('')
-const filterCategory = ref<string[]>([])
 const filterStars    = ref<number[]>([])
+const filterTags     = ref<string[]>([])
 
 const showFilterPanel   = ref(false)
-const activeFilterCount = computed(() => filterCategory.value.length + filterStars.value.length)
+const activeFilterCount = computed(() => filterStars.value.length + filterTags.value.length)
 
 watch(() => profile.difficultyMax, (max) => {
   filterStars.value = filterStars.value.filter(n => n <= max)
 })
 const hasActiveFilter   = computed(() => !!search.value.trim() || activeFilterCount.value > 0)
-
-function toggleCategory(cat: string) {
-  const i = filterCategory.value.indexOf(cat)
-  filterCategory.value = i === -1
-    ? [...filterCategory.value, cat]
-    : filterCategory.value.filter(c => c !== cat)
-}
 
 function toggleStars(n: number) {
   const i = filterStars.value.indexOf(n)
@@ -474,28 +482,27 @@ function toggleStars(n: number) {
     : filterStars.value.filter(s => s !== n)
 }
 
+function toggleTag(tag: string) {
+  const i = filterTags.value.indexOf(tag)
+  filterTags.value = i === -1
+    ? [...filterTags.value, tag]
+    : filterTags.value.filter(t => t !== tag)
+}
+
 function clearFilters() {
-  search.value         = ''
-  filterCategory.value = []
-  filterStars.value    = []
+  search.value     = ''
+  filterStars.value = []
+  filterTags.value  = []
 }
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return store.gpxLibrary.filter(e => {
     if (q && !e.name.toLowerCase().includes(q)) return false
-    if (filterCategory.value.length && !filterCategory.value.includes(e.category ?? '')) return false
     if (filterStars.value.length && !filterStars.value.includes(e.difficultyStars ?? 0)) return false
+    if (filterTags.value.length && !filterTags.value.some(t => e.tags?.includes(t))) return false
     return true
   })
-})
-
-const categoryCounts = computed(() => {
-  const counts: Record<string, number> = {}
-  for (const e of store.gpxLibrary) {
-    if (e.category) counts[e.category] = (counts[e.category] ?? 0) + 1
-  }
-  return counts
 })
 
 function starsDisplay(stars?: number | null): string {
@@ -531,17 +538,19 @@ watch(() => store.gpxLibrary, (entries) => {
 // ── Editor panel ──────────────────────────────────────────
 type GpxForm = {
   name: string; date: string; peopleCount: number | null
-  difficultyStars: number | null; category: string; referenceUrl: string; gpxFile: File | null
+  difficultyStars: number | null; referenceUrl: string
+  tags: string[]; gpxFile: File | null
 }
 
-const panelOpen  = ref(false)
-const editingId  = ref<string | null>(null)
-const saving     = ref(false)
-const apiError   = ref<string | null>(null)
+const panelOpen   = ref(false)
+const editingId   = ref<string | null>(null)
+const saving      = ref(false)
+const apiError    = ref<string | null>(null)
 const fileInputEl = ref<HTMLInputElement | null>(null)
+const tagModalOpen = ref(false)
 
 const blankForm = (): GpxForm => ({
-  name: '', date: '', peopleCount: null, difficultyStars: null, category: '', referenceUrl: '', gpxFile: null,
+  name: '', date: '', peopleCount: null, difficultyStars: null, referenceUrl: '', tags: [], gpxFile: null,
 })
 const form = ref<GpxForm>(blankForm())
 
@@ -559,8 +568,8 @@ function openEdit(entry: GpxLibraryEntry) {
     date:            entry.date ?? '',
     peopleCount:     entry.peopleCount ?? null,
     difficultyStars: entry.difficultyStars ?? null,
-    category:        entry.category ?? '',
     referenceUrl:    entry.referenceUrl ?? '',
+    tags:            entry.tags ? [...entry.tags] : [],
     gpxFile:         null,
   }
   apiError.value  = null
@@ -587,9 +596,9 @@ async function submitForm() {
       name:            form.value.name.trim(),
       date:            form.value.date || null,
       difficultyStars: form.value.difficultyStars ?? null,
-      category:        form.value.category || null,
       peopleCount:     form.value.peopleCount ?? null,
       referenceUrl:    form.value.referenceUrl.trim() || null,
+      tags:            form.value.tags,
     }
     if (editingId.value) {
       await store.updateGpxRoute(editingId.value, { ...payload, gpxFile: form.value.gpxFile })
@@ -731,13 +740,14 @@ async function executeDelete() {
 .card-action-del { color: #774444; border-color: rgba(220,80,80,0.2); }
 .card-action-del:hover { color: #e07070; border-color: rgba(220,80,80,0.4); }
 
-.tag-cat {
-  font-size: 10px; font-family: monospace; padding: 2px 7px; border-radius: 4px;
-  background: rgba(244,162,97,0.15); color: #f4a261; border: 1px solid rgba(244,162,97,0.28);
-}
 .tag-ppl {
   font-size: 10px; font-family: monospace; padding: 2px 7px; border-radius: 4px;
   background: rgba(198,172,143,0.12); color: var(--c-primary); border: 1px solid rgba(198,172,143,0.2);
+}
+.tag-label {
+  font-size: 10px; font-family: Inter, sans-serif; padding: 2px 7px; border-radius: 4px;
+  background: color-mix(in srgb, var(--c-primary) 18%, transparent);
+  color: var(--c-ink); border: 1px solid color-mix(in srgb, var(--c-primary) 30%, transparent);
 }
 
 /* ── Form ─────────────────────────────────────────────── */

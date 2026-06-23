@@ -138,8 +138,8 @@ export interface GpxLibraryEntry {
   gpxFileUrl:      string
   date?:           string | null
   difficultyStars?: number | null
-  category?:       string | null
   peopleCount?:    number | null
   referenceUrl?:   string | null
+  tags?:           string[] | null
   createdAt:       string
 }

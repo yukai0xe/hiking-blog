@@ -1578,7 +1578,7 @@ async function addGpxRecord() {
   try {
     const newId = await store.createGpxRecord(store.currentPost!.id, name, file)
     if (syncToLibrary.value) {
-      await gpxLibStore.createGpxRoute({ name, gpxFile: file, difficultyStars: store.currentPost!.difficultyStars ?? null })
+      await gpxLibStore.createGpxRoute({ name, gpxFile: file, difficultyStars: store.currentPost!.difficultyStars ?? null, tags: store.currentPost!.tags ?? [] })
     }
     activeGpxRecordId.value  = newId
     showGpxUploadModal.value = false
@@ -1602,7 +1602,7 @@ async function rerouteRecord() {
     await store.rerouteGpxRecord(store.currentPost!.id, recordId, file)
     if (syncToLibrary.value) {
       const rec  = store.currentGpxRecords.find(r => r.id === recordId)
-      await gpxLibStore.createGpxRoute({ name: rec?.name ?? '新路線', gpxFile: file, difficultyStars: store.currentPost!.difficultyStars ?? null })
+      await gpxLibStore.createGpxRoute({ name: rec?.name ?? '新路線', gpxFile: file, difficultyStars: store.currentPost!.difficultyStars ?? null, tags: store.currentPost!.tags ?? [] })
     }
     showGpxUploadModal.value = false
     gpxUploadFile.value      = null
@@ -1661,7 +1661,7 @@ async function uploadGpx() {
     const res = await fetch(`${apiBase}/api/Gpx/${store.currentPost!.id}`, { method: 'POST', body: fd, headers })
     if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
     if (syncToLibrary.value) {
-      await gpxLibStore.createGpxRoute({ name: store.currentPost!.title, gpxFile: gpxUploadFile.value, difficultyStars: store.currentPost!.difficultyStars ?? null })
+      await gpxLibStore.createGpxRoute({ name: store.currentPost!.title, gpxFile: gpxUploadFile.value, difficultyStars: store.currentPost!.difficultyStars ?? null, tags: store.currentPost!.tags ?? [] })
     }
     await store.fetchPostDetail(store.currentPost!.id)
     showGpxUploadModal.value = false

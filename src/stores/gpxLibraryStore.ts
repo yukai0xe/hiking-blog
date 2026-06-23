@@ -36,9 +36,9 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
     name:            string
     date?:           string | null
     difficultyStars?: number | null
-    category?:       string | null
     peopleCount?:    number | null
     referenceUrl?:   string | null
+    tags?:           string[] | null
     gpxFile:         File
   }): Promise<void> {
     const res  = await apiFetch('/api/GpxLibrary', {
@@ -48,9 +48,9 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
         name:            payload.name,
         date:            payload.date            ?? null,
         difficultyStars: payload.difficultyStars ?? null,
-        category:        payload.category        ?? null,
         peopleCount:     payload.peopleCount      ?? null,
         referenceUrl:    payload.referenceUrl     ?? null,
+        tags:            payload.tags             ?? [],
       }),
     })
     const { id } = await res.json() as { id: string }
@@ -66,9 +66,9 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
     name:            string
     date?:           string | null
     difficultyStars?: number | null
-    category?:       string | null
     peopleCount?:    number | null
     referenceUrl?:   string | null
+    tags?:           string[] | null
     gpxFile?:        File | null
   }): Promise<void> {
     if (payload.gpxFile) {
@@ -84,9 +84,9 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
         name:            payload.name,
         date:            payload.date            ?? null,
         difficultyStars: payload.difficultyStars ?? null,
-        category:        payload.category        ?? null,
         peopleCount:     payload.peopleCount      ?? null,
         referenceUrl:    payload.referenceUrl     ?? null,
+        tags:            payload.tags             ?? [],
       }),
     })
 
