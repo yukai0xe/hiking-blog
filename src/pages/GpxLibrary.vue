@@ -103,22 +103,24 @@
                 <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">難度</p>
                 <button
                   class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
-                  :title="filterStars.length === 5 ? '取消全部' : '選取全部'"
-                  @click="filterStars = filterStars.length === 5 ? [] : [1, 2, 3, 4, 5]"
+                  :title="filterStars.length === profile.difficultyMax ? '取消全部' : '選取全部'"
+                  @click="filterStars = filterStars.length === profile.difficultyMax
+                    ? []
+                    : Array.from({ length: profile.difficultyMax }, (_, i) => i + 1)"
                 >
-                  <CheckSquareIcon v-if="filterStars.length === 5" :size="14" />
+                  <CheckSquareIcon v-if="filterStars.length === profile.difficultyMax" :size="14" />
                   <SquareIcon v-else :size="14" />
                 </button>
               </div>
               <div class="flex flex-wrap gap-1.5 mb-4">
                 <button
-                  v-for="n in 5" :key="n"
+                  v-for="n in profile.difficultyMax" :key="n"
                   class="px-2.5 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
                   :style="filterStars.includes(n)
                     ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
                     : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
                   @click="toggleStars(n)"
-                >{{ '★'.repeat(n) }}</button>
+                >{{ n <= 10 ? '★'.repeat(n) : `★×${n}` }}</button>
               </div>
 
               <!-- Footer -->
@@ -265,8 +267,8 @@
                 <input v-model.number="form.peopleCount" type="number" min="1" class="input-field text-sm font-mono no-spinner" placeholder="1" />
               </div>
               <div>
-                <label class="field-label">難度星等 (1–5)</label>
-                <input v-model.number="form.difficultyStars" type="number" min="1" max="5" class="input-field text-sm font-mono no-spinner" placeholder="1–5" />
+                <label class="field-label">難度星等 (1–{{ profile.difficultyMax }})</label>
+                <input v-model.number="form.difficultyStars" type="number" min="1" :max="profile.difficultyMax" class="input-field text-sm font-mono no-spinner" :placeholder="`1–${profile.difficultyMax}`" />
               </div>
             </div>
 
@@ -417,6 +419,7 @@ import {
   LayoutList as LayoutListIcon, BarChart2 as BarChart2Icon,
 } from 'lucide-vue-next'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
+import { useProfileStore } from '../stores/profileStore'
 import type { GpxLibraryEntry } from '../types'
 import {
   parseGPXFromUrl,
@@ -426,7 +429,8 @@ import ElevationChart from '../components/ElevationChart.vue'
 
 const CATEGORIES = ['郊山', '中級山', '高山', '百岳', '技術路線'] as const
 
-const store = useGpxLibraryStore()
+const store   = useGpxLibraryStore()
+const profile = useProfileStore()
 
 const VIEW_MODE_KEY = 'gpx-library-view-mode'
 const viewMode = ref<'simple' | 'advanced'>(
@@ -449,6 +453,10 @@ const filterStars    = ref<number[]>([])
 
 const showFilterPanel   = ref(false)
 const activeFilterCount = computed(() => filterCategory.value.length + filterStars.value.length)
+
+watch(() => profile.difficultyMax, (max) => {
+  filterStars.value = filterStars.value.filter(n => n <= max)
+})
 const hasActiveFilter   = computed(() => !!search.value.trim() || activeFilterCount.value > 0)
 
 function toggleCategory(cat: string) {
