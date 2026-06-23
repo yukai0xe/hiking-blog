@@ -833,7 +833,7 @@
                 >
                   <p class="font-body text-sm text-ink leading-snug">{{ entry.name }}</p>
                   <p class="font-mono text-[10px] text-inkMuted mt-0.5">
-                    {{ entry.date ?? '—' }}<span v-if="entry.category"> · {{ entry.category }}</span>
+                    {{ entry.date ?? '—' }}
                   </p>
                 </button>
               </div>
@@ -946,22 +946,68 @@
               </button>
             </div>
 
-            <!-- Include gears toggle -->
-            <label class="flex items-center gap-3 cursor-pointer select-none mb-6 group">
-              <div
-                class="w-10 h-5 rounded-full relative transition-colors duration-200 shrink-0"
-                :style="includeGears
-                  ? 'background: var(--c-primary);'
-                  : 'background: color-mix(in srgb, var(--c-border) 80%, transparent);'"
-                @click="includeGears = !includeGears"
-              >
+            <!-- Toggles -->
+            <p class="text-[10px] font-body uppercase tracking-[0.18em] text-inkMuted mb-2.5">包含內容</p>
+            <div class="flex flex-col gap-3 mb-6">
+              <label class="flex items-center gap-3 cursor-pointer select-none group">
                 <div
-                  class="absolute top-0.5 w-4 h-4 rounded-full transition-transform duration-200"
-                  :style="`background: var(--c-base); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transform: translateX(${includeGears ? 20 : 2}px);`"
-                />
-              </div>
-              <span class="text-sm font-body text-ink">匯出裝備清單</span>
-            </label>
+                  class="w-10 h-5 rounded-full relative transition-colors duration-200 shrink-0"
+                  :style="includeGears ? 'background: var(--c-primary);' : 'background: color-mix(in srgb, var(--c-border) 80%, transparent);'"
+                  @click="includeGears = !includeGears"
+                >
+                  <div
+                    class="absolute top-0.5 w-4 h-4 rounded-full transition-transform duration-200"
+                    :style="`background: var(--c-base); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transform: translateX(${includeGears ? 20 : 2}px);`"
+                  />
+                </div>
+                <span class="text-sm font-body text-ink">裝備清單</span>
+              </label>
+
+              <label class="flex items-center gap-3 cursor-pointer select-none group">
+                <div
+                  class="w-10 h-5 rounded-full relative transition-colors duration-200 shrink-0"
+                  :style="includeFoods ? 'background: var(--c-primary);' : 'background: color-mix(in srgb, var(--c-border) 80%, transparent);'"
+                  @click="includeFoods = !includeFoods"
+                >
+                  <div
+                    class="absolute top-0.5 w-4 h-4 rounded-full transition-transform duration-200"
+                    :style="`background: var(--c-base); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transform: translateX(${includeFoods ? 20 : 2}px);`"
+                  />
+                </div>
+                <span class="text-sm font-body text-ink">糧食清單</span>
+              </label>
+
+              <label class="flex items-center gap-3 cursor-pointer select-none group" :style="!includeFoods ? 'opacity: 0.4; pointer-events: none;' : ''">
+                <div
+                  class="w-10 h-5 rounded-full relative transition-colors duration-200 shrink-0"
+                  :style="includeFoodDayAssignments ? 'background: var(--c-primary);' : 'background: color-mix(in srgb, var(--c-border) 80%, transparent);'"
+                  @click="includeFoodDayAssignments = !includeFoodDayAssignments"
+                >
+                  <div
+                    class="absolute top-0.5 w-4 h-4 rounded-full transition-transform duration-200"
+                    :style="`background: var(--c-base); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transform: translateX(${includeFoodDayAssignments ? 20 : 2}px);`"
+                  />
+                </div>
+                <span class="text-sm font-body text-ink pl-1">↳ 糧食日程分配</span>
+              </label>
+
+              <label class="flex items-center gap-3 cursor-pointer select-none group">
+                <div
+                  class="w-10 h-5 rounded-full relative transition-colors duration-200 shrink-0"
+                  :style="includeGpx ? 'background: var(--c-primary);' : 'background: color-mix(in srgb, var(--c-border) 80%, transparent);'"
+                  @click="includeGpx = !includeGpx"
+                >
+                  <div
+                    class="absolute top-0.5 w-4 h-4 rounded-full transition-transform duration-200"
+                    :style="`background: var(--c-base); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transform: translateX(${includeGpx ? 20 : 2}px);`"
+                  />
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-sm font-body text-ink">GPX 路線檔</span>
+                  <span v-if="includeGpx" class="text-[10px] font-body text-inkMuted">匯出為 .zip</span>
+                </div>
+              </label>
+            </div>
 
             <!-- Footer buttons -->
             <div class="flex gap-2">
@@ -1723,27 +1769,32 @@ async function toggleVisibility() {
 }
 
 // ── Export ───────────────────────────────────────────────────────
-const showExportModal = ref(false)
-const exportFormat    = ref<'json' | 'pdf'>('json')
-const includeGears    = ref(true)
+const showExportModal         = ref(false)
+const exportFormat            = ref<'json' | 'pdf'>('json')
+const includeGears            = ref(true)
+const includeFoods            = ref(true)
+const includeFoodDayAssignments = ref(true)
+const includeGpx              = ref(false)
 
 function doExport() {
   showExportModal.value = false
-  if (exportFormat.value === 'json') exportAsJson()
+  if (includeGpx.value) void exportAsZip()
+  else if (exportFormat.value === 'json') exportAsJson()
   else void exportAsPdf()
 }
 
 function exportAsJson() {
   const p = store.currentPost!
   const data: Record<string, unknown> = {
-    title:       p.title,
-    description: p.description ?? null,
-    dateStart:   p.dateStart   ?? null,
-    dateEnd:     p.dateEnd     ?? null,
-    weather:     p.weather     ?? null,
-    peopleCount: p.peopleCount ?? null,
-    tags:        p.tags        ?? [],
-    photos:      store.currentPhotos.map(ph => ph.url),
+    title:           p.title,
+    description:     p.description    ?? null,
+    dateStart:       p.dateStart      ?? null,
+    dateEnd:         p.dateEnd        ?? null,
+    weather:         p.weather        ?? null,
+    peopleCount:     p.peopleCount    ?? null,
+    difficultyStars: p.difficultyStars ?? null,
+    tags:            p.tags           ?? [],
+    photos:          store.currentPhotos.map(ph => ph.url),
   }
   if (includeGears.value) {
     data.gears = store.currentGears.map(g => ({
@@ -1755,6 +1806,22 @@ function exportAsJson() {
       note:     g.note      || null,
     }))
   }
+  if (includeFoods.value) {
+    data.foods = store.currentFoods.map(f => ({
+      name:         f.name,
+      weight:       f.weight,
+      quantity:     f.quantity,
+      note:         f.note         || null,
+      referenceUrl: f.referenceUrl ?? null,
+      price:        f.price        ?? null,
+    }))
+    if (includeFoodDayAssignments.value) {
+      data.foodDayAssignments = store.currentFoodDayAssignments.map(a => ({
+        foodId:   a.foodId,
+        dayIndex: a.dayIndex,
+      }))
+    }
+  }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url  = URL.createObjectURL(blob)
   const a    = Object.assign(document.createElement('a'), { href: url, download: `${safeFilename(p.title)}.json` })
@@ -1765,19 +1832,44 @@ function exportAsJson() {
 async function exportAsPdf() {
   const p       = store.currentPost!
   const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
-  const url     = `${apiBase}/api/Posts/${p.id}/export/pdf?includeGears=${includeGears.value}`
+  const url     = `${apiBase}/api/Posts/${p.id}/export/pdf?includeGears=${includeGears.value}&includeFoods=${includeFoods.value}&includeFoodDayAssignments=${includeFoodDayAssignments.value}`
 
-  const res = await fetch(url)
+  const headers: Record<string, string> = {}
+  if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
+  const res = await fetch(url, { headers })
   if (!res.ok) {
     console.error('PDF export failed:', res.status, await res.text())
     return
   }
 
-  const blob     = await res.blob()
+  const blob      = await res.blob()
   const objectUrl = URL.createObjectURL(blob)
-  const a        = Object.assign(document.createElement('a'), {
+  const a         = Object.assign(document.createElement('a'), {
     href:     objectUrl,
     download: `${safeFilename(p.title)}.pdf`,
+  })
+  a.click()
+  URL.revokeObjectURL(objectUrl)
+}
+
+async function exportAsZip() {
+  const p       = store.currentPost!
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+  const url     = `${apiBase}/api/Posts/${p.id}/export/zip?format=${exportFormat.value}&includeGears=${includeGears.value}&includeFoods=${includeFoods.value}&includeFoodDayAssignments=${includeFoodDayAssignments.value}`
+
+  const headers: Record<string, string> = {}
+  if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
+  const res = await fetch(url, { headers })
+  if (!res.ok) {
+    console.error('ZIP export failed:', res.status, await res.text())
+    return
+  }
+
+  const blob      = await res.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const a         = Object.assign(document.createElement('a'), {
+    href:     objectUrl,
+    download: `${safeFilename(p.title)}.zip`,
   })
   a.click()
   URL.revokeObjectURL(objectUrl)
