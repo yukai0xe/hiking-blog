@@ -97,6 +97,31 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
     await fetchGpxLibrary()
   }
 
+  async function toggleWishlist(id: string): Promise<void> {
+    const entry = gpxLibrary.value.find(e => e.id === id)
+    if (!entry) return
+    const prev = entry.isWishlist ?? false
+    entry.isWishlist = !prev
+    try {
+      await apiFetch(`/api/GpxLibrary/${id}`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          name:            entry.name,
+          date:            entry.date            ?? null,
+          difficultyStars: entry.difficultyStars ?? null,
+          peopleCount:     entry.peopleCount      ?? null,
+          referenceUrl:    entry.referenceUrl     ?? null,
+          tags:            entry.tags             ?? [],
+          isWishlist:      !prev,
+        }),
+      })
+    } catch (e) {
+      entry.isWishlist = prev
+      throw e
+    }
+  }
+
   async function deleteGpxRoute(id: string): Promise<void> {
     await apiFetch(`/api/GpxLibrary/${id}`, { method: 'DELETE' })
     gpxLibrary.value = gpxLibrary.value.filter(e => e.id !== id)
@@ -125,5 +150,5 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
     })
   }
 
-  return { gpxLibrary, loading, error, fetchGpxLibrary, createGpxRoute, updateGpxRoute, deleteGpxRoute, reorderRoutes, capDifficulty }
+  return { gpxLibrary, loading, error, fetchGpxLibrary, createGpxRoute, updateGpxRoute, deleteGpxRoute, reorderRoutes, toggleWishlist, capDifficulty }
 })

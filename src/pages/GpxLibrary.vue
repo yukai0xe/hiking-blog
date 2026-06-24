@@ -229,71 +229,93 @@
 
           <!-- Card grid -->
           <div v-else class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(200px, 350px));">
-          <div
-            v-for="entry in filtered" :key="entry.id"
-            class="gpx-card"
-            :class="{
-              'cursor-grab': reorderMode,
-              'cursor-pointer': !reorderMode,
-              'gpx-card-dragging': draggingId === entry.id,
-              'gpx-card-dragover': dragOverId === entry.id,
-            }"
-            style="max-width: 350px;"
-            :draggable="reorderMode"
-            @click="!reorderMode && openDetail(entry)"
-            @dragstart="onDragStart(entry)"
-            @dragover.prevent="onDragOver(entry)"
-            @drop.prevent="onDrop(entry)"
-            @dragend="onDragEnd"
-          >
-            <!-- Elevation chart preview (advanced mode only) -->
-            <div v-if="viewMode === 'advanced'" class="card-map" style="height: 110px; background: #0e0c09; position: relative; overflow: hidden; flex-shrink: 0;">
-              <!-- Reorder drag hint -->
-              <div v-if="reorderMode" class="absolute inset-0 flex items-center justify-center z-10" style="background: rgba(0,0,0,0.35);">
-                <GripVerticalIcon :size="22" style="color: var(--c-primary); opacity: 0.7;" />
-              </div>
-              <!-- Loading -->
-              <div v-else-if="!(entry.id in cardElevations)" class="absolute inset-0 flex items-center justify-center">
-                <div class="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin opacity-40" />
-              </div>
-              <!-- No elevation data (parse failed) -->
-              <div v-else-if="!cardElevations[entry.id]?.length" class="absolute inset-0 flex items-center justify-center">
-                <span class="text-[10px] font-mono text-inkMuted opacity-30">no elevation</span>
-              </div>
-              <!-- Chart -->
-              <ElevationChart
-                v-else
-                :elevation="cardElevations[entry.id]!"
-                :mini="true"
-                class="absolute inset-0 w-full h-full"
-              />
+          <template v-for="item in groupedFiltered" :key="item.type === 'card' ? item.entry.id : item.label">
+
+            <!-- Group divider -->
+            <div
+              v-if="item.type === 'divider'"
+              class="col-span-full flex items-center gap-2 mt-1"
+            >
+              <BookmarkIcon v-if="item.isWishlist" :size="12" style="color: var(--c-primary);" />
+              <span class="text-[10px] font-body uppercase tracking-widest" :style="item.isWishlist ? 'color: var(--c-primary); opacity: 0.8;' : 'color: var(--c-inkMuted);'">{{ item.label }}</span>
+              <span class="text-[10px] font-mono text-inkMuted opacity-50">({{ item.count }})</span>
+              <div class="flex-1 h-px" style="background: var(--c-border); opacity: 0.4;" />
             </div>
-            <!-- Footer -->
-            <div class="card-footer" style="background: #1a1510; border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px 11px; position: relative;">
-              <!-- Drag handle (simple mode reorder) -->
-              <div v-if="reorderMode && viewMode === 'simple'" class="flex items-center justify-center mb-2 opacity-40">
-                <GripVerticalIcon :size="16" style="color: var(--c-primary);" />
+
+            <!-- Card -->
+            <div
+              v-else
+              class="gpx-card"
+              :class="{
+                'cursor-grab': reorderMode,
+                'cursor-pointer': !reorderMode,
+                'gpx-card-dragging': draggingId === item.entry.id,
+                'gpx-card-dragover': dragOverId === item.entry.id,
+              }"
+              style="max-width: 350px;"
+              :draggable="reorderMode"
+              @click="!reorderMode && openDetail(item.entry)"
+              @dragstart="onDragStart(item.entry)"
+              @dragover.prevent="onDragOver(item.entry)"
+              @drop.prevent="onDrop(item.entry)"
+              @dragend="onDragEnd"
+            >
+              <!-- Elevation chart preview (advanced mode only) -->
+              <div v-if="viewMode === 'advanced'" class="card-map" style="height: 110px; background: #0e0c09; position: relative; overflow: hidden; flex-shrink: 0;">
+                <!-- Reorder drag hint -->
+                <div v-if="reorderMode" class="absolute inset-0 flex items-center justify-center z-10" style="background: rgba(0,0,0,0.35);">
+                  <GripVerticalIcon :size="22" style="color: var(--c-primary); opacity: 0.7;" />
+                </div>
+                <!-- Loading -->
+                <div v-else-if="!(item.entry.id in cardElevations)" class="absolute inset-0 flex items-center justify-center">
+                  <div class="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin opacity-40" />
+                </div>
+                <!-- No elevation data -->
+                <div v-else-if="!cardElevations[item.entry.id]?.length" class="absolute inset-0 flex items-center justify-center">
+                  <span class="text-[10px] font-mono text-inkMuted opacity-30">no elevation</span>
+                </div>
+                <!-- Chart -->
+                <ElevationChart
+                  v-else
+                  :elevation="cardElevations[item.entry.id]!"
+                  :mini="true"
+                  class="absolute inset-0 w-full h-full"
+                />
               </div>
-              <div class="flex items-start justify-between gap-1 mb-1.5">
-                <p class="card-name font-heading font-bold text-ink" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1;">{{ entry.name }}</p>
-                <BookmarkIcon v-if="entry.isWishlist" :size="13" style="color: var(--c-primary); flex-shrink: 0; margin-top: 1px;" />
-              </div>
-              <div class="flex flex-wrap gap-1 mb-1.5">
-                <span v-if="entry.peopleCount" class="tag-ppl">👤 {{ entry.peopleCount }}</span>
-                <span v-for="tag in entry.tags" :key="tag" class="tag-label">{{ tag }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-primary" style="font-size: 12px;">{{ starsDisplay(entry.difficultyStars) }}</span>
-                <span class="font-mono text-inkMuted" style="font-size: 10px;">{{ entry.date ?? '—' }}</span>
-              </div>
-              <!-- Action buttons (hover, hidden in reorder mode) -->
-              <div v-if="!reorderMode" class="card-actions absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity duration-150">
-                <button class="card-action-btn" @click.stop="downloadGpx(entry)" title="下載 GPX">↓</button>
-                <button class="card-action-btn" @click.stop="openEdit(entry)" title="編輯">編輯</button>
-                <button class="card-action-btn card-action-del" @click.stop="confirmDelete(entry)" title="刪除">刪除</button>
+              <!-- Footer -->
+              <div class="card-footer" style="background: #1a1510; border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px 11px; position: relative;">
+                <!-- Drag handle (simple mode reorder) -->
+                <div v-if="reorderMode && viewMode === 'simple'" class="flex items-center justify-center mb-2 opacity-40">
+                  <GripVerticalIcon :size="16" style="color: var(--c-primary);" />
+                </div>
+                <div class="flex items-start justify-between gap-1 mb-1.5">
+                  <p class="card-name font-heading font-bold text-ink" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1;">{{ item.entry.name }}</p>
+                  <!-- Wishlist toggle button (always visible) -->
+                  <button
+                    class="wishlist-btn flex-shrink-0"
+                    :class="{ 'wishlist-btn-active': item.entry.isWishlist }"
+                    :title="item.entry.isWishlist ? '移出願望清單' : '加入願望清單'"
+                    @click.stop="toggleWishlist(item.entry)"
+                  ><BookmarkIcon :size="13" /></button>
+                </div>
+                <div class="flex flex-wrap gap-1 mb-1.5">
+                  <span v-if="item.entry.peopleCount" class="tag-ppl">👤 {{ item.entry.peopleCount }}</span>
+                  <span v-for="tag in item.entry.tags" :key="tag" class="tag-label">{{ tag }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-primary" style="font-size: 12px;">{{ starsDisplay(item.entry.difficultyStars) }}</span>
+                  <span class="font-mono text-inkMuted" style="font-size: 10px;">{{ item.entry.date ?? '—' }}</span>
+                </div>
+                <!-- Action buttons (hover, hidden in reorder mode) -->
+                <div v-if="!reorderMode" class="card-actions absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity duration-150">
+                  <button class="card-action-btn" @click.stop="downloadGpx(item.entry)" title="下載 GPX">↓</button>
+                  <button class="card-action-btn" @click.stop="openEdit(item.entry)" title="編輯">編輯</button>
+                  <button class="card-action-btn card-action-del" @click.stop="confirmDelete(item.entry)" title="刪除">刪除</button>
+                </div>
               </div>
             </div>
-          </div>
+
+          </template>
         </div>
         </div>
 
@@ -360,7 +382,7 @@
             </div>
 
             <!-- GPX 檔案 -->
-            <div class="mb-3">
+            <div class="mb-4">
               <label class="field-label">GPX 檔案{{ editingId ? '（選填，重新上傳才更新）' : ' *' }}</label>
               <div
                 class="relative flex flex-col items-center justify-center gap-1 rounded-lg cursor-pointer transition-colors duration-150"
@@ -374,25 +396,6 @@
                 <input ref="fileInputEl" type="file" accept=".gpx" class="hidden" @change="onFileChange" />
               </div>
             </div>
-
-            <!-- 願望清單 toggle -->
-            <label class="flex items-center gap-2 cursor-pointer select-none mb-4 w-fit">
-              <div
-                class="relative w-8 h-4 rounded-full transition-colors duration-200 flex-shrink-0"
-                :style="form.isWishlist
-                  ? 'background: var(--c-primary);'
-                  : 'background: color-mix(in srgb, var(--c-border) 80%, transparent);'"
-                @click="form.isWishlist = !form.isWishlist"
-              >
-                <div
-                  class="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform duration-200"
-                  :style="form.isWishlist ? 'transform: translateX(17px);' : 'transform: translateX(2px);'"
-                />
-              </div>
-              <span class="flex items-center gap-1 text-xs font-body" :style="form.isWishlist ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'">
-                <BookmarkIcon :size="12" /> 加入願望清單
-              </span>
-            </label>
 
             <!-- Buttons -->
             <div class="flex items-center gap-2">
@@ -577,16 +580,43 @@ function clearFilters() {
   wishlistFilter.value = 'all'
 }
 
-const filtered = computed(() => {
+const filteredBase = computed(() => {
   const q = search.value.trim().toLowerCase()
   return store.gpxLibrary.filter(e => {
     if (q && !e.name.toLowerCase().includes(q)) return false
     if (filterStars.value.length && !filterStars.value.includes(e.difficultyStars ?? 0)) return false
     if (filterTags.value.length && !filterTags.value.some(t => e.tags?.includes(t))) return false
-    if (wishlistFilter.value === 'wishlist' && !e.isWishlist) return false
-    if (wishlistFilter.value === 'done'     &&  e.isWishlist) return false
     return true
   })
+})
+
+const filteredWishlist = computed(() => filteredBase.value.filter(e =>  e.isWishlist))
+const filteredDone     = computed(() => filteredBase.value.filter(e => !e.isWishlist))
+
+const filtered = computed(() => {
+  if (wishlistFilter.value === 'wishlist') return filteredWishlist.value
+  if (wishlistFilter.value === 'done')     return filteredDone.value
+  return filteredBase.value
+})
+
+type GridItem =
+  | { type: 'card';    entry: GpxLibraryEntry }
+  | { type: 'divider'; label: string; count: number; isWishlist: boolean }
+
+const groupedFiltered = computed((): GridItem[] => {
+  if (wishlistFilter.value !== 'all' || reorderMode.value) {
+    return filtered.value.map(e => ({ type: 'card', entry: e }))
+  }
+  const items: GridItem[] = []
+  if (filteredWishlist.value.length) {
+    items.push({ type: 'divider', label: '願望清單', count: filteredWishlist.value.length, isWishlist: true })
+    filteredWishlist.value.forEach(e => items.push({ type: 'card', entry: e }))
+  }
+  if (filteredDone.value.length) {
+    items.push({ type: 'divider', label: '其他路線', count: filteredDone.value.length, isWishlist: false })
+    filteredDone.value.forEach(e => items.push({ type: 'card', entry: e }))
+  }
+  return items
 })
 
 // ── Reorder (drag-to-reorder) ─────────────────────────────
@@ -632,6 +662,14 @@ async function onDrop(target: GpxLibraryEntry) {
   }
 }
 
+async function toggleWishlist(entry: GpxLibraryEntry) {
+  try {
+    await store.toggleWishlist(entry.id)
+  } catch (e) {
+    apiError.value = (e as Error).message
+  }
+}
+
 function starsDisplay(stars?: number | null): string {
   if (!stars) return '—'
   return '★'.repeat(stars)
@@ -666,7 +704,7 @@ watch(() => store.gpxLibrary, (entries) => {
 type GpxForm = {
   name: string; date: string; peopleCount: number | null
   difficultyStars: number | null; referenceUrl: string
-  tags: string[]; gpxFile: File | null; isWishlist: boolean
+  tags: string[]; gpxFile: File | null
 }
 
 const panelOpen   = ref(false)
@@ -677,7 +715,7 @@ const fileInputEl = ref<HTMLInputElement | null>(null)
 const tagModalOpen = ref(false)
 
 const blankForm = (): GpxForm => ({
-  name: '', date: '', peopleCount: null, difficultyStars: null, referenceUrl: '', tags: [], gpxFile: null, isWishlist: false,
+  name: '', date: '', peopleCount: null, difficultyStars: null, referenceUrl: '', tags: [], gpxFile: null,
 })
 const form = ref<GpxForm>(blankForm())
 
@@ -698,7 +736,6 @@ function openEdit(entry: GpxLibraryEntry) {
     referenceUrl:    entry.referenceUrl ?? '',
     tags:            entry.tags ? [...entry.tags] : [],
     gpxFile:         null,
-    isWishlist:      entry.isWishlist ?? false,
   }
   apiError.value  = null
   panelOpen.value = true
@@ -727,7 +764,6 @@ async function submitForm() {
       peopleCount:     form.value.peopleCount ?? null,
       referenceUrl:    form.value.referenceUrl.trim() || null,
       tags:            form.value.tags,
-      isWishlist:      form.value.isWishlist,
     }
     if (editingId.value) {
       await store.updateGpxRoute(editingId.value, { ...payload, gpxFile: form.value.gpxFile })
@@ -940,6 +976,15 @@ async function executeDelete() {
 .modal-enter-from, .modal-leave-to { opacity: 0; }
 .modal-enter-from .detail-modal,
 .modal-enter-from .delete-modal { transform: translateY(12px) scale(0.98); }
+
+/* ── Wishlist button ─────────────────────────────────── */
+.wishlist-btn {
+  color: var(--c-inkMuted); opacity: 0.35;
+  transition: color 0.15s, opacity 0.15s;
+  cursor: pointer; margin-top: 1px;
+}
+.wishlist-btn:hover { opacity: 0.75; color: var(--c-primary); }
+.wishlist-btn-active { color: var(--c-primary) !important; opacity: 1 !important; }
 
 /* ── Drag-to-reorder ─────────────────────────────────── */
 .gpx-card-dragging { opacity: 0.4; box-shadow: none !important; transform: none !important; }
