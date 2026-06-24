@@ -265,7 +265,7 @@
               <div class="card-footer">
                 <!-- Nature watermark -->
                 <div class="card-nature-wm" aria-hidden="true">
-                  <component :is="difficultyNature(item.entry.difficultyStars).icon" :size="58" />
+                  <component :is="difficultyNature(item.entry.difficultyStars).icon" :size="58" style="fill: currentColor; stroke: none;" />
                 </div>
 
                 <!-- Name + action buttons -->
@@ -285,9 +285,9 @@
 
                 <!-- Difficulty + date -->
                 <div class="flex items-center justify-between relative" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: auto;">
-                  <div class="nature-diff" :style="{ color: difficultyNature(item.entry.difficultyStars).color }">
-                    <component :is="difficultyNature(item.entry.difficultyStars).icon" :size="12" />
-                    <span>{{ difficultyNature(item.entry.difficultyStars).label }}</span>
+                  <div class="nature-diff" :style="{ color: item.entry.difficultyStars ? 'var(--c-primary)' : 'var(--c-inkMuted)' }">
+                    <Star :size="12" style="fill: currentColor; stroke: none;" />
+                    <span>{{ item.entry.difficultyStars ? `×${item.entry.difficultyStars}` : '—' }}</span>
                   </div>
                   <span class="font-mono" style="font-size: 10px; color: var(--c-inkMuted); opacity: 0.6; letter-spacing: 0.03em;">{{ item.entry.date ?? '—' }}</span>
                 </div>
