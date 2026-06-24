@@ -161,17 +161,6 @@
           </Transition>
         </div>
 
-        <!-- Reorder toggle -->
-        <button
-          v-if="!hasActiveFilter"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150 border"
-          :style="reorderMode
-            ? 'border-color: var(--c-primary); color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent);'
-            : 'border-color: var(--c-border); color: var(--c-inkMuted); background: transparent;'"
-          :title="reorderMode ? '完成排序' : '調整順序'"
-          @click="reorderMode = !reorderMode"
-        ><GripVerticalIcon :size="13" /> {{ reorderMode ? '完成排序' : '調整順序' }}</button>
-
         <!-- View mode toggle -->
         <div class="flex items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
           <button
@@ -245,16 +234,14 @@
             <!-- Card -->
             <div
               v-else
-              class="gpx-card"
+              class="gpx-card cursor-pointer"
               :class="{
-                'cursor-grab': reorderMode,
-                'cursor-pointer': !reorderMode,
                 'gpx-card-dragging': draggingId === item.entry.id,
                 'gpx-card-dragover': dragOverId === item.entry.id,
               }"
               style="max-width: 350px;"
-              :draggable="reorderMode"
-              @click="!reorderMode && openDetail(item.entry)"
+              draggable="true"
+              @click="openDetail(item.entry)"
               @dragstart="onDragStart(item.entry)"
               @dragover.prevent="onDragOver(item.entry)"
               @drop.prevent="onDrop(item.entry)"
@@ -262,12 +249,8 @@
             >
               <!-- Elevation chart preview (advanced mode only) -->
               <div v-if="viewMode === 'advanced'" class="card-map" style="height: 110px; background: #0e0c09; position: relative; overflow: hidden; flex-shrink: 0;">
-                <!-- Reorder drag hint -->
-                <div v-if="reorderMode" class="absolute inset-0 flex items-center justify-center z-10" style="background: rgba(0,0,0,0.35);">
-                  <GripVerticalIcon :size="22" style="color: var(--c-primary); opacity: 0.7;" />
-                </div>
                 <!-- Loading -->
-                <div v-else-if="!(item.entry.id in cardElevations)" class="absolute inset-0 flex items-center justify-center">
+                <div v-if="!(item.entry.id in cardElevations)" class="absolute inset-0 flex items-center justify-center">
                   <div class="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin opacity-40" />
                 </div>
                 <!-- No elevation data -->
@@ -284,10 +267,6 @@
               </div>
               <!-- Footer -->
               <div class="card-footer" style="background: #1a1510; border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px 11px; position: relative;">
-                <!-- Drag handle (simple mode reorder) -->
-                <div v-if="reorderMode && viewMode === 'simple'" class="flex items-center justify-center mb-2 opacity-40">
-                  <GripVerticalIcon :size="16" style="color: var(--c-primary);" />
-                </div>
                 <div class="flex items-start justify-between gap-1 mb-1.5">
                   <p class="card-name font-heading font-bold text-ink" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1;">{{ item.entry.name }}</p>
                   <div class="flex items-center gap-0.5 flex-shrink-0">
@@ -300,7 +279,6 @@
                     ><BookmarkIcon :size="13" /></button>
                     <!-- More options -->
                     <button
-                      v-if="!reorderMode"
                       class="card-more-btn"
                       :class="{ 'card-more-btn-active': menuOpenId === item.entry.id }"
                       title="更多"
@@ -536,7 +514,7 @@ import {
   SlidersHorizontal as SlidersHorizontalIcon,
   Square as SquareIcon, CheckSquare as CheckSquareIcon,
   LayoutList as LayoutListIcon, BarChart2 as BarChart2Icon,
-  Tag as TagIcon, Bookmark as BookmarkIcon, GripVertical as GripVerticalIcon,
+  Tag as TagIcon, Bookmark as BookmarkIcon,
   MoreVertical as MoreVerticalIcon, Download as DownloadIcon, Pencil as PencilIcon,
 } from 'lucide-vue-next'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
@@ -630,7 +608,7 @@ type GridItem =
   | { type: 'divider'; label: string; count: number; isWishlist: boolean }
 
 const groupedFiltered = computed((): GridItem[] => {
-  if (wishlistFilter.value !== 'all' || reorderMode.value) {
+  if (wishlistFilter.value !== 'all') {
     return filtered.value.map(e => ({ type: 'card', entry: e }))
   }
   const items: GridItem[] = []
@@ -646,11 +624,8 @@ const groupedFiltered = computed((): GridItem[] => {
 })
 
 // ── Reorder (drag-to-reorder) ─────────────────────────────
-const reorderMode = ref(false)
-const draggingId  = ref<string | null>(null)
-const dragOverId  = ref<string | null>(null)
-
-watch(hasActiveFilter, (v) => { if (v) reorderMode.value = false })
+const draggingId = ref<string | null>(null)
+const dragOverId = ref<string | null>(null)
 
 function onDragStart(entry: GpxLibraryEntry) {
   draggingId.value = entry.id
@@ -1042,6 +1017,4 @@ async function executeDelete() {
 /* ── Drag-to-reorder ─────────────────────────────────── */
 .gpx-card-dragging { opacity: 0.4; box-shadow: none !important; transform: none !important; }
 .gpx-card-dragover { border-color: var(--c-primary) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-primary) 40%, transparent); }
-.cursor-grab { cursor: grab; }
-.cursor-grab:active { cursor: grabbing; }
 </style>
