@@ -128,15 +128,31 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
   }
 
   async function reorderRoutes(items: { id: string; order: number }[]): Promise<void> {
-    await apiFetch('/api/GpxLibrary/reorder', {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ items: items.map(i => ({ id: i.id, order: i.order })) }),
+    // Apply optimistically so the UI updates immediately on drop
+    const prev = items.map(({ id }) => {
+      const e = gpxLibrary.value.find(x => x.id === id)
+      return { id, order: e?.sortOrder ?? 0 }
     })
     items.forEach(({ id, order }) => {
       const e = gpxLibrary.value.find(x => x.id === id)
       if (e) e.sortOrder = order
     })
+    gpxLibrary.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    try {
+      await apiFetch('/api/GpxLibrary/reorder', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ items: items.map(i => ({ id: i.id, order: i.order })) }),
+      })
+    } catch (e) {
+      // Revert on failure
+      prev.forEach(({ id, order }) => {
+        const entry = gpxLibrary.value.find(x => x.id === id)
+        if (entry) entry.sortOrder = order
+      })
+      gpxLibrary.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      throw e
+    }
   }
 
   async function capDifficulty(max: number): Promise<void> {
