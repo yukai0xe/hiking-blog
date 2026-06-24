@@ -39,6 +39,7 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
     peopleCount?:    number | null
     referenceUrl?:   string | null
     tags?:           string[] | null
+    isWishlist?:     boolean
     gpxFile:         File
   }): Promise<void> {
     const res  = await apiFetch('/api/GpxLibrary', {
@@ -51,6 +52,7 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
         peopleCount:     payload.peopleCount      ?? null,
         referenceUrl:    payload.referenceUrl     ?? null,
         tags:            payload.tags             ?? [],
+        isWishlist:      payload.isWishlist       ?? false,
       }),
     })
     const { id } = await res.json() as { id: string }
@@ -69,6 +71,7 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
     peopleCount?:    number | null
     referenceUrl?:   string | null
     tags?:           string[] | null
+    isWishlist?:     boolean
     gpxFile?:        File | null
   }): Promise<void> {
     if (payload.gpxFile) {
@@ -87,6 +90,7 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
         peopleCount:     payload.peopleCount      ?? null,
         referenceUrl:    payload.referenceUrl     ?? null,
         tags:            payload.tags             ?? [],
+        isWishlist:      payload.isWishlist       ?? false,
       }),
     })
 
@@ -96,6 +100,18 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
   async function deleteGpxRoute(id: string): Promise<void> {
     await apiFetch(`/api/GpxLibrary/${id}`, { method: 'DELETE' })
     gpxLibrary.value = gpxLibrary.value.filter(e => e.id !== id)
+  }
+
+  async function reorderRoutes(items: { id: string; order: number }[]): Promise<void> {
+    await apiFetch('/api/GpxLibrary/reorder', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ items: items.map(i => ({ id: i.id, order: i.order })) }),
+    })
+    items.forEach(({ id, order }) => {
+      const e = gpxLibrary.value.find(x => x.id === id)
+      if (e) e.sortOrder = order
+    })
   }
 
   async function capDifficulty(max: number): Promise<void> {
@@ -109,5 +125,5 @@ export const useGpxLibraryStore = defineStore('gpxLibrary', () => {
     })
   }
 
-  return { gpxLibrary, loading, error, fetchGpxLibrary, createGpxRoute, updateGpxRoute, deleteGpxRoute, capDifficulty }
+  return { gpxLibrary, loading, error, fetchGpxLibrary, createGpxRoute, updateGpxRoute, deleteGpxRoute, reorderRoutes, capDifficulty }
 })

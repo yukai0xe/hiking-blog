@@ -141,5 +141,7 @@ export interface GpxLibraryEntry {
   peopleCount?:    number | null
   referenceUrl?:   string | null
   tags?:           string[] | null
+  isWishlist?:     boolean
+  sortOrder?:      number
   createdAt:       string
 }
