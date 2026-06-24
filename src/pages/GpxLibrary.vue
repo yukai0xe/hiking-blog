@@ -264,9 +264,7 @@
               <!-- Footer -->
               <div class="card-footer">
                 <!-- Nature watermark -->
-                <div class="card-nature-wm" aria-hidden="true">
-                  <component :is="difficultyNature(item.entry.difficultyStars).icon" :size="58" style="fill: currentColor; stroke: none;" />
-                </div>
+                <div class="card-nature-wm" aria-hidden="true" v-html="difficultyNature(item.entry.difficultyStars)" />
 
                 <!-- Name + action buttons -->
                 <div class="flex items-start justify-between gap-1 mb-2 relative">
@@ -513,8 +511,13 @@ import {
   LayoutList as LayoutListIcon, BarChart2 as BarChart2Icon,
   Tag as TagIcon, Bookmark as BookmarkIcon,
   MoreVertical as MoreVerticalIcon, Download as DownloadIcon, Pencil as PencilIcon,
-  Leaf, TreePine, Droplets, Flame, Star, Flower2,
+  Star,
 } from 'lucide-vue-next'
+import vineFlowerRaw  from '../assets/gpx-card/vine-flower.svg?raw'
+import threeLeavesRaw from '../assets/gpx-card/three-leaves.svg?raw'
+import waterfallRaw   from '../assets/gpx-card/waterfall.svg?raw'
+import fireTwoRaw     from '../assets/gpx-card/fire-two.svg?raw'
+import starSkullRaw   from '../assets/gpx-card/star-skull.svg?raw'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
 import { useProfileStore } from '../stores/profileStore'
 import { usePostStore } from '../stores/postStore'
@@ -669,14 +672,27 @@ async function toggleWishlist(entry: GpxLibraryEntry) {
   }
 }
 
-type NatureDiff = { icon: unknown; color: string; label: string }
-function difficultyNature(stars?: number | null): NatureDiff {
-  if (!stars) return { icon: Leaf,     color: 'var(--c-inkMuted)', label: '—' }
-  if (stars <= 2) return { icon: Flower2,  color: '#a8d4a0', label: `×${stars}` }
-  if (stars <= 4) return { icon: TreePine, color: '#7cc87c', label: `×${stars}` }
-  if (stars <= 6) return { icon: Droplets, color: 'var(--c-primary)', label: `×${stars}` }
-  if (stars <= 8) return { icon: Flame,    color: '#e89060', label: `×${stars}` }
-  return              { icon: Star,     color: '#e8c060', label: `×${stars}` }
+function toCurrentColor(raw: string): string {
+  return raw
+    .replace(/fill="#000000"/g, 'fill="currentColor"')
+    .replace(/stroke="#000000"/g, 'stroke="currentColor"')
+}
+
+const natureSvgs = {
+  flower:   toCurrentColor(vineFlowerRaw),
+  leaves:   toCurrentColor(threeLeavesRaw),
+  waterfall: toCurrentColor(waterfallRaw),
+  fire:     toCurrentColor(fireTwoRaw),
+  skull:    toCurrentColor(starSkullRaw),
+}
+
+function difficultyNature(stars?: number | null): string {
+  if (!stars)      return natureSvgs.flower
+  if (stars <= 2)  return natureSvgs.flower
+  if (stars <= 4)  return natureSvgs.leaves
+  if (stars <= 6)  return natureSvgs.waterfall
+  if (stars <= 8)  return natureSvgs.fire
+  return                  natureSvgs.skull
 }
 
 // ── Card elevation data loading ───────────────────────────
@@ -953,6 +969,13 @@ async function executeDelete() {
   pointer-events: none;
   transform: rotate(-10deg);
   line-height: 0;
+}
+.card-nature-wm svg {
+  display: block;
+  width: 58px;
+  height: 58px;
+  fill: currentColor;
+  stroke: none;
 }
 
 /* Nature difficulty badge */
