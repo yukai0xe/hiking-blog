@@ -290,13 +290,23 @@
                 </div>
                 <div class="flex items-start justify-between gap-1 mb-1.5">
                   <p class="card-name font-heading font-bold text-ink" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1;">{{ item.entry.name }}</p>
-                  <!-- Wishlist toggle button (always visible) -->
-                  <button
-                    class="wishlist-btn flex-shrink-0"
-                    :class="{ 'wishlist-btn-active': item.entry.isWishlist }"
-                    :title="item.entry.isWishlist ? '移出願望清單' : '加入願望清單'"
-                    @click.stop="toggleWishlist(item.entry)"
-                  ><BookmarkIcon :size="13" /></button>
+                  <div class="flex items-center gap-0.5 flex-shrink-0">
+                    <!-- Wishlist toggle -->
+                    <button
+                      class="wishlist-btn"
+                      :class="{ 'wishlist-btn-active': item.entry.isWishlist }"
+                      :title="item.entry.isWishlist ? '移出願望清單' : '加入願望清單'"
+                      @click.stop="toggleWishlist(item.entry)"
+                    ><BookmarkIcon :size="13" /></button>
+                    <!-- More options -->
+                    <button
+                      v-if="!reorderMode"
+                      class="card-more-btn"
+                      :class="{ 'card-more-btn-active': menuOpenId === item.entry.id }"
+                      title="更多"
+                      @click="openMenu(item.entry, $event)"
+                    ><MoreVerticalIcon :size="13" /></button>
+                  </div>
                 </div>
                 <div class="flex flex-wrap gap-1 mb-1.5">
                   <span v-if="item.entry.peopleCount" class="tag-ppl">👤 {{ item.entry.peopleCount }}</span>
@@ -305,12 +315,6 @@
                 <div class="flex items-center justify-between">
                   <span class="text-primary" style="font-size: 12px;">{{ starsDisplay(item.entry.difficultyStars) }}</span>
                   <span class="font-mono text-inkMuted" style="font-size: 10px;">{{ item.entry.date ?? '—' }}</span>
-                </div>
-                <!-- Action buttons (hover, hidden in reorder mode) -->
-                <div v-if="!reorderMode" class="card-actions absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity duration-150">
-                  <button class="card-action-btn" @click.stop="downloadGpx(item.entry)" title="下載 GPX">↓</button>
-                  <button class="card-action-btn" @click.stop="openEdit(item.entry)" title="編輯">編輯</button>
-                  <button class="card-action-btn card-action-del" @click.stop="confirmDelete(item.entry)" title="刪除">刪除</button>
                 </div>
               </div>
             </div>
@@ -420,6 +424,27 @@
     </div>
   </div>
 
+  <!-- ── Card action dropdown ─────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="menuOpenId" class="fixed inset-0 z-40" @click="closeMenu" />
+    <div
+      v-if="menuOpenId"
+      class="card-menu fixed z-50"
+      :style="{ top: menuPos.top + 'px', right: menuPos.right + 'px' }"
+    >
+      <button class="card-menu-item" @click.stop="downloadGpx(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
+        <DownloadIcon :size="13" /> 下載 GPX
+      </button>
+      <button class="card-menu-item" @click.stop="openEdit(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
+        <PencilIcon :size="13" /> 編輯
+      </button>
+      <div class="card-menu-divider" />
+      <button class="card-menu-item card-menu-item-del" @click.stop="confirmDelete(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
+        <Trash2Icon :size="13" /> 刪除
+      </button>
+    </div>
+  </Teleport>
+
   <!-- ── Detail Modal (Leaflet map) ──────────────────────── -->
   <Teleport to="body">
     <Transition name="modal">
@@ -512,6 +537,7 @@ import {
   Square as SquareIcon, CheckSquare as CheckSquareIcon,
   LayoutList as LayoutListIcon, BarChart2 as BarChart2Icon,
   Tag as TagIcon, Bookmark as BookmarkIcon, GripVertical as GripVerticalIcon,
+  MoreVertical as MoreVerticalIcon, Download as DownloadIcon, Pencil as PencilIcon,
 } from 'lucide-vue-next'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
 import { useProfileStore } from '../stores/profileStore'
@@ -712,6 +738,19 @@ const editingId   = ref<string | null>(null)
 const saving      = ref(false)
 const apiError    = ref<string | null>(null)
 const fileInputEl = ref<HTMLInputElement | null>(null)
+
+const menuOpenId = ref<string | null>(null)
+const menuPos    = ref({ top: 0, right: 0 })
+
+function openMenu(entry: GpxLibraryEntry, event: MouseEvent) {
+  event.stopPropagation()
+  if (menuOpenId.value === entry.id) { menuOpenId.value = null; return }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  menuPos.value = { top: rect.bottom + 4, right: window.innerWidth - rect.right }
+  menuOpenId.value = entry.id
+}
+
+function closeMenu() { menuOpenId.value = null }
 const tagModalOpen = ref(false)
 
 const blankForm = (): GpxForm => ({
@@ -892,18 +931,32 @@ async function executeDelete() {
 .gpx-card:hover .card-actions { opacity: 1 !important; }
 
 
-.card-actions { opacity: 0; }
-.card-action-btn {
-  font-size: 9px; font-family: monospace; padding: 3px 8px; border-radius: 4px;
-  cursor: pointer; backdrop-filter: blur(4px);
-  background: rgba(30,25,20,0.8); color: var(--c-inkMuted);
-  border: 1px solid rgba(255,255,255,0.12);
-  transition: color 0.12s, border-color 0.12s;
-  text-decoration: none; display: inline-block;
+/* ── Card more button ────────────────────────────────── */
+.card-more-btn {
+  color: var(--c-inkMuted); opacity: 0.35;
+  transition: color 0.15s, opacity 0.15s;
+  cursor: pointer; margin-top: 1px; padding: 1px;
 }
-.card-action-btn:hover { color: var(--c-ink); border-color: rgba(255,255,255,0.25); }
-.card-action-del { color: #774444; border-color: rgba(220,80,80,0.2); }
-.card-action-del:hover { color: #e07070; border-color: rgba(220,80,80,0.4); }
+.card-more-btn:hover, .card-more-btn-active { opacity: 0.8; color: var(--c-ink); }
+
+/* ── Card dropdown menu ──────────────────────────────── */
+.card-menu {
+  min-width: 130px; border-radius: 8px; padding: 4px;
+  background: color-mix(in srgb, var(--c-card) 95%, black);
+  border: 1px solid color-mix(in srgb, var(--c-border) 70%, transparent);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.card-menu-item {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; padding: 6px 10px; border-radius: 5px;
+  font-size: 12px; font-family: Inter, sans-serif;
+  color: var(--c-inkMuted); cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.card-menu-item:hover { background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-ink); }
+.card-menu-item-del { color: #8a4444; }
+.card-menu-item-del:hover { background: rgba(220,60,60,0.1); color: #e07070; }
+.card-menu-divider { height: 1px; background: var(--c-border); opacity: 0.4; margin: 3px 6px; }
 
 .tag-ppl {
   font-size: 10px; font-family: monospace; padding: 2px 7px; border-radius: 4px;
