@@ -234,13 +234,14 @@
             <!-- Card -->
             <div
               v-else
-              class="gpx-card cursor-pointer"
+              class="gpx-card card-reveal cursor-pointer"
               :class="{
                 'gpx-card-dragging': draggingId === item.entry.id,
                 'gpx-card-dragover': dragOverId === item.entry.id,
               }"
               style="max-width: 350px;"
               draggable="true"
+              :ref="el => observeCard(el as Element | null)"
               @click="openDetail(item.entry)"
               @dragstart="onDragStart(item.entry)"
               @dragover.prevent="onDragOver(item.entry)"
@@ -287,7 +288,7 @@
                     <Star :size="12" style="fill: currentColor; stroke: none;" />
                     <span>{{ item.entry.difficultyStars ? `×${item.entry.difficultyStars}` : '—' }}</span>
                   </div>
-                  <span class="font-mono" style="font-size: 10px; color: var(--c-inkMuted); opacity: 0.6; letter-spacing: 0.03em;">{{ item.entry.date ?? '—' }}</span>
+                  <span class="font-mono" style="font-size: 10px; color: var(--c-ink); letter-spacing: 0.03em;">{{ item.entry.date ?? '—' }}</span>
                 </div>
               </div>
             </div>
@@ -400,22 +401,24 @@
   <!-- ── Card action dropdown ─────────────────────────────── -->
   <Teleport to="body">
     <div v-if="menuOpenId" class="fixed inset-0 z-40" @click="closeMenu" />
-    <div
-      v-if="menuOpenId"
-      class="card-menu fixed z-50"
-      :style="{ top: menuPos.top + 'px', right: menuPos.right + 'px' }"
-    >
-      <button class="card-menu-item" @click.stop="downloadGpx(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
-        <DownloadIcon :size="13" /> 下載 GPX
-      </button>
-      <button class="card-menu-item" @click.stop="openEdit(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
-        <PencilIcon :size="13" /> 編輯
-      </button>
-      <div class="card-menu-divider" />
-      <button class="card-menu-item card-menu-item-del" @click.stop="confirmDelete(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
-        <Trash2Icon :size="13" /> 刪除
-      </button>
-    </div>
+    <Transition name="card-menu-pop">
+      <div
+        v-if="menuOpenId"
+        class="card-menu fixed z-50"
+        :style="{ top: menuPos.top + 'px', right: menuPos.right + 'px' }"
+      >
+        <button class="card-menu-item" @click.stop="downloadGpx(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
+          <DownloadIcon :size="13" /> 下載 GPX
+        </button>
+        <button class="card-menu-item" @click.stop="openEdit(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
+          <PencilIcon :size="13" /> 編輯
+        </button>
+        <div class="card-menu-divider" />
+        <button class="card-menu-item card-menu-item-del" @click.stop="confirmDelete(store.gpxLibrary.find(e => e.id === menuOpenId)!); closeMenu()">
+          <Trash2Icon :size="13" /> 刪除
+        </button>
+      </div>
+    </Transition>
   </Teleport>
 
   <!-- ── Detail Modal (Leaflet map) ──────────────────────── -->
@@ -676,6 +679,8 @@ function toCurrentColor(raw: string): string {
   return raw
     .replace(/fill="#000000"/g, 'fill="currentColor"')
     .replace(/stroke="#000000"/g, 'stroke="currentColor"')
+    .replace(/<svg([^>]*)\swidth="[^"]*"/, '<svg$1')
+    .replace(/<svg([^>]*)\sheight="[^"]*"/, '<svg$1')
 }
 
 const natureSvgs = {
@@ -746,6 +751,20 @@ function openMenu(entry: GpxLibraryEntry, event: MouseEvent) {
 
 function closeMenu() { menuOpenId.value = null }
 const tagModalOpen = ref(false)
+
+// ── Lazy reveal (IntersectionObserver) ────────────────
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('card-visible')
+      revealObserver.unobserve(entry.target)
+    }
+  })
+}, { threshold: 0.08 })
+
+function observeCard(el: Element | null) {
+  if (el) revealObserver.observe(el)
+}
 
 const blankForm = (): GpxForm => ({
   name: '', date: '', peopleCount: null, difficultyStars: null, referenceUrl: '', tags: [], gpxFile: null,
@@ -964,16 +983,16 @@ async function executeDelete() {
   position: absolute;
   bottom: -6px;
   right: -4px;
-  opacity: 0.055;
+  opacity: 0.18;
   color: var(--c-primary);
   pointer-events: none;
   transform: rotate(-10deg);
   line-height: 0;
 }
-.card-nature-wm svg {
+.card-nature-wm :deep(svg) {
   display: block;
-  width: 58px;
-  height: 58px;
+  width: 72px;
+  height: 72px;
   fill: currentColor;
   stroke: none;
 }
@@ -1006,12 +1025,30 @@ async function executeDelete() {
 /* ── Card more button ────────────────────────────────── */
 .card-more-btn {
   color: var(--c-inkMuted); opacity: 0.35;
-  transition: color 0.15s, opacity 0.15s;
-  cursor: pointer; margin-top: 1px; padding: 1px;
+  transition: color 0.15s, opacity 0.15s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
+  cursor: pointer; margin-top: 1px; padding: 3px; border-radius: 4px;
 }
-.card-more-btn:hover, .card-more-btn-active { opacity: 0.8; color: var(--c-ink); }
+.card-more-btn:hover { opacity: 0.8; color: var(--c-ink); background: rgba(255,255,255,0.06); }
+.card-more-btn-active {
+  opacity: 1; color: var(--c-primary);
+  transform: rotate(90deg);
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+}
 
 /* ── Card dropdown menu ──────────────────────────────── */
+.card-menu-pop-enter-active {
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.card-menu-pop-leave-active {
+  transition: opacity 0.13s ease, transform 0.13s ease;
+}
+.card-menu-pop-enter-from,
+.card-menu-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.85) translateY(-6px);
+  transform-origin: top right;
+}
+
 .card-menu {
   min-width: 130px; border-radius: 8px; padding: 4px;
   background: color-mix(in srgb, var(--c-card) 95%, black);
@@ -1114,4 +1151,15 @@ async function executeDelete() {
 /* ── Drag-to-reorder ─────────────────────────────────── */
 .gpx-card-dragging { opacity: 0.4; box-shadow: none !important; transform: none !important; }
 .gpx-card-dragover { border-color: var(--c-primary) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-primary) 40%, transparent); }
+
+/* ── Lazy reveal ─────────────────────────────────────── */
+.card-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-reveal.card-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 </style>
