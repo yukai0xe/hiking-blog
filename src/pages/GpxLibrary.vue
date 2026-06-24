@@ -247,52 +247,49 @@
               @drop.prevent="onDrop(item.entry)"
               @dragend="onDragEnd"
             >
+              <!-- Top accent line -->
+              <div class="card-top-accent" aria-hidden="true" />
+
               <!-- Elevation chart preview (advanced mode only) -->
-              <div v-if="viewMode === 'advanced'" class="card-map" style="height: 110px; background: #0e0c09; position: relative; overflow: hidden; flex-shrink: 0;">
-                <!-- Loading -->
+              <div v-if="viewMode === 'advanced'" class="card-map" style="height: 110px; background: #080604; position: relative; overflow: hidden; flex-shrink: 0;">
                 <div v-if="!(item.entry.id in cardElevations)" class="absolute inset-0 flex items-center justify-center">
                   <div class="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin opacity-40" />
                 </div>
-                <!-- No elevation data -->
                 <div v-else-if="!cardElevations[item.entry.id]?.length" class="absolute inset-0 flex items-center justify-center">
                   <span class="text-[10px] font-mono text-inkMuted opacity-30">no elevation</span>
                 </div>
-                <!-- Chart -->
-                <ElevationChart
-                  v-else
-                  :elevation="cardElevations[item.entry.id]!"
-                  :mini="true"
-                  class="absolute inset-0 w-full h-full"
-                />
+                <ElevationChart v-else :elevation="cardElevations[item.entry.id]!" :mini="true" class="absolute inset-0 w-full h-full" />
               </div>
+
               <!-- Footer -->
-              <div class="card-footer" style="background: #1a1510; border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px 11px; position: relative;">
-                <div class="flex items-start justify-between gap-1 mb-1.5">
-                  <p class="card-name font-heading font-bold text-ink" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1;">{{ item.entry.name }}</p>
+              <div class="card-footer">
+                <!-- Nature watermark -->
+                <div class="card-nature-wm" aria-hidden="true">
+                  <component :is="difficultyNature(item.entry.difficultyStars).icon" :size="58" />
+                </div>
+
+                <!-- Name + action buttons -->
+                <div class="flex items-start justify-between gap-1 mb-2 relative">
+                  <p class="card-name font-heading font-bold text-ink" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; line-height: 1.25;">{{ item.entry.name }}</p>
                   <div class="flex items-center gap-0.5 flex-shrink-0">
-                    <!-- Wishlist toggle -->
-                    <button
-                      class="wishlist-btn"
-                      :class="{ 'wishlist-btn-active': item.entry.isWishlist }"
-                      :title="item.entry.isWishlist ? '移出願望清單' : '加入願望清單'"
-                      @click.stop="toggleWishlist(item.entry)"
-                    ><BookmarkIcon :size="13" /></button>
-                    <!-- More options -->
-                    <button
-                      class="card-more-btn"
-                      :class="{ 'card-more-btn-active': menuOpenId === item.entry.id }"
-                      title="更多"
-                      @click="openMenu(item.entry, $event)"
-                    ><MoreVerticalIcon :size="13" /></button>
+                    <button class="wishlist-btn" :class="{ 'wishlist-btn-active': item.entry.isWishlist }" :title="item.entry.isWishlist ? '移出願望清單' : '加入願望清單'" @click.stop="toggleWishlist(item.entry)"><BookmarkIcon :size="13" /></button>
+                    <button class="card-more-btn" :class="{ 'card-more-btn-active': menuOpenId === item.entry.id }" title="更多" @click="openMenu(item.entry, $event)"><MoreVerticalIcon :size="13" /></button>
                   </div>
                 </div>
-                <div class="flex flex-wrap gap-1 mb-1.5">
+
+                <!-- Tags -->
+                <div v-if="item.entry.tags?.length || item.entry.peopleCount" class="flex flex-wrap gap-1 mb-2.5">
                   <span v-if="item.entry.peopleCount" class="tag-ppl">👤 {{ item.entry.peopleCount }}</span>
                   <span v-for="tag in item.entry.tags" :key="tag" class="tag-label">{{ tag }}</span>
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-primary" style="font-size: 12px;">{{ starsDisplay(item.entry.difficultyStars) }}</span>
-                  <span class="font-mono text-inkMuted" style="font-size: 10px;">{{ item.entry.date ?? '—' }}</span>
+
+                <!-- Difficulty + date -->
+                <div class="flex items-center justify-between relative" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: auto;">
+                  <div class="nature-diff" :style="{ color: difficultyNature(item.entry.difficultyStars).color }">
+                    <component :is="difficultyNature(item.entry.difficultyStars).icon" :size="12" />
+                    <span>{{ difficultyNature(item.entry.difficultyStars).label }}</span>
+                  </div>
+                  <span class="font-mono" style="font-size: 10px; color: var(--c-inkMuted); opacity: 0.6; letter-spacing: 0.03em;">{{ item.entry.date ?? '—' }}</span>
                 </div>
               </div>
             </div>
@@ -516,6 +513,7 @@ import {
   LayoutList as LayoutListIcon, BarChart2 as BarChart2Icon,
   Tag as TagIcon, Bookmark as BookmarkIcon,
   MoreVertical as MoreVerticalIcon, Download as DownloadIcon, Pencil as PencilIcon,
+  Leaf, TreePine, Droplets, Flame, Star, Flower2,
 } from 'lucide-vue-next'
 import { useGpxLibraryStore } from '../stores/gpxLibraryStore'
 import { useProfileStore } from '../stores/profileStore'
@@ -671,9 +669,14 @@ async function toggleWishlist(entry: GpxLibraryEntry) {
   }
 }
 
-function starsDisplay(stars?: number | null): string {
-  if (!stars) return '—'
-  return '★'.repeat(stars)
+type NatureDiff = { icon: unknown; color: string; label: string }
+function difficultyNature(stars?: number | null): NatureDiff {
+  if (!stars) return { icon: Leaf,     color: 'var(--c-inkMuted)', label: '—' }
+  if (stars <= 2) return { icon: Flower2,  color: '#a8d4a0', label: `×${stars}` }
+  if (stars <= 4) return { icon: TreePine, color: '#7cc87c', label: `×${stars}` }
+  if (stars <= 6) return { icon: Droplets, color: 'var(--c-primary)', label: `×${stars}` }
+  if (stars <= 8) return { icon: Flame,    color: '#e89060', label: `×${stars}` }
+  return              { icon: Star,     color: '#e8c060', label: `×${stars}` }
 }
 
 // ── Card elevation data loading ───────────────────────────
@@ -894,16 +897,87 @@ async function executeDelete() {
 <style scoped>
 /* ── Card ─────────────────────────────────────────────── */
 .gpx-card {
-  border-radius: 10px;
+  border-radius: 13px;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: #1a1510;
   display: flex;
   flex-direction: column;
-  transition: transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  background: linear-gradient(160deg, #1c1710 0%, #0d0b08 100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--c-primary) 22%, rgba(255,255,255,0.05)),
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    0 4px 18px rgba(0,0,0,0.6);
 }
-.gpx-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-.gpx-card:hover .card-actions { opacity: 1 !important; }
+.gpx-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--c-primary) 52%, transparent),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    0 14px 40px rgba(0,0,0,0.7),
+    0 0 30px color-mix(in srgb, var(--c-primary) 7%, transparent);
+}
+
+/* Gradient accent strip at top of card */
+.card-top-accent {
+  height: 2px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--c-primary) 40%, transparent) 25%,
+    color-mix(in srgb, var(--c-primary) 70%, transparent) 50%,
+    color-mix(in srgb, var(--c-primary) 40%, transparent) 75%,
+    transparent 100%
+  );
+}
+
+/* Footer with nature watermark */
+.card-footer {
+  background: linear-gradient(180deg, rgba(20,15,8,0.9) 0%, rgba(10,8,5,0.95) 100%);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 11px 13px 12px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Large nature icon watermark in footer background */
+.card-nature-wm {
+  position: absolute;
+  bottom: -6px;
+  right: -4px;
+  opacity: 0.055;
+  color: var(--c-primary);
+  pointer-events: none;
+  transform: rotate(-10deg);
+  line-height: 0;
+}
+
+/* Nature difficulty badge */
+.nature-diff {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.tag-ppl {
+  font-size: 10px; font-family: monospace; padding: 2px 7px; border-radius: 20px;
+  background: color-mix(in srgb, var(--c-primary) 10%, transparent);
+  color: var(--c-primary);
+  border: 1px solid color-mix(in srgb, var(--c-primary) 25%, transparent);
+}
+.tag-label {
+  font-size: 10px; font-family: Inter, sans-serif; padding: 2px 8px; border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  color: var(--c-inkMuted);
+  border: 1px solid rgba(255,255,255,0.09);
+}
 
 
 /* ── Card more button ────────────────────────────────── */
