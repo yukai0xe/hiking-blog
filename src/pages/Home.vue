@@ -102,7 +102,7 @@
         <DateRangePicker v-model:start="filterDateStart" v-model:end="filterDateEnd" />
 
         <!-- More filters button -->
-        <div class="relative ml-auto">
+        <div v-if="auth.user" class="relative ml-auto">
           <button
             class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body transition-colors duration-150 cursor-pointer border"
             :style="showFilterPanel || activeFilterCount > 0

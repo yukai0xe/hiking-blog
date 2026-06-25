@@ -86,6 +86,7 @@
           </div>
           <div v-if="store.currentPost.difficultyStars" class="meta-chip">
             <span class="text-primary" style="font-size:11px;letter-spacing:-1px;">{{ '★'.repeat(Math.min(store.currentPost.difficultyStars, profile.difficultyMax)) }}</span>
+            <span v-if="profile.difficultyLabels[store.currentPost.difficultyStars - 1]" class="font-body text-inkMuted" style="font-size:11px;">{{ profile.difficultyLabels[store.currentPost.difficultyStars - 1] }}</span>
           </div>
         </div>
       </header>
@@ -470,6 +471,7 @@
                 <span class="meta-icon text-primary" style="font-size:13px;line-height:1;">★</span>
                 <span class="meta-label">難度</span>
                 <span class="meta-value text-primary" style="letter-spacing:-1px;">{{ '★'.repeat(Math.min(store.currentPost.difficultyStars, profile.difficultyMax)) }}</span>
+                <span v-if="profile.difficultyLabels[store.currentPost.difficultyStars - 1]" class="font-body text-inkMuted" style="font-size:12px; margin-left:4px;">{{ profile.difficultyLabels[store.currentPost.difficultyStars - 1] }}</span>
               </div>
             </div>
           </div>
