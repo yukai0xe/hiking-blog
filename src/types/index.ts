@@ -28,6 +28,7 @@ export interface Photo {
 }
 
 export type GearCategory = string
+export type GearStatus = 'owned' | 'wishlist' | 'abandon' | 'other'
 
 export interface Gear {
   id: string       // gears_mapping_post.id (mapping row)
@@ -43,6 +44,8 @@ export interface Gear {
   price?: number | null
   addedAt?: string | null
   isWishlist?: boolean
+  status?: GearStatus
+  description?: string | null
 }
 
 export interface GearImage {

@@ -12,7 +12,7 @@
         </button>
         <div class="flex-1">
           <p class="text-xs font-body tracking-[0.25em] uppercase text-primary opacity-60">Gear Library</p>
-          <h1 class="font-heading text-xl font-bold text-ink">編輯裝備</h1>
+          <h1 class="font-heading text-xl font-bold text-ink">{{ isNew ? '新增裝備' : '編輯裝備' }}</h1>
         </div>
         <button
           class="flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-body font-semibold btn-cta cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -31,13 +31,13 @@
         載入中…
       </div>
 
-      <!-- Not found -->
-      <div v-else-if="!gear" class="card-aged p-16 text-center">
+      <!-- Not found (edit mode only) -->
+      <div v-else-if="!isNew && !gear" class="card-aged p-16 text-center">
         <p class="font-heading text-xl text-ink mb-2">找不到裝備</p>
         <button class="text-sm font-body text-primary hover:opacity-70 cursor-pointer" @click="$router.push('/gear-library')">返回裝備庫</button>
       </div>
 
-      <template v-else>
+      <template v-else-if="isNew || gear">
         <!-- Error banner -->
         <div v-if="apiError" class="mb-5 px-4 py-2.5 rounded-lg flex items-center gap-2 font-body text-sm"
           style="background: rgba(220,60,60,0.12); border: 1px solid rgba(220,60,60,0.35); color: #e07070;">
@@ -231,6 +231,7 @@ const router = useRouter()
 const store  = usePostStore()
 
 const gearId = route.params.id as string
+const isNew  = gearId === 'new'
 
 // ── Load gear ────────────────────────────────────────────
 const loading  = ref(true)
@@ -240,6 +241,7 @@ const saving   = ref(false)
 
 onMounted(async () => {
   await Promise.all([store.fetchGearLibrary(), store.fetchGearCategories()])
+  if (isNew) { loading.value = false; return }
   const found = store.gearLibrary.find(g => g.id === gearId) ?? null
   gear.value = found
   if (found) {
@@ -370,12 +372,15 @@ async function submitForm() {
       isWishlist:   form.value.status === 'wishlist',
       description:  editor.value?.getHTML() ?? null,
     }
-    await store.updateLibraryGear(gearId, payload)
+    const targetId = isNew
+      ? await store.createLibraryGear(payload)
+      : gearId
+    if (!isNew) await store.updateLibraryGear(gearId, payload)
     for (const imgId of deletingImageIds.value) {
-      await store.deleteGearImage(gearId, imgId)
+      await store.deleteGearImage(targetId, imgId)
     }
     for (let i = 0; i < newImageFiles.value.length; i++) {
-      await store.uploadGearImageWithProgress(gearId, newImageFiles.value[i], (pct) => {
+      await store.uploadGearImageWithProgress(targetId, newImageFiles.value[i], (pct) => {
         newImageProgress.value[i] = pct
       })
     }

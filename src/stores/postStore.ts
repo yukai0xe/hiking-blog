@@ -72,6 +72,7 @@ export const usePostStore = defineStore('posts', () => {
     name: string; weight: number; note: string; category: string
     quantity: number; brand?: string | null; referenceUrl?: string | null
     price?: number | null; addedAt?: string | null; isWishlist?: boolean
+    status?: string | null; description?: string | null
   }
 
   async function createLibraryGear(payload: GearPayload): Promise<string> {

@@ -6,7 +6,7 @@
       <div class="flex items-center gap-3 mb-8">
         <button
           class="card-aged w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
-          @click="$router.back()" aria-label="返回"
+          @click="$router.push('/')" aria-label="返回"
         >
           <ArrowLeftIcon :size="17" />
         </button>
@@ -63,23 +63,14 @@
           </div>
         </div>
 
-        <div class="relative flex-1 min-w-[180px]">
-          <SearchIcon :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-inkMuted pointer-events-none" />
-          <input
-            v-model="search"
-            type="text"
-            placeholder="搜尋名稱、品牌…"
-            class="w-full pl-8 pr-8 py-2 rounded-lg text-sm font-body text-ink focus:outline-none focus:border-primary transition-colors"
-            style="background: transparent; border: 1px solid var(--c-border);"
-          />
-          <button v-if="search" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-inkMuted hover:text-ink cursor-pointer" @click="search = ''">
-            <XIcon :size="13" />
-          </button>
-        </div>
-
         <select v-model="filterCategory" class="filter-select">
           <option value="">所有類別</option>
           <option v-for="cat in filterCategories" :key="cat" :value="cat">{{ cat }}</option>
+        </select>
+
+        <select v-model="filterBrand" class="filter-select">
+          <option value="">所有品牌</option>
+          <option v-for="brand in filterBrands" :key="brand" :value="brand">{{ brand }}</option>
         </select>
       </div>
 
@@ -87,19 +78,14 @@
       <div class="card-aged px-5 py-4 mb-6">
         <p class="text-[10px] font-body font-semibold tracking-[0.2em] uppercase text-inkMuted mb-3">自訂類別</p>
         <div class="flex flex-wrap gap-2 items-center">
-          <!-- User's own (custom) categories — deletable chips -->
+          <!-- User's own (custom) categories -->
           <span
             v-for="cat in store.ownGearCategories"
             :key="cat"
-            class="flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-body text-primary"
+            class="pl-2.5 pr-2.5 py-1 rounded-full text-xs font-body text-primary"
             style="border: 1px solid color-mix(in srgb, var(--c-primary) 30%, transparent); background: color-mix(in srgb, var(--c-primary) 8%, transparent);"
           >
             {{ cat }}
-            <button
-              type="button"
-              class="w-4 h-4 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
-              @click="removeCat(cat)"
-            ><XIcon :size="9" /></button>
           </span>
 
           <!-- Add new category -->
@@ -170,7 +156,7 @@
       <div v-else-if="filtered.length === 0" class="card-aged p-12 text-center">
         <SearchIcon :size="36" class="mx-auto mb-4 text-primary opacity-30" />
         <p class="font-heading text-lg text-ink mb-2">無符合結果</p>
-        <button class="text-sm font-body text-primary hover:opacity-70 transition-opacity cursor-pointer" @click="search = ''; filterCategory = ''">
+        <button class="text-sm font-body text-primary hover:opacity-70 transition-opacity cursor-pointer" @click="filterCategory = ''; filterBrand = ''">
           清除篩選
         </button>
       </div>
@@ -207,16 +193,13 @@
               <template v-for="gear in filtered" :key="gear.id">
                 <tr
                   class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
-                  :class="{ 'border-border/0': expandedIds.has(gear.id) }"
                   :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
                   @mouseenter="hoveredId = gear.id"
                   @mouseleave="hoveredId = null"
-                  @click="toggleExpand(gear.id)"
+                  @click="router.push('/gear-library/' + gear.id)"
                 >
                   <td class="td font-medium text-ink">
                     <span class="flex items-center gap-1.5">
-                      <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0"
-                        :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
                       {{ gear.name }}
                       <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
                         class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
@@ -239,19 +222,6 @@
                         @click="openEdit(gear)" aria-label="編輯"><PencilIcon :size="13" /></button>
                       <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
                         @click="confirmDelete(gear)" aria-label="刪除"><Trash2Icon :size="13" /></button>
-                    </div>
-                  </td>
-                </tr>
-                <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
-                  <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
-                    <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1">
-                      <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…
-                    </div>
-                    <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
-                    <div v-else class="flex flex-wrap gap-2">
-                      <img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url"
-                        class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200"
-                        @click.stop="openGearLightbox(gear.id, i)" />
                     </div>
                   </td>
                 </tr>
@@ -280,23 +250,23 @@
             <table class="w-full">
               <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
                 <tr class="border-b border-border/50">
-                  <th class="th cursor-pointer select-none" @click="setSort('name')">
-                    <span class="flex items-center gap-1">名稱 <component :is="sortIcon('name')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('owned', 'name')">
+                    <span class="flex items-center gap-1">名稱 <component :is="groupSortIcon('owned', 'name')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th cursor-pointer select-none" @click="setSort('category')">
-                    <span class="flex items-center gap-1">類別 <component :is="sortIcon('category')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('owned', 'category')">
+                    <span class="flex items-center gap-1">類別 <component :is="groupSortIcon('owned', 'category')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th text-right cursor-pointer select-none" @click="setSort('weight')">
-                    <span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="sortIcon('weight')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th text-right cursor-pointer select-none" @click="setGroupSort('owned', 'weight')">
+                    <span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="groupSortIcon('owned', 'weight')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th cursor-pointer select-none" @click="setSort('brand')">
-                    <span class="flex items-center gap-1">品牌 <component :is="sortIcon('brand')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('owned', 'brand')">
+                    <span class="flex items-center gap-1">品牌 <component :is="groupSortIcon('owned', 'brand')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th text-right cursor-pointer select-none" @click="setSort('price')">
-                    <span class="flex items-center justify-end gap-1">價格 <component :is="sortIcon('price')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th text-right cursor-pointer select-none" @click="setGroupSort('owned', 'price')">
+                    <span class="flex items-center justify-end gap-1">價格 <component :is="groupSortIcon('owned', 'price')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th cursor-pointer select-none" @click="setSort('addedAt')">
-                    <span class="flex items-center gap-1">加入時間 <component :is="sortIcon('addedAt')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('owned', 'addedAt')">
+                    <span class="flex items-center gap-1">加入時間 <component :is="groupSortIcon('owned', 'addedAt')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
                   <th class="th">備註</th>
                   <th class="w-16" />
@@ -306,16 +276,13 @@
                 <template v-for="gear in filteredOwned" :key="gear.id">
                   <tr
                     class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
-                    :class="{ 'border-border/0': expandedIds.has(gear.id) }"
                     :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
                     @mouseenter="hoveredId = gear.id"
                     @mouseleave="hoveredId = null"
-                    @click="toggleExpand(gear.id)"
+                    @click="router.push('/gear-library/' + gear.id)"
                   >
                     <td class="td font-medium text-ink">
                       <span class="flex items-center gap-1.5">
-                        <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0"
-                          :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
                         {{ gear.name }}
                         <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
                           class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
@@ -338,19 +305,6 @@
                           @click="openEdit(gear)" aria-label="編輯"><PencilIcon :size="13" /></button>
                         <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
                           @click="confirmDelete(gear)" aria-label="刪除"><Trash2Icon :size="13" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
-                    <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
-                      <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1">
-                        <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…
-                      </div>
-                      <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
-                      <div v-else class="flex flex-wrap gap-2">
-                        <img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url"
-                          class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200"
-                          @click.stop="openGearLightbox(gear.id, i)" />
                       </div>
                     </td>
                   </tr>
@@ -377,23 +331,23 @@
             <table class="w-full">
               <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
                 <tr class="border-b border-border/50">
-                  <th class="th cursor-pointer select-none" @click="setSort('name')">
-                    <span class="flex items-center gap-1">名稱 <component :is="sortIcon('name')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('wishlist', 'name')">
+                    <span class="flex items-center gap-1">名稱 <component :is="groupSortIcon('wishlist', 'name')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th cursor-pointer select-none" @click="setSort('category')">
-                    <span class="flex items-center gap-1">類別 <component :is="sortIcon('category')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('wishlist', 'category')">
+                    <span class="flex items-center gap-1">類別 <component :is="groupSortIcon('wishlist', 'category')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th text-right cursor-pointer select-none" @click="setSort('weight')">
-                    <span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="sortIcon('weight')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th text-right cursor-pointer select-none" @click="setGroupSort('wishlist', 'weight')">
+                    <span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="groupSortIcon('wishlist', 'weight')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th cursor-pointer select-none" @click="setSort('brand')">
-                    <span class="flex items-center gap-1">品牌 <component :is="sortIcon('brand')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('wishlist', 'brand')">
+                    <span class="flex items-center gap-1">品牌 <component :is="groupSortIcon('wishlist', 'brand')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th text-right cursor-pointer select-none" @click="setSort('price')">
-                    <span class="flex items-center justify-end gap-1">價格 <component :is="sortIcon('price')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th text-right cursor-pointer select-none" @click="setGroupSort('wishlist', 'price')">
+                    <span class="flex items-center justify-end gap-1">價格 <component :is="groupSortIcon('wishlist', 'price')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
-                  <th class="th cursor-pointer select-none" @click="setSort('addedAt')">
-                    <span class="flex items-center gap-1">加入時間 <component :is="sortIcon('addedAt')" :size="11" class="opacity-40 shrink-0" /></span>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('wishlist', 'addedAt')">
+                    <span class="flex items-center gap-1">加入時間 <component :is="groupSortIcon('wishlist', 'addedAt')" :size="11" class="opacity-40 shrink-0" /></span>
                   </th>
                   <th class="th">備註</th>
                   <th class="w-16" />
@@ -403,16 +357,13 @@
                 <template v-for="gear in filteredWishlist" :key="gear.id">
                   <tr
                     class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
-                    :class="{ 'border-border/0': expandedIds.has(gear.id) }"
                     :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
                     @mouseenter="hoveredId = gear.id"
                     @mouseleave="hoveredId = null"
-                    @click="toggleExpand(gear.id)"
+                    @click="router.push('/gear-library/' + gear.id)"
                   >
                     <td class="td font-medium text-ink">
                       <span class="flex items-center gap-1.5">
-                        <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0"
-                          :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
                         {{ gear.name }}
                         <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
                           class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop>
@@ -438,19 +389,6 @@
                       </div>
                     </td>
                   </tr>
-                  <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
-                    <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
-                      <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1">
-                        <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…
-                      </div>
-                      <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
-                      <div v-else class="flex flex-wrap gap-2">
-                        <img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url"
-                          class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200"
-                          @click.stop="openGearLightbox(gear.id, i)" />
-                      </div>
-                    </td>
-                  </tr>
                 </template>
               </tbody>
             </table>
@@ -473,12 +411,12 @@
             <table class="w-full">
               <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
                 <tr class="border-b border-border/50">
-                  <th class="th cursor-pointer select-none" @click="setSort('name')"><span class="flex items-center gap-1">名稱 <component :is="sortIcon('name')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th cursor-pointer select-none" @click="setSort('category')"><span class="flex items-center gap-1">類別 <component :is="sortIcon('category')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th text-right cursor-pointer select-none" @click="setSort('weight')"><span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="sortIcon('weight')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th cursor-pointer select-none" @click="setSort('brand')"><span class="flex items-center gap-1">品牌 <component :is="sortIcon('brand')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th text-right cursor-pointer select-none" @click="setSort('price')"><span class="flex items-center justify-end gap-1">價格 <component :is="sortIcon('price')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th cursor-pointer select-none" @click="setSort('addedAt')"><span class="flex items-center gap-1">加入時間 <component :is="sortIcon('addedAt')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('abandon', 'name')"><span class="flex items-center gap-1">名稱 <component :is="groupSortIcon('abandon', 'name')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('abandon', 'category')"><span class="flex items-center gap-1">類別 <component :is="groupSortIcon('abandon', 'category')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th text-right cursor-pointer select-none" @click="setGroupSort('abandon', 'weight')"><span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="groupSortIcon('abandon', 'weight')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('abandon', 'brand')"><span class="flex items-center gap-1">品牌 <component :is="groupSortIcon('abandon', 'brand')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th text-right cursor-pointer select-none" @click="setGroupSort('abandon', 'price')"><span class="flex items-center justify-end gap-1">價格 <component :is="groupSortIcon('abandon', 'price')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('abandon', 'addedAt')"><span class="flex items-center gap-1">加入時間 <component :is="groupSortIcon('abandon', 'addedAt')" :size="11" class="opacity-40 shrink-0" /></span></th>
                   <th class="th">備註</th>
                   <th class="w-16" />
                 </tr>
@@ -486,12 +424,10 @@
               <tbody>
                 <template v-for="gear in filteredAbandon" :key="gear.id">
                   <tr class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
-                    :class="{ 'border-border/0': expandedIds.has(gear.id) }"
                     :style="{ background: hoveredId === gear.id ? 'rgba(196,112,112,0.06)' : '' }"
-                    @mouseenter="hoveredId = gear.id" @mouseleave="hoveredId = null" @click="toggleExpand(gear.id)">
+                    @mouseenter="hoveredId = gear.id" @mouseleave="hoveredId = null" @click="router.push('/gear-library/' + gear.id)">
                     <td class="td font-medium" style="color: var(--c-inkMuted);">
                       <span class="flex items-center gap-1.5">
-                        <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0" :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
                         <span style="text-decoration: line-through; opacity: 0.7;">{{ gear.name }}</span>
                         <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer" class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop><ExternalLinkIcon :size="11" /></a>
                       </span>
@@ -507,13 +443,6 @@
                         <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer" @click="openEdit(gear)" aria-label="編輯"><PencilIcon :size="13" /></button>
                         <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer" @click="confirmDelete(gear)" aria-label="刪除"><Trash2Icon :size="13" /></button>
                       </div>
-                    </td>
-                  </tr>
-                  <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
-                    <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
-                      <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1"><span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…</div>
-                      <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
-                      <div v-else class="flex flex-wrap gap-2"><img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url" class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200" @click.stop="openGearLightbox(gear.id, i)" /></div>
                     </td>
                   </tr>
                 </template>
@@ -538,12 +467,12 @@
             <table class="w-full">
               <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
                 <tr class="border-b border-border/50">
-                  <th class="th cursor-pointer select-none" @click="setSort('name')"><span class="flex items-center gap-1">名稱 <component :is="sortIcon('name')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th cursor-pointer select-none" @click="setSort('category')"><span class="flex items-center gap-1">類別 <component :is="sortIcon('category')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th text-right cursor-pointer select-none" @click="setSort('weight')"><span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="sortIcon('weight')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th cursor-pointer select-none" @click="setSort('brand')"><span class="flex items-center gap-1">品牌 <component :is="sortIcon('brand')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th text-right cursor-pointer select-none" @click="setSort('price')"><span class="flex items-center justify-end gap-1">價格 <component :is="sortIcon('price')" :size="11" class="opacity-40 shrink-0" /></span></th>
-                  <th class="th cursor-pointer select-none" @click="setSort('addedAt')"><span class="flex items-center gap-1">加入時間 <component :is="sortIcon('addedAt')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('other', 'name')"><span class="flex items-center gap-1">名稱 <component :is="groupSortIcon('other', 'name')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('other', 'category')"><span class="flex items-center gap-1">類別 <component :is="groupSortIcon('other', 'category')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th text-right cursor-pointer select-none" @click="setGroupSort('other', 'weight')"><span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="groupSortIcon('other', 'weight')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('other', 'brand')"><span class="flex items-center gap-1">品牌 <component :is="groupSortIcon('other', 'brand')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th text-right cursor-pointer select-none" @click="setGroupSort('other', 'price')"><span class="flex items-center justify-end gap-1">價格 <component :is="groupSortIcon('other', 'price')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setGroupSort('other', 'addedAt')"><span class="flex items-center gap-1">加入時間 <component :is="groupSortIcon('other', 'addedAt')" :size="11" class="opacity-40 shrink-0" /></span></th>
                   <th class="th">備註</th>
                   <th class="w-16" />
                 </tr>
@@ -551,12 +480,10 @@
               <tbody>
                 <template v-for="gear in filteredOther" :key="gear.id">
                   <tr class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
-                    :class="{ 'border-border/0': expandedIds.has(gear.id) }"
                     :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
-                    @mouseenter="hoveredId = gear.id" @mouseleave="hoveredId = null" @click="toggleExpand(gear.id)">
+                    @mouseenter="hoveredId = gear.id" @mouseleave="hoveredId = null" @click="router.push('/gear-library/' + gear.id)">
                     <td class="td font-medium text-ink">
                       <span class="flex items-center gap-1.5">
-                        <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0" :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
                         {{ gear.name }}
                         <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer" class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop><ExternalLinkIcon :size="11" /></a>
                       </span>
@@ -574,13 +501,6 @@
                       </div>
                     </td>
                   </tr>
-                  <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
-                    <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
-                      <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1"><span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…</div>
-                      <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
-                      <div v-else class="flex flex-wrap gap-2"><img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url" class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200" @click.stop="openGearLightbox(gear.id, i)" /></div>
-                    </td>
-                  </tr>
                 </template>
               </tbody>
             </table>
@@ -593,167 +513,6 @@
 
     </div>
   </div>
-
-  <!-- ── Add / Edit Modal ───────────────────────────────── -->
-  <Teleport to="body">
-    <Transition name="modal">
-      <div v-if="showForm" class="modal-backdrop" @click.self="closeForm">
-        <div class="form-modal">
-          <div class="flex items-center justify-between px-6 py-4 border-b border-border/50">
-            <h2 class="font-heading text-lg text-ink tracking-wide">{{ editingId ? '編輯裝備' : '新增裝備' }}</h2>
-            <button class="text-inkMuted hover:text-ink transition-colors cursor-pointer" @click="closeForm">
-              <XIcon :size="18" />
-            </button>
-          </div>
-
-          <div class="px-6 py-5 space-y-4 overflow-y-auto flex-1">
-            <!-- 第一行：名稱 + 類別 -->
-            <div class="grid grid-cols-[1fr_160px] gap-3">
-              <div>
-                <label class="field-label">名稱 *</label>
-                <input v-model="form.name" type="text" class="input-field text-sm" placeholder="裝備名稱" />
-              </div>
-              <div>
-                <label class="field-label">類別</label>
-                <select v-model="form.category" class="input-field text-sm font-body">
-                  <option v-for="cat in filterCategories" :key="cat" :value="cat">{{ cat }}</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- 第二行：品牌 + 價格 + 重量 + 數量 -->
-            <div class="grid grid-cols-4 gap-3">
-              <div>
-                <label class="field-label">品牌</label>
-                <input v-model="form.brand" type="text" class="input-field text-sm" placeholder="品牌" />
-              </div>
-              <div>
-                <label class="field-label">價格</label>
-                <input v-model="form.price" type="text" inputmode="numeric" class="input-field text-sm font-mono" placeholder="0"
-                  :style="formErrors.price ? { borderColor: '#ef4444' } : {}" />
-                <p v-if="formErrors.price" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.price }}</p>
-              </div>
-              <div>
-                <label class="field-label">重量 (g)</label>
-                <input v-model="form.weight" type="text" inputmode="numeric" class="input-field text-sm font-mono" placeholder="0"
-                  :style="formErrors.weight ? { borderColor: '#ef4444' } : {}" />
-                <p v-if="formErrors.weight" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.weight }}</p>
-              </div>
-              <div>
-                <label class="field-label">數量</label>
-                <input v-model.number="form.quantity" type="number" min="1" class="input-field text-sm font-mono no-spinner" placeholder="1" />
-              </div>
-            </div>
-
-            <!-- 第三行：加入時間 + 參考連結 -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="field-label">加入時間</label>
-                <input v-model="form.addedAt" type="date" class="input-field text-sm font-mono" />
-              </div>
-              <div>
-                <label class="field-label">參考連結</label>
-                <input v-model="form.referenceUrl" type="text" class="input-field text-sm font-mono" placeholder="https://…"
-                  :style="formErrors.referenceUrl ? { borderColor: '#ef4444' } : {}" />
-                <p v-if="formErrors.referenceUrl" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.referenceUrl }}</p>
-              </div>
-            </div>
-
-            <!-- 第四行：備註 -->
-            <div>
-              <label class="field-label">備註</label>
-              <textarea v-model="form.note" rows="3" class="input-field text-sm resize-none" placeholder="選填" />
-            </div>
-
-            <!-- 狀態 -->
-            <div>
-              <label class="field-label">狀態</label>
-              <div class="flex gap-2 flex-wrap mt-1">
-                <button
-                  v-for="s in statusOptions" :key="s.value"
-                  type="button"
-                  class="status-btn"
-                  :class="[`status-btn--${s.value}`, { 'status-btn--active': form.status === s.value }]"
-                  @click="form.status = s.value"
-                >{{ s.label }}</button>
-              </div>
-            </div>
-
-            <!-- 圖片 -->
-            <div>
-              <label class="field-label">圖片（選填）</label>
-              <div v-if="loadingImages" class="text-xs font-body text-inkMuted flex items-center gap-1.5 mb-2">
-                <span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                載入圖片中…
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <!-- Existing images (not yet deleted) -->
-                <div v-for="img in editingImages" :key="img.id" class="gear-img-thumb">
-                  <img :src="img.url" class="w-full h-full object-cover" />
-                  <button type="button" class="gear-img-remove" @click="removeExistingImage(img.id)">
-                    <XIcon :size="10" />
-                  </button>
-                </div>
-                <!-- New image previews -->
-                <div v-for="(preview, i) in newImagePreviews" :key="preview" class="gear-img-thumb">
-                  <img :src="preview" class="w-full h-full object-cover"
-                    :class="saving ? 'opacity-50' : 'opacity-75'" />
-                  <button type="button" class="gear-img-remove" :disabled="saving" @click="removeNewImage(i)">
-                    <XIcon :size="10" />
-                  </button>
-                  <!-- Per-file upload progress overlay -->
-                  <div v-if="saving" class="absolute inset-0 flex flex-col items-center justify-center gap-1"
-                    style="background: rgba(0,0,0,0.45);">
-                    <template v-if="newImageProgress[i] >= 100">
-                      <CheckIcon :size="16" class="text-green-400" />
-                    </template>
-                    <template v-else>
-                      <span class="text-white text-[10px] font-mono font-bold leading-none">{{ newImageProgress[i] }}%</span>
-                      <div class="w-10 h-0.5 rounded-full overflow-hidden" style="background: rgba(255,255,255,0.25);">
-                        <div class="h-full rounded-full transition-all duration-100"
-                          style="background: white;"
-                          :style="{ width: `${newImageProgress[i]}%` }" />
-                      </div>
-                    </template>
-                  </div>
-                </div>
-                <!-- Add button -->
-                <button
-                  type="button"
-                  class="w-16 h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-inkMuted hover:text-primary hover:border-primary transition-colors cursor-pointer"
-                  style="border: 1px dashed var(--c-border);"
-                  @click="triggerImageInput"
-                >
-                  <ImageIcon :size="18" class="opacity-50" />
-                  <span class="text-[10px] font-body">上傳</span>
-                </button>
-              </div>
-              <input ref="imageInputRef" type="file" accept="image/*" multiple class="hidden" @change="onImagesSelected" />
-            </div>
-          </div>
-
-          <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-border/50">
-            <button
-              class="px-4 py-2 rounded-lg text-sm font-body font-medium cursor-pointer card-aged text-inkMuted hover:text-ink transition-colors"
-              @click="closeForm"
-            >取消</button>
-            <button
-              class="flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-body font-semibold btn-cta cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="!form.name.trim() || hasFormErrors || saving"
-              @click="submitForm"
-            >
-              <span v-if="saving" class="w-3.5 h-3.5 border-2 rounded-full animate-spin border-current border-t-transparent" />
-              <SaveIcon v-else :size="14" />
-              {{ saving ? '儲存中…' : (editingId ? '更新' : '新增') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-
-  <!-- ── Gear image lightbox ──────────────────────────────── -->
-  <PhotoGallery ref="gearLightboxRef" :headless="true" :photos="lightboxImages" />
 
   <!-- ── Delete Confirm Modal ───────────────────────────── -->
   <Teleport to="body">
@@ -791,7 +550,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowLeft as ArrowLeftIcon,
@@ -800,21 +559,17 @@ import {
   Plus as PlusIcon,
   Pencil as PencilIcon,
   Trash2 as Trash2Icon,
-  Save as SaveIcon,
   ExternalLink as ExternalLinkIcon,
   Package as PackageIcon,
   AlertCircle as AlertCircleIcon,
   ChevronUp as ChevronUpIcon,
   ChevronDown as ChevronDownIcon,
-  ChevronRight as ChevronRightIcon,
   ChevronsUpDown as ChevronsUpDownIcon,
   Check as CheckIcon,
-  Image as ImageIcon,
   Bookmark as BookmarkIcon,
 } from 'lucide-vue-next'
-import type { Gear, GearImage, GearStatus } from '../types'
+import type { Gear, GearStatus } from '../types'
 import { usePostStore } from '../stores/postStore'
-import PhotoGallery from '../components/PhotoGallery.vue'
 
 const store  = usePostStore()
 const router = useRouter()
@@ -841,9 +596,6 @@ async function confirmAddCat() {
   }
 }
 
-async function removeCat(name: string) {
-  await store.deleteGearCategory(name)
-}
 
 // ── Table state ──────────────────────────────────────────
 const filterCategories = computed(() => {
@@ -854,9 +606,16 @@ const filterCategories = computed(() => {
   return [...all].sort((a, b) => a.localeCompare(b, 'zh-TW'))
 })
 
-const search         = ref('')
 const filterCategory = ref('')
+const filterBrand    = ref('')
 const hoveredId      = ref<string | null>(null)
+
+const filterBrands = computed(() => {
+  const brands = store.gearLibrary
+    .map(g => g.brand)
+    .filter((b): b is string => !!b)
+  return [...new Set(brands)].sort((a, b) => a.localeCompare(b, 'zh-TW'))
+})
 
 type SortField = 'name' | 'category' | 'weight' | 'brand' | 'price' | 'addedAt'
 const sortField = ref<SortField>('name')
@@ -872,32 +631,55 @@ function sortIcon(field: SortField) {
   return sortAsc.value ? ChevronUpIcon : ChevronDownIcon
 }
 
-const filtered = computed(() => {
-  const q   = search.value.trim().toLowerCase()
-  const cat = filterCategory.value
-
-  const list = store.gearLibrary.filter(g => {
+const filteredBase = computed(() => {
+  const cat   = filterCategory.value
+  const brand = filterBrand.value
+  return store.gearLibrary.filter(g => {
     if (cat && g.category !== cat) return false
-    if (q && !g.name.toLowerCase().includes(q) && !(g.brand ?? '').toLowerCase().includes(q)) return false
+    if (brand && g.brand !== brand) return false
     return true
   })
+})
 
+function applySort(list: Gear[], field: SortField, asc: boolean): Gear[] {
   return [...list].sort((a, b) => {
     let va: string | number
     let vb: string | number
-    switch (sortField.value) {
-      case 'name':     va = a.name.toLowerCase();        vb = b.name.toLowerCase();        break
-      case 'category': va = a.category.toLowerCase();    vb = b.category.toLowerCase();    break
+    switch (field) {
+      case 'name':     va = a.name.toLowerCase();          vb = b.name.toLowerCase();          break
+      case 'category': va = a.category.toLowerCase();      vb = b.category.toLowerCase();      break
       case 'weight':   va = (a.weight ?? 0) * (a.quantity ?? 1); vb = (b.weight ?? 0) * (b.quantity ?? 1); break
       case 'brand':    va = (a.brand ?? '').toLowerCase(); vb = (b.brand ?? '').toLowerCase(); break
-      case 'price':    va = a.price ?? -1;               vb = b.price ?? -1;               break
-      case 'addedAt':  va = a.addedAt ?? '';             vb = b.addedAt ?? '';             break
+      case 'price':    va = a.price ?? -1;                 vb = b.price ?? -1;                 break
+      case 'addedAt':  va = a.addedAt ?? '';               vb = b.addedAt ?? '';               break
     }
-    if (va! < vb!) return sortAsc.value ? -1 : 1
-    if (va! > vb!) return sortAsc.value ?  1 : -1
+    if (va! < vb!) return asc ? -1 : 1
+    if (va! > vb!) return asc ? 1 : -1
     return 0
   })
+}
+
+const filtered = computed(() => applySort(filteredBase.value, sortField.value, sortAsc.value))
+
+type GroupKey = 'owned' | 'wishlist' | 'abandon' | 'other'
+const groupSort = ref<Record<GroupKey, { field: SortField; asc: boolean }>>({
+  owned:    { field: 'name', asc: true },
+  wishlist: { field: 'name', asc: true },
+  abandon:  { field: 'name', asc: true },
+  other:    { field: 'name', asc: true },
 })
+
+function setGroupSort(group: GroupKey, field: SortField) {
+  const s = groupSort.value[group]
+  if (s.field === field) s.asc = !s.asc
+  else { s.field = field; s.asc = true }
+}
+
+function groupSortIcon(group: GroupKey, field: SortField) {
+  const s = groupSort.value[group]
+  if (s.field !== field) return ChevronsUpDownIcon
+  return s.asc ? ChevronUpIcon : ChevronDownIcon
+}
 
 function gramsOf(list: Gear[]) {
   return list.reduce((s, g) => s + (g.weight ?? 0) * (g.quantity ?? 1), 0)
@@ -909,10 +691,10 @@ function gearStatus(g: Gear): GearStatus {
 }
 
 const hasMultipleGroups = computed(() => store.gearLibrary.some(g => gearStatus(g) !== 'other'))
-const filteredOwned     = computed(() => filtered.value.filter(g => gearStatus(g) === 'owned'))
-const filteredWishlist  = computed(() => filtered.value.filter(g => gearStatus(g) === 'wishlist'))
-const filteredAbandon   = computed(() => filtered.value.filter(g => gearStatus(g) === 'abandon'))
-const filteredOther     = computed(() => filtered.value.filter(g => gearStatus(g) === 'other'))
+const filteredOwned    = computed(() => applySort(filteredBase.value.filter(g => gearStatus(g) === 'owned'),    groupSort.value.owned.field,    groupSort.value.owned.asc))
+const filteredWishlist = computed(() => applySort(filteredBase.value.filter(g => gearStatus(g) === 'wishlist'), groupSort.value.wishlist.field, groupSort.value.wishlist.asc))
+const filteredAbandon  = computed(() => applySort(filteredBase.value.filter(g => gearStatus(g) === 'abandon'),  groupSort.value.abandon.field,  groupSort.value.abandon.asc))
+const filteredOther    = computed(() => applySort(filteredBase.value.filter(g => gearStatus(g) === 'other'),    groupSort.value.other.field,    groupSort.value.other.asc))
 const ownedInLibrary    = computed(() => store.gearLibrary.filter(g => gearStatus(g) === 'owned'))
 const wishlistCount     = computed(() => store.gearLibrary.filter(g => gearStatus(g) === 'wishlist').length)
 const abandonCount      = computed(() => store.gearLibrary.filter(g => gearStatus(g) === 'abandon').length)
@@ -923,180 +705,12 @@ const totalWeightKg    = computed(() => (gramsOf(ownedInLibrary.value) / 1000).t
 const filteredWeightKg = computed(() => (gramsOf(filteredOwned.value) / 1000).toFixed(2))
 const categoryCount    = computed(() => new Set(store.gearLibrary.map(g => g.category)).size)
 
-// ── Row expansion + image cache ──────────────────────────
-const expandedIds = ref(new Set<string>())
-const gearImages  = ref<Record<string, GearImage[] | null>>({})
+// ── Navigation ───────────────────────────────────────────
+const saving   = ref(false)
+const apiError = ref<string | null>(null)
 
-async function toggleExpand(id: string) {
-  const next = new Set(expandedIds.value)
-  if (next.has(id)) { next.delete(id); expandedIds.value = next; return }
-  next.add(id)
-  expandedIds.value = next
-  if (!(id in gearImages.value)) {
-    gearImages.value[id] = null
-    try { gearImages.value[id] = await store.fetchGearImages(id) }
-    catch { gearImages.value[id] = [] }
-  }
-}
-
-// ── Gear lightbox ────────────────────────────────────────
-const gearLightboxRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
-const lightboxImages  = ref<{ id: string; url: string }[]>([])
-
-function openGearLightbox(gearId: string, index: number) {
-  const imgs = gearImages.value[gearId]
-  if (!imgs?.length) return
-  lightboxImages.value = imgs
-  gearLightboxRef.value?.openPhoto(index)
-}
-
-// ── Image management in edit modal ───────────────────────
-const editingImages     = ref<GearImage[]>([])
-const deletingImageIds  = ref<string[]>([])
-const newImageFiles     = ref<File[]>([])
-const newImagePreviews  = ref<string[]>([])
-const newImageProgress  = ref<number[]>([])
-const loadingImages     = ref(false)
-const imageInputRef     = ref<HTMLInputElement | null>(null)
-
-function triggerImageInput() { imageInputRef.value?.click() }
-
-function onImagesSelected(e: Event) {
-  const files = Array.from((e.target as HTMLInputElement).files ?? [])
-  for (const file of files) {
-    newImageFiles.value.push(file)
-    newImagePreviews.value.push(URL.createObjectURL(file))
-    newImageProgress.value.push(0)
-  }
-  if (imageInputRef.value) imageInputRef.value.value = ''
-}
-
-function removeExistingImage(imgId: string) {
-  deletingImageIds.value.push(imgId)
-  editingImages.value = editingImages.value.filter(img => img.id !== imgId)
-}
-
-function removeNewImage(index: number) {
-  URL.revokeObjectURL(newImagePreviews.value[index])
-  newImageFiles.value.splice(index, 1)
-  newImagePreviews.value.splice(index, 1)
-  newImageProgress.value.splice(index, 1)
-}
-
-onUnmounted(() => { newImagePreviews.value.forEach(u => URL.revokeObjectURL(u)) })
-
-// ── Form modal ───────────────────────────────────────────
-type GearForm = {
-  name: string; weight: string; note: string; category: string
-  quantity: number; brand: string; referenceUrl: string; price: string; addedAt: string
-  status: GearStatus
-}
-
-const showForm  = ref(false)
-const editingId = ref<string | null>(null)
-const saving    = ref(false)
-const apiError  = ref<string | null>(null)
-
-const today = () => new Date().toISOString().slice(0, 10)
-
-const statusOptions: { value: GearStatus; label: string }[] = [
-  { value: 'owned',    label: '已擁有' },
-  { value: 'wishlist', label: '願望清單' },
-  { value: 'abandon',  label: '已淘汰' },
-  { value: 'other',    label: '未分組' },
-]
-
-const blankForm = (): GearForm => ({
-  name: '', weight: '', note: '', category: '其他',
-  quantity: 1, brand: '', referenceUrl: '', price: '', addedAt: today(),
-  status: 'other',
-})
-
-const formErrors = computed(() => {
-  const e: Partial<Record<'weight' | 'price' | 'referenceUrl', string>> = {}
-  const w = form.value.weight.trim()
-  if (w !== '' && (isNaN(Number(w)) || Number(w) < 0))
-    e.weight = '重量需為有效數字'
-  const p = form.value.price.trim()
-  if (p !== '' && (isNaN(Number(p)) || Number(p) < 0))
-    e.price = '價格需為有效數字'
-  const url = form.value.referenceUrl.trim()
-  if (url && !/^https?:\/\//.test(url))
-    e.referenceUrl = '需以 http:// 或 https:// 開頭'
-  return e
-})
-const hasFormErrors = computed(() => Object.keys(formErrors.value).length > 0)
-const form = ref<GearForm>(blankForm())
-
-function openCreate() {
-  editingId.value      = null
-  form.value           = blankForm()
-  editingImages.value    = []
-  deletingImageIds.value = []
-  newImageFiles.value    = []
-  newImagePreviews.value = []
-  newImageProgress.value = []
-  loadingImages.value    = false
-  apiError.value         = null
-  showForm.value         = true
-}
-
-function openEdit(gear: Gear) {
-  router.push(`/gear-library/edit/${gear.id}`)
-}
-
-function closeForm() {
-  newImagePreviews.value.forEach(u => URL.revokeObjectURL(u))
-  newImageFiles.value    = []
-  newImagePreviews.value = []
-  newImageProgress.value = []
-  deletingImageIds.value = []
-  editingImages.value    = []
-  loadingImages.value    = false
-  showForm.value         = false
-}
-
-async function submitForm() {
-  if (!form.value.name.trim() || hasFormErrors.value) return
-  saving.value   = true
-  apiError.value = null
-  try {
-    const payload = {
-      name:         form.value.name.trim(),
-      weight:       form.value.weight.trim() ? Number(form.value.weight) : 0,
-      note:         form.value.note,
-      category:     form.value.category,
-      quantity:     form.value.quantity ?? 1,
-      brand:        form.value.brand || null,
-      referenceUrl: form.value.referenceUrl.trim() || null,
-      price:        form.value.price.trim() ? Number(form.value.price) : null,
-      addedAt:      form.value.addedAt || null,
-      status:       form.value.status,
-      isWishlist:   form.value.status === 'wishlist',
-    }
-    let gearId: string
-    if (editingId.value) {
-      await store.updateLibraryGear(editingId.value, payload)
-      gearId = editingId.value
-    } else {
-      gearId = await store.createLibraryGear(payload)
-    }
-    for (const imgId of deletingImageIds.value) {
-      await store.deleteGearImage(gearId, imgId)
-    }
-    for (let i = 0; i < newImageFiles.value.length; i++) {
-      await store.uploadGearImageWithProgress(gearId, newImageFiles.value[i], (pct) => {
-        newImageProgress.value[i] = pct
-      })
-    }
-    delete gearImages.value[gearId]
-    closeForm()
-  } catch (e) {
-    apiError.value = (e as Error).message
-  } finally {
-    saving.value = false
-  }
-}
+function openCreate() { router.push('/gear-library/edit/new') }
+function openEdit(gear: Gear) { router.push(`/gear-library/edit/${gear.id}`) }
 
 // ── Delete confirm ───────────────────────────────────────
 const deletingGear = ref<Gear | null>(null)
