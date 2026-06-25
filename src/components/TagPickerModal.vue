@@ -17,7 +17,7 @@
           </div>
 
           <!-- Search -->
-          <div class="relative mb-4">
+          <div class="relative mb-2">
             <input
               ref="searchInput"
               v-model="search"
@@ -28,6 +28,11 @@
             />
             <SearchIcon :size="14" class="absolute right-3 top-1/2 -translate-y-1/2 text-inkMuted opacity-50" />
           </div>
+          <div v-if="tagExists" class="flex items-center gap-1.5 mb-3 text-xs font-body" style="color: #e07070;">
+            <AlertCircleIcon :size="12" class="shrink-0" />
+            「{{ search.trim() }}」標籤已存在
+          </div>
+          <div v-else class="mb-2" />
 
           <!-- Selected tags -->
           <div v-if="localSelected.length" class="flex flex-wrap gap-1.5 mb-4 pb-4"
@@ -110,6 +115,7 @@ import {
   Check as CheckIcon,
   Plus as PlusIcon,
   Search as SearchIcon,
+  AlertCircle as AlertCircleIcon,
 } from 'lucide-vue-next'
 import { usePostStore } from '../stores/postStore'
 
@@ -156,6 +162,12 @@ const canAddNew = computed(() => {
   const q = search.value.trim()
   if (!q) return false
   return !allTags.value.some(t => t.toLowerCase() === q.toLowerCase())
+})
+
+const tagExists = computed(() => {
+  const q = search.value.trim()
+  if (!q) return false
+  return allTags.value.some(t => t.toLowerCase() === q.toLowerCase())
 })
 
 function toggle(tag: string) {
