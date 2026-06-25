@@ -108,6 +108,9 @@
         <span class="card-date">{{ dateDisplay }}</span>
         <span v-if="post.difficultyStars" class="card-stars">{{ '★'.repeat(Math.min(post.difficultyStars, profile.difficultyMax)) }}</span>
       </div>
+      <div v-if="post.tags && post.tags.length" class="tags-row">
+        <span v-for="tag in post.tags" :key="tag" class="tag-chip">{{ tag }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -389,5 +392,23 @@ const dateDisplay = computed(() => {
   letter-spacing: -1px;
   margin-left: auto;
   opacity: 0.8;
+}
+
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.tag-chip {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 99px;
+  color: var(--c-primary);
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-primary) 25%, transparent);
+  letter-spacing: 0.02em;
 }
 </style>

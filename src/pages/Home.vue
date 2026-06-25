@@ -10,33 +10,9 @@
           <span class="font-heading text-lg font-semibold text-ink tracking-wide">Expedition Log</span>
         </div>
         <div class="flex items-center gap-2">
-          <button
-            class="card-aged w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
-            @click="theme.toggle()"
-            :aria-label="theme.isDark ? '切換亮色模式' : '切換暗色模式'"
-          >
-            <SunIcon v-if="theme.isDark" :size="17" />
-            <MoonIcon v-else :size="17" />
-          </button>
-          <router-link
-            v-if="auth.user"
-            to="/gpx-library"
-            class="card-aged flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
-          >
-            <RouteIcon :size="15" />
-            GPX 收藏
-          </router-link>
-          <router-link
-            v-if="auth.user"
-            to="/gear-library"
-            class="card-aged flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold font-body cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
-          >
-            <LibraryIcon :size="15" />
-            裝備庫
-          </router-link>
-          <router-link v-if="auth.user" to="/create" class="btn-cta flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg cursor-pointer">
-            <PlusIcon :size="15" />
-            新增記錄
+          <router-link v-if="auth.user" to="/create" class="nav-icon-btn" aria-label="新增記錄">
+            <PlusIcon :size="17" class="nav-icon-btn__icon" />
+            <span class="nav-icon-btn__label">新增記錄</span>
           </router-link>
 
           <!-- Not logged in -->
@@ -50,11 +26,11 @@
           </button>
 
           <!-- Logged in: avatar + dropdown -->
-          <div v-else class="relative">
+          <div v-else ref="avatarDropdownRoot" class="relative">
             <button
               @click="showUserMenu = !showUserMenu"
-              class="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center cursor-pointer"
-              style="background: var(--c-primary);"
+              class="avatar-btn"
+              :class="{ 'avatar-btn--open': showUserMenu }"
             >
               <img
                 v-if="auth.user.avatarUrl"
@@ -67,28 +43,42 @@
               </span>
             </button>
 
-            <div
-              v-if="showUserMenu"
-              class="absolute right-0 top-11 card-aged rounded-xl shadow-xl p-2 z-50"
-              style="min-width: 10rem;"
-            >
-              <p class="text-xs font-body px-3 py-1 truncate text-inkMuted">{{ auth.user.email }}</p>
-              <router-link
-                to="/profile"
-                @click="showUserMenu = false"
-                class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm font-body rounded-lg text-inkMuted hover:text-ink transition-colors duration-200"
+            <Transition name="dropdown">
+              <div
+                v-if="showUserMenu"
+                class="avatar-menu"
               >
-                <SettingsIcon :size="13" />
-                設定
-              </router-link>
-              <button
-                @click="confirmLogout"
-                class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm font-body rounded-lg text-inkMuted hover:text-ink transition-colors duration-200"
-              >
-                <LogOutIcon :size="13" />
-                登出
-              </button>
-            </div>
+                <!-- User info -->
+                <div class="px-3 py-2.5 mb-1" style="border-bottom: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);">
+                  <p class="text-xs font-body font-semibold text-ink truncate">{{ auth.user.name || '使用者' }}</p>
+                  <p class="text-[11px] font-body text-inkMuted truncate">{{ auth.user.email }}</p>
+                </div>
+
+                <!-- Navigation -->
+                <router-link to="/gpx-library" @click="showUserMenu = false" class="menu-row">
+                  <RouteIcon :size="14" class="shrink-0" />
+                  GPX 收藏
+                </router-link>
+                <router-link to="/gear-library" @click="showUserMenu = false" class="menu-row">
+                  <LibraryIcon :size="14" class="shrink-0" />
+                  裝備庫
+                </router-link>
+
+                <!-- Settings -->
+                <div style="border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent); margin: 4px 0;" />
+                <router-link to="/profile" @click="showUserMenu = false" class="menu-row">
+                  <SettingsIcon :size="14" class="shrink-0" />
+                  個人設定
+                </router-link>
+
+                <!-- Logout -->
+                <div style="border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent); margin: 4px 0;" />
+                <button @click="confirmLogout" class="menu-row menu-row--danger w-full text-left">
+                  <LogOutIcon :size="14" class="shrink-0" />
+                  登出
+                </button>
+              </div>
+            </Transition>
           </div>
         </div>
       </div>
@@ -98,44 +88,6 @@
 
       <!-- Search & Filter bar -->
       <div class="search-bar card-aged p-3 mb-6 flex flex-wrap gap-2">
-
-        <!-- Title search -->
-        <div class="search-input-wrap flex-1">
-          <SearchIcon :size="14" class="search-icon" />
-          <input
-            v-model="searchTitle"
-            type="text"
-            placeholder="搜尋標題…"
-            class="search-input"
-          />
-          <button v-if="searchTitle" class="search-clear" @click="searchTitle = ''" aria-label="清除">
-            <XIcon :size="12" />
-          </button>
-        </div>
-
-        <!-- Weather -->
-        <select v-model="filterWeather" class="filter-select">
-          <option value="">所有天氣</option>
-          <option>晴天</option>
-          <option>多雲時晴</option>
-          <option>多雲</option>
-          <option>陰天</option>
-          <option>小雨</option>
-          <option>雨天</option>
-          <option>大雨</option>
-          <option>雷陣雨</option>
-          <option>起霧</option>
-          <option>下雪</option>
-        </select>
-
-        <!-- Difficulty -->
-        <select v-model.number="filterDifficulty" class="filter-select">
-          <option :value="0">所有難度</option>
-          <option v-for="n in profile.difficultyMax" :key="n" :value="n">
-            {{ '★'.repeat(n) }}
-            <template v-if="profile.difficultyLabels[n - 1]"> — {{ profile.difficultyLabels[n - 1] }}</template>
-          </option>
-        </select>
 
         <!-- Days -->
         <select v-model="filterDays" class="filter-select">
@@ -149,7 +101,115 @@
         <!-- Date range -->
         <DateRangePicker v-model:start="filterDateStart" v-model:end="filterDateEnd" />
 
-        <!-- Clear all -->
+        <!-- More filters button -->
+        <div class="relative ml-auto">
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body transition-colors duration-150 cursor-pointer border"
+            :style="showFilterPanel || activeFilterCount > 0
+              ? 'border-color: var(--c-primary); color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent);'
+              : 'border-color: var(--c-border); color: var(--c-inkMuted); background: transparent;'"
+            @click="showFilterPanel = !showFilterPanel"
+          >
+            <SlidersHorizontalIcon :size="13" />
+            更多篩選
+            <span
+              v-if="activeFilterCount > 0"
+              class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+              style="background: var(--c-primary); color: var(--c-base);"
+            >{{ activeFilterCount }}</span>
+          </button>
+
+          <!-- Backdrop -->
+          <div v-if="showFilterPanel" class="fixed inset-0 z-10" @click="showFilterPanel = false" />
+
+          <!-- Filter panel -->
+          <Transition name="filter-panel">
+            <div
+              v-if="showFilterPanel"
+              class="absolute right-0 mt-2 w-72 card-aged rounded-xl p-4 z-20 shadow-xl"
+              style="border: 1px solid color-mix(in srgb, var(--c-border) 80%, transparent);"
+            >
+              <!-- Weather -->
+              <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted mb-2.5">天氣</p>
+              <div class="flex flex-wrap gap-1.5 mb-4">
+                <button
+                  v-for="w in ['晴天','多雲時晴','多雲','陰天','小雨','雨天','大雨','雷陣雨','起霧','下雪']" :key="w"
+                  class="px-2.5 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
+                  :style="filterWeather === w
+                    ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                    : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                  @click="filterWeather = filterWeather === w ? '' : w"
+                >{{ w }}</button>
+              </div>
+
+              <!-- Difficulty -->
+              <div class="flex items-center justify-between mb-2.5">
+                <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">難度</p>
+                <button
+                  class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
+                  :title="filterStars.length === profile.difficultyMax ? '取消全部' : '選取全部'"
+                  @click="filterStars = filterStars.length === profile.difficultyMax
+                    ? []
+                    : Array.from({ length: profile.difficultyMax }, (_, i) => i + 1)"
+                >
+                  <CheckSquareIcon v-if="filterStars.length === profile.difficultyMax" :size="14" />
+                  <SquareIcon v-else :size="14" />
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-1.5 mb-4">
+                <button
+                  v-for="n in profile.difficultyMax" :key="n"
+                  class="px-2.5 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
+                  :style="filterStars.includes(n)
+                    ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                    : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                  :title="profile.difficultyLabels[n - 1] || undefined"
+                  @click="toggleStars(n)"
+                >{{ n <= 10 ? '★'.repeat(n) : `★×${n}` }}</button>
+              </div>
+
+              <!-- Tags -->
+              <template v-if="store.availableTags.length">
+                <div class="flex items-center justify-between mb-2.5">
+                  <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">標籤</p>
+                  <button
+                    class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
+                    :title="filterTags.length === store.availableTags.length ? '取消全部' : '選取全部'"
+                    @click="filterTags = filterTags.length === store.availableTags.length ? [] : [...store.availableTags]"
+                  >
+                    <CheckSquareIcon v-if="filterTags.length === store.availableTags.length" :size="14" />
+                    <SquareIcon v-else :size="14" />
+                  </button>
+                </div>
+                <div class="flex flex-wrap gap-1.5 mb-4">
+                  <button
+                    v-for="tag in store.availableTags" :key="tag"
+                    class="px-2.5 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
+                    :style="filterTags.includes(tag)
+                      ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                      : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                    @click="toggleTag(tag)"
+                  >{{ tag }}</button>
+                </div>
+              </template>
+
+              <!-- Footer -->
+              <div class="flex items-center justify-between pt-3 border-t" style="border-color: var(--c-border);">
+                <button
+                  class="text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer disabled:opacity-30"
+                  :disabled="!hasActiveFilters"
+                  @click="clearFilters"
+                >清除篩選</button>
+                <button
+                  class="px-3 py-1 rounded-lg text-xs font-body btn-cta cursor-pointer"
+                  @click="showFilterPanel = false"
+                >套用</button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+
+        <!-- Clear all (outside panel) -->
         <button
           v-if="hasActiveFilters"
           class="filter-clear flex items-center gap-1 px-3 rounded-lg text-xs font-body font-semibold cursor-pointer transition-colors duration-150"
@@ -264,44 +324,73 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   Compass as CompassIcon, Plus as PlusIcon, Map as MapIcon,
-  Sun as SunIcon, Moon as MoonIcon, Search as SearchIcon, X as XIcon,
+  Search as SearchIcon, X as XIcon,
   Library as LibraryIcon, Route as RouteIcon,
   LogIn as LogInIcon, LogOut as LogOutIcon,
   Settings as SettingsIcon,
+  SlidersHorizontal as SlidersHorizontalIcon,
+  Square as SquareIcon, CheckSquare as CheckSquareIcon,
 } from 'lucide-vue-next'
 import WaterfallList from '../components/WaterfallList.vue'
 import DateRangePicker from '../components/DateRangePicker.vue'
 import { usePostStore } from '../stores/postStore'
-import { useThemeStore } from '../stores/themeStore'
 import { useAuthStore } from '../stores/authStore'
 import { useProfileStore } from '../stores/profileStore'
 import type { Post } from '../types'
 
 const store   = usePostStore()
-const theme   = useThemeStore()
 const auth    = useAuthStore()
 const profile = useProfileStore()
-const showUserMenu     = ref(false)
-const showLogoutModal  = ref(false)
-onMounted(() => store.fetchPosts())
+const showUserMenu        = ref(false)
+const showLogoutModal     = ref(false)
+const avatarDropdownRoot  = ref<HTMLElement | null>(null)
 
-const searchTitle    = ref('')
+function onDocumentClick(e: MouseEvent) {
+  if (!avatarDropdownRoot.value?.contains(e.target as Node)) {
+    showUserMenu.value = false
+  }
+}
+
+onMounted(() => {
+  store.fetchPosts()
+  store.fetchTags()
+  document.addEventListener('mousedown', onDocumentClick)
+})
+onUnmounted(() => document.removeEventListener('mousedown', onDocumentClick))
+
 const filterWeather    = ref('')
 const filterDays       = ref('')
-const filterDifficulty = ref(0)
-const filterDateStart = ref('')
-const filterDateEnd   = ref('')
+const filterDateStart  = ref('')
+const filterDateEnd    = ref('')
+const filterStars      = ref<number[]>([])
+const filterTags       = ref<string[]>([])
+const showFilterPanel  = ref(false)
+
+const activeFilterCount = computed(() =>
+  filterStars.value.length + filterTags.value.length + (filterWeather.value ? 1 : 0)
+)
 
 watch(() => profile.difficultyMax, (max) => {
-  if (filterDifficulty.value > max) filterDifficulty.value = 0
+  filterStars.value = filterStars.value.filter(n => n <= max)
 })
 
 const hasActiveFilters = computed(() =>
-  !!(searchTitle.value || filterWeather.value || filterDays.value || filterDifficulty.value || filterDateStart.value || filterDateEnd.value)
+  !!(filterWeather.value || filterDays.value || filterDateStart.value || filterDateEnd.value ||
+     filterStars.value.length || filterTags.value.length)
 )
+
+function toggleStars(n: number) {
+  const i = filterStars.value.indexOf(n)
+  filterStars.value = i === -1 ? [...filterStars.value, n] : filterStars.value.filter(s => s !== n)
+}
+
+function toggleTag(tag: string) {
+  const i = filterTags.value.indexOf(tag)
+  filterTags.value = i === -1 ? [...filterTags.value, tag] : filterTags.value.filter(t => t !== tag)
+}
 
 function confirmLogout() {
   showUserMenu.value  = false
@@ -314,12 +403,12 @@ function doLogout() {
 }
 
 function clearFilters() {
-  searchTitle.value      = ''
-  filterWeather.value    = ''
-  filterDays.value       = ''
-  filterDifficulty.value = 0
-  filterDateStart.value  = ''
-  filterDateEnd.value    = ''
+  filterWeather.value   = ''
+  filterDays.value      = ''
+  filterDateStart.value = ''
+  filterDateEnd.value   = ''
+  filterStars.value     = []
+  filterTags.value      = []
 }
 
 function calcDays(post: Post): number {
@@ -332,14 +421,11 @@ function calcDays(post: Post): number {
 
 const filteredPosts = computed(() => {
   return store.posts.filter(post => {
-    if (searchTitle.value && !post.title.toLowerCase().includes(searchTitle.value.toLowerCase()))
-      return false
+    if (filterWeather.value && post.weather !== filterWeather.value) return false
 
-    if (filterWeather.value && post.weather !== filterWeather.value)
-      return false
+    if (filterStars.value.length && !filterStars.value.includes(post.difficultyStars ?? 0)) return false
 
-    if (filterDifficulty.value && post.difficultyStars !== filterDifficulty.value)
-      return false
+    if (filterTags.value.length && !filterTags.value.some(t => post.tags?.includes(t))) return false
 
     if (filterDays.value) {
       const d = calcDays(post)
@@ -364,6 +450,114 @@ const filteredDraftPosts  = computed(() => filteredPosts.value.filter(p => !p.is
 </script>
 
 <style scoped>
+/* Expanding icon button */
+.nav-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 36px;
+  max-width: 36px;
+  padding: 0 9px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  color: #FCFCFC;
+  background: color-mix(in srgb, #FFD166 30%, transparent);
+  border: 1px solid color-mix(in srgb, #FFD166 50%, transparent);
+  transition: max-width 0.25s ease, gap 0.25s ease, background 0.15s, color 0.15s, padding 0.25s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-icon-btn:hover {
+  max-width: 120px;
+  gap: 6px;
+  padding: 0 12px;
+  background: #FFD166;
+  color: #26547C;
+}
+.nav-icon-btn__icon {
+  flex-shrink: 0;
+}
+.nav-icon-btn__label {
+  font-size: 13px;
+  font-family: var(--font-body, sans-serif);
+  font-weight: 600;
+  overflow: hidden;
+  opacity: 0;
+  max-width: 0;
+  transition: opacity 0.15s ease 0.05s, max-width 0.25s ease;
+}
+.nav-icon-btn:hover .nav-icon-btn__label {
+  opacity: 1;
+  max-width: 80px;
+}
+
+/* Avatar button */
+.avatar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--c-primary);
+  transition: box-shadow 0.15s, opacity 0.15s;
+}
+.avatar-btn:hover { opacity: 0.88; }
+.avatar-btn--open {
+  box-shadow: 0 0 0 2px var(--c-base), 0 0 0 4px color-mix(in srgb, var(--c-primary) 50%, transparent);
+}
+
+/* Dropdown panel */
+.avatar-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 176px;
+  border-radius: 14px;
+  padding: 6px;
+  background: var(--c-card);
+  border: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  transform-origin: top right;
+}
+
+/* Menu rows */
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: var(--font-body, sans-serif);
+  color: var(--c-inkMuted);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  text-decoration: none;
+}
+.menu-row:hover {
+  background: color-mix(in srgb, var(--c-primary) 14%, transparent);
+  color: var(--c-primary);
+}
+.menu-row--danger:hover {
+  background: color-mix(in srgb, #e07070 14%, transparent);
+  color: #e07070;
+}
+
+/* Dropdown open/close animation */
+.dropdown-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.dropdown-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
+.dropdown-enter-from, .dropdown-leave-to { opacity: 0; transform: scale(0.95) translateY(-4px); }
+
+.filter-panel-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.filter-panel-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
+.filter-panel-enter-from, .filter-panel-leave-to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+
 .modal-fade-enter-active,
 .modal-fade-leave-active { transition: opacity 0.15s ease; }
 .modal-fade-enter-from,
@@ -374,46 +568,6 @@ const filteredDraftPosts  = computed(() => filteredPosts.value.filter(p => !p.is
   align-items: center;
 }
 
-.search-input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-width: 180px;
-}
-.search-icon {
-  position: absolute;
-  left: 10px;
-  color: var(--c-inkMuted);
-  pointer-events: none;
-  flex-shrink: 0;
-}
-.search-input {
-  width: 100%;
-  padding: 7px 30px 7px 30px;
-  background: transparent;
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
-  font-family: Inter, sans-serif;
-  font-size: 13px;
-  color: var(--c-ink);
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-.search-input::placeholder { color: var(--c-inkMuted); opacity: 0.6; }
-.search-input:focus { border-color: var(--c-primary); }
-
-.search-clear {
-  position: absolute;
-  right: 8px;
-  color: var(--c-inkMuted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 2px;
-  border-radius: 4px;
-  transition: color 0.15s;
-}
-.search-clear:hover { color: var(--c-ink); }
 
 /* ── Filter selects ───────────────────────────────────── */
 .filter-select {
