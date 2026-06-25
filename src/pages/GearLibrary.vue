@@ -37,6 +37,20 @@
               <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">願望清單</p>
             </div>
           </template>
+          <template v-if="abandonCount > 0">
+            <div class="w-px h-8 bg-border/40" />
+            <div class="text-center">
+              <p class="font-heading text-2xl font-bold leading-none mb-0.5" style="color: #c47070;">{{ abandonCount }}</p>
+              <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">已淘汰</p>
+            </div>
+          </template>
+          <template v-if="otherCount > 0">
+            <div class="w-px h-8 bg-border/40" />
+            <div class="text-center">
+              <p class="font-heading text-2xl font-bold leading-none mb-0.5" style="color: var(--c-inkMuted);">{{ otherCount }}</p>
+              <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">其他</p>
+            </div>
+          </template>
           <div class="w-px h-8 bg-border/40" />
           <div class="text-center">
             <p class="font-heading text-2xl font-bold text-ink leading-none mb-0.5">{{ totalWeightKg }}</p>
@@ -161,8 +175,8 @@
         </button>
       </div>
 
-      <!-- Table: no wishlist items in library → single section -->
-      <div v-else-if="!hasWishlist" class="card-aged overflow-hidden">
+      <!-- Table: all items are 'owned' → single flat section -->
+      <div v-else-if="!hasMultipleGroups" class="card-aged overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
@@ -445,6 +459,136 @@
             <span class="text-xs font-body text-inkMuted">顯示 <span class="text-ink font-semibold">{{ filteredWishlist.length }}</span> / {{ wishlistCount }} 件</span>
           </div>
         </div>
+
+        <!-- 已淘汰 section -->
+        <div v-if="abandonCount > 0 || filteredAbandon.length > 0" class="card-aged overflow-hidden mt-5" style="border-color: color-mix(in srgb, #c47070 20%, var(--c-border));">
+          <div class="section-title-bar section-title-bar--abandon">
+            <span class="flex items-center gap-1.5"><Trash2Icon :size="13" /> 已淘汰</span>
+            <span class="section-title-count">{{ filteredAbandon.length }} 件</span>
+          </div>
+          <div v-if="filteredAbandon.length === 0" class="px-5 py-6 text-sm font-body italic text-inkMuted">
+            無符合條件的已淘汰裝備
+          </div>
+          <div v-else class="overflow-x-auto">
+            <table class="w-full">
+              <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
+                <tr class="border-b border-border/50">
+                  <th class="th cursor-pointer select-none" @click="setSort('name')"><span class="flex items-center gap-1">名稱 <component :is="sortIcon('name')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setSort('category')"><span class="flex items-center gap-1">類別 <component :is="sortIcon('category')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th text-right cursor-pointer select-none" @click="setSort('weight')"><span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="sortIcon('weight')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setSort('brand')"><span class="flex items-center gap-1">品牌 <component :is="sortIcon('brand')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th text-right cursor-pointer select-none" @click="setSort('price')"><span class="flex items-center justify-end gap-1">價格 <component :is="sortIcon('price')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setSort('addedAt')"><span class="flex items-center gap-1">加入時間 <component :is="sortIcon('addedAt')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th">備註</th>
+                  <th class="w-16" />
+                </tr>
+              </thead>
+              <tbody>
+                <template v-for="gear in filteredAbandon" :key="gear.id">
+                  <tr class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
+                    :class="{ 'border-border/0': expandedIds.has(gear.id) }"
+                    :style="{ background: hoveredId === gear.id ? 'rgba(196,112,112,0.06)' : '' }"
+                    @mouseenter="hoveredId = gear.id" @mouseleave="hoveredId = null" @click="toggleExpand(gear.id)">
+                    <td class="td font-medium" style="color: var(--c-inkMuted);">
+                      <span class="flex items-center gap-1.5">
+                        <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0" :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
+                        <span style="text-decoration: line-through; opacity: 0.7;">{{ gear.name }}</span>
+                        <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer" class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop><ExternalLinkIcon :size="11" /></a>
+                      </span>
+                    </td>
+                    <td class="td"><span class="cat-badge">{{ gear.category || '其他' }}</span></td>
+                    <td class="td font-mono text-right text-inkMuted">{{ (gear.weight ?? 0) * (gear.quantity ?? 1) }} g <span class="text-[11px] opacity-50 ml-1">×{{ gear.quantity ?? 1 }}</span></td>
+                    <td class="td text-inkMuted">{{ gear.brand || '—' }}</td>
+                    <td class="td font-mono text-inkMuted text-right">{{ gear.price != null ? gear.price.toLocaleString() : '—' }}</td>
+                    <td class="td text-inkMuted">{{ gear.addedAt || '—' }}</td>
+                    <td class="td note-cell text-inkMuted/70 italic">{{ gear.note || '—' }}</td>
+                    <td class="td text-right" @click.stop>
+                      <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer" @click="openEdit(gear)" aria-label="編輯"><PencilIcon :size="13" /></button>
+                        <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer" @click="confirmDelete(gear)" aria-label="刪除"><Trash2Icon :size="13" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
+                    <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
+                      <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1"><span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…</div>
+                      <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
+                      <div v-else class="flex flex-wrap gap-2"><img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url" class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200" @click.stop="openGearLightbox(gear.id, i)" /></div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="filteredAbandon.length > 0" class="px-5 py-3 border-t border-border/30 flex items-center justify-between">
+            <span class="text-xs font-body text-inkMuted">顯示 <span class="text-ink font-semibold">{{ filteredAbandon.length }}</span> / {{ abandonCount }} 件</span>
+          </div>
+        </div>
+
+        <!-- 未分組 section -->
+        <div v-if="otherCount > 0 || filteredOther.length > 0" class="card-aged overflow-hidden mt-5">
+          <div class="section-title-bar">
+            <span>未分組</span>
+            <span class="section-title-count">{{ filteredOther.length }} 件</span>
+          </div>
+          <div v-if="filteredOther.length === 0" class="px-5 py-6 text-sm font-body italic text-inkMuted">
+            無符合條件的裝備
+          </div>
+          <div v-else class="overflow-x-auto">
+            <table class="w-full">
+              <thead style="background: color-mix(in srgb, var(--c-card) 60%, var(--c-border) 40%);">
+                <tr class="border-b border-border/50">
+                  <th class="th cursor-pointer select-none" @click="setSort('name')"><span class="flex items-center gap-1">名稱 <component :is="sortIcon('name')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setSort('category')"><span class="flex items-center gap-1">類別 <component :is="sortIcon('category')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th text-right cursor-pointer select-none" @click="setSort('weight')"><span class="flex items-center justify-end gap-1">總重 / 數量 <component :is="sortIcon('weight')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setSort('brand')"><span class="flex items-center gap-1">品牌 <component :is="sortIcon('brand')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th text-right cursor-pointer select-none" @click="setSort('price')"><span class="flex items-center justify-end gap-1">價格 <component :is="sortIcon('price')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th cursor-pointer select-none" @click="setSort('addedAt')"><span class="flex items-center gap-1">加入時間 <component :is="sortIcon('addedAt')" :size="11" class="opacity-40 shrink-0" /></span></th>
+                  <th class="th">備註</th>
+                  <th class="w-16" />
+                </tr>
+              </thead>
+              <tbody>
+                <template v-for="gear in filteredOther" :key="gear.id">
+                  <tr class="group border-b border-border/20 transition-colors duration-100 cursor-pointer select-none"
+                    :class="{ 'border-border/0': expandedIds.has(gear.id) }"
+                    :style="{ background: hoveredId === gear.id ? 'color-mix(in srgb, var(--c-primary) 5%, transparent)' : '' }"
+                    @mouseenter="hoveredId = gear.id" @mouseleave="hoveredId = null" @click="toggleExpand(gear.id)">
+                    <td class="td font-medium text-ink">
+                      <span class="flex items-center gap-1.5">
+                        <ChevronRightIcon :size="13" class="text-inkMuted transition-transform duration-150 shrink-0" :class="{ 'rotate-90': expandedIds.has(gear.id) }" />
+                        {{ gear.name }}
+                        <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer" class="text-inkMuted hover:text-primary transition-colors shrink-0" @click.stop><ExternalLinkIcon :size="11" /></a>
+                      </span>
+                    </td>
+                    <td class="td"><span class="cat-badge">{{ gear.category || '其他' }}</span></td>
+                    <td class="td font-mono text-right">{{ (gear.weight ?? 0) * (gear.quantity ?? 1) }} g <span class="text-[11px] opacity-50 ml-1">×{{ gear.quantity ?? 1 }}</span></td>
+                    <td class="td text-inkMuted">{{ gear.brand || '—' }}</td>
+                    <td class="td font-mono text-inkMuted text-right">{{ gear.price != null ? gear.price.toLocaleString() : '—' }}</td>
+                    <td class="td text-inkMuted">{{ gear.addedAt || '—' }}</td>
+                    <td class="td note-cell text-inkMuted/70 italic">{{ gear.note || '—' }}</td>
+                    <td class="td text-right" @click.stop>
+                      <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer" @click="openEdit(gear)" aria-label="編輯"><PencilIcon :size="13" /></button>
+                        <button class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer" @click="confirmDelete(gear)" aria-label="刪除"><Trash2Icon :size="13" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-if="expandedIds.has(gear.id)" class="border-b border-border/20">
+                    <td colspan="8" class="px-5 py-3" style="background: color-mix(in srgb, var(--c-primary) 4%, var(--c-card));">
+                      <div v-if="gearImages[gear.id] === null" class="flex items-center gap-2 text-xs font-body text-inkMuted py-1"><span class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> 載入中…</div>
+                      <div v-else-if="!gearImages[gear.id]?.length" class="text-xs font-body italic text-inkMuted py-1">此裝備無圖片</div>
+                      <div v-else class="flex flex-wrap gap-2"><img v-for="(img, i) in gearImages[gear.id]" :key="img.id" :src="img.url" class="h-24 w-24 object-cover rounded cursor-pointer opacity-90 hover:opacity-100 hover:scale-[1.03] transition-all duration-200" @click.stop="openGearLightbox(gear.id, i)" /></div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="filteredOther.length > 0" class="px-5 py-3 border-t border-border/30 flex items-center justify-between">
+            <span class="text-xs font-body text-inkMuted">顯示 <span class="text-ink font-semibold">{{ filteredOther.length }}</span> / {{ otherCount }} 件</span>
+          </div>
+        </div>
       </template>
 
     </div>
@@ -521,22 +665,18 @@
               <textarea v-model="form.note" rows="3" class="input-field text-sm resize-none" placeholder="選填" />
             </div>
 
-            <!-- 願望清單開關 -->
-            <div class="flex items-center justify-between py-1">
-              <div class="flex items-center gap-2">
-                <BookmarkIcon :size="14" class="text-inkMuted" />
-                <span class="text-sm font-body text-ink">加入願望清單</span>
-                <span class="text-xs font-body text-inkMuted">（尚未購買的裝備）</span>
+            <!-- 狀態 -->
+            <div>
+              <label class="field-label">狀態</label>
+              <div class="flex gap-2 flex-wrap mt-1">
+                <button
+                  v-for="s in statusOptions" :key="s.value"
+                  type="button"
+                  class="status-btn"
+                  :class="[`status-btn--${s.value}`, { 'status-btn--active': form.status === s.value }]"
+                  @click="form.status = s.value"
+                >{{ s.label }}</button>
               </div>
-              <button
-                type="button"
-                class="wishlist-toggle"
-                :class="{ 'wishlist-toggle--on': form.isWishlist }"
-                @click="form.isWishlist = !form.isWishlist"
-                :aria-pressed="form.isWishlist"
-              >
-                <span class="wishlist-toggle-thumb" />
-              </button>
             </div>
 
             <!-- 圖片 -->
@@ -652,6 +792,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ArrowLeft as ArrowLeftIcon,
   Search as SearchIcon,
@@ -671,11 +812,12 @@ import {
   Image as ImageIcon,
   Bookmark as BookmarkIcon,
 } from 'lucide-vue-next'
-import type { Gear, GearImage } from '../types'
+import type { Gear, GearImage, GearStatus } from '../types'
 import { usePostStore } from '../stores/postStore'
 import PhotoGallery from '../components/PhotoGallery.vue'
 
-const store = usePostStore()
+const store  = usePostStore()
+const router = useRouter()
 onMounted(() => Promise.all([store.fetchGearLibrary(), store.fetchGearCategories()]))
 
 // ── Category management block ─────────────────────────────
@@ -761,11 +903,20 @@ function gramsOf(list: Gear[]) {
   return list.reduce((s, g) => s + (g.weight ?? 0) * (g.quantity ?? 1), 0)
 }
 
-const hasWishlist      = computed(() => store.gearLibrary.some(g => g.isWishlist))
-const filteredOwned    = computed(() => filtered.value.filter(g => !g.isWishlist))
-const filteredWishlist = computed(() => filtered.value.filter(g => g.isWishlist))
-const ownedInLibrary   = computed(() => store.gearLibrary.filter(g => !g.isWishlist))
-const wishlistCount    = computed(() => store.gearLibrary.filter(g => g.isWishlist).length)
+function gearStatus(g: Gear): GearStatus {
+  if (g.status) return g.status
+  return g.isWishlist ? 'wishlist' : 'owned'
+}
+
+const hasMultipleGroups = computed(() => store.gearLibrary.some(g => gearStatus(g) !== 'other'))
+const filteredOwned     = computed(() => filtered.value.filter(g => gearStatus(g) === 'owned'))
+const filteredWishlist  = computed(() => filtered.value.filter(g => gearStatus(g) === 'wishlist'))
+const filteredAbandon   = computed(() => filtered.value.filter(g => gearStatus(g) === 'abandon'))
+const filteredOther     = computed(() => filtered.value.filter(g => gearStatus(g) === 'other'))
+const ownedInLibrary    = computed(() => store.gearLibrary.filter(g => gearStatus(g) === 'owned'))
+const wishlistCount     = computed(() => store.gearLibrary.filter(g => gearStatus(g) === 'wishlist').length)
+const abandonCount      = computed(() => store.gearLibrary.filter(g => gearStatus(g) === 'abandon').length)
+const otherCount        = computed(() => store.gearLibrary.filter(g => gearStatus(g) === 'other').length)
 
 
 const totalWeightKg    = computed(() => (gramsOf(ownedInLibrary.value) / 1000).toFixed(2))
@@ -838,7 +989,7 @@ onUnmounted(() => { newImagePreviews.value.forEach(u => URL.revokeObjectURL(u)) 
 type GearForm = {
   name: string; weight: string; note: string; category: string
   quantity: number; brand: string; referenceUrl: string; price: string; addedAt: string
-  isWishlist: boolean
+  status: GearStatus
 }
 
 const showForm  = ref(false)
@@ -848,10 +999,17 @@ const apiError  = ref<string | null>(null)
 
 const today = () => new Date().toISOString().slice(0, 10)
 
+const statusOptions: { value: GearStatus; label: string }[] = [
+  { value: 'owned',    label: '已擁有' },
+  { value: 'wishlist', label: '願望清單' },
+  { value: 'abandon',  label: '已淘汰' },
+  { value: 'other',    label: '未分組' },
+]
+
 const blankForm = (): GearForm => ({
   name: '', weight: '', note: '', category: '其他',
   quantity: 1, brand: '', referenceUrl: '', price: '', addedAt: today(),
-  isWishlist: false,
+  status: 'other',
 })
 
 const formErrors = computed(() => {
@@ -883,31 +1041,8 @@ function openCreate() {
   showForm.value         = true
 }
 
-async function openEdit(gear: Gear) {
-  editingId.value        = gear.id
-  editingImages.value    = []
-  deletingImageIds.value = []
-  newImageFiles.value    = []
-  newImagePreviews.value = []
-  newImageProgress.value = []
-  form.value = {
-    name:         gear.name,
-    weight:       gear.weight != null ? String(gear.weight) : '',
-    note:         gear.note ?? '',
-    category:     gear.category,
-    quantity:     gear.quantity ?? 1,
-    brand:        gear.brand ?? '',
-    referenceUrl: gear.referenceUrl ?? '',
-    price:        gear.price != null ? String(gear.price) : '',
-    addedAt:      gear.addedAt ?? '',
-    isWishlist:   gear.isWishlist ?? false,
-  }
-  apiError.value      = null
-  showForm.value      = true
-  loadingImages.value = true
-  try { editingImages.value = await store.fetchGearImages(gear.id) }
-  catch { /* silently ignore — user can still save */ }
-  finally { loadingImages.value = false }
+function openEdit(gear: Gear) {
+  router.push(`/gear-library/edit/${gear.id}`)
 }
 
 function closeForm() {
@@ -936,7 +1071,8 @@ async function submitForm() {
       referenceUrl: form.value.referenceUrl.trim() || null,
       price:        form.value.price.trim() ? Number(form.value.price) : null,
       addedAt:      form.value.addedAt || null,
-      isWishlist:   form.value.isWishlist,
+      status:       form.value.status,
+      isWishlist:   form.value.status === 'wishlist',
     }
     let gearId: string
     if (editingId.value) {
@@ -1196,6 +1332,30 @@ async function executeDelete() {
   background: color-mix(in srgb, var(--c-primary) 6%, var(--c-card));
   border-bottom-color: color-mix(in srgb, var(--c-primary) 20%, transparent);
 }
+.section-title-bar--abandon {
+  color: #c47070;
+  background: color-mix(in srgb, #c47070 6%, var(--c-card));
+  border-bottom-color: color-mix(in srgb, #c47070 20%, transparent);
+}
+
+/* ── Status selector (form) ──────────────────────────── */
+.status-btn {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--c-border);
+  color: var(--c-inkMuted);
+  background: transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.status-btn:hover { color: var(--c-ink); border-color: var(--c-ink); }
+.status-btn--owned.status-btn--active    { color: var(--c-ink);     border-color: var(--c-ink);    background: color-mix(in srgb, var(--c-ink) 10%, transparent); }
+.status-btn--wishlist.status-btn--active { color: var(--c-primary); border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.status-btn--abandon.status-btn--active  { color: #c47070;           border-color: #c47070;          background: rgba(196,112,112,0.1); }
+.status-btn--other.status-btn--active    { color: var(--c-inkMuted); border-color: var(--c-inkMuted); background: color-mix(in srgb, var(--c-inkMuted) 10%, transparent); }
 .section-title-count {
   font-size: 10px;
   font-weight: 600;
