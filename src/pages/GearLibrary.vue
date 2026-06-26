@@ -502,7 +502,6 @@ import { useRouter } from 'vue-router'
 import {
   ArrowLeft as ArrowLeftIcon,
   Search as SearchIcon,
-  X as XIcon,
   Plus as PlusIcon,
   Pencil as PencilIcon,
   Trash2 as Trash2Icon,
