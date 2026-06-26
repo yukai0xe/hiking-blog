@@ -58,13 +58,58 @@
               <select v-model="form.category" class="input-field text-sm font-body">
                 <option v-for="cat in filterCategories" :key="cat" :value="cat">{{ cat }}</option>
               </select>
+              <!-- Add new category inline -->
+              <template v-if="addingCat">
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <input
+                    v-model="newCatName"
+                    type="text"
+                    class="input-field text-xs flex-1"
+                    placeholder="新類別名稱"
+                    @keydown.enter="confirmAddCat"
+                    @keydown.escape="addingCat = false; newCatName = ''"
+                  />
+                  <button type="button" class="w-7 h-7 rounded-lg flex items-center justify-center btn-cta cursor-pointer disabled:opacity-40" :disabled="!newCatName.trim() || savingCat" @click="confirmAddCat">
+                    <span v-if="savingCat" class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    <CheckIcon v-else :size="11" />
+                  </button>
+                  <button type="button" class="w-7 h-7 rounded-lg flex items-center justify-center card-aged text-inkMuted hover:text-ink transition-colors cursor-pointer" @click="addingCat = false; newCatName = ''">
+                    <XIcon :size="11" />
+                  </button>
+                </div>
+              </template>
+              <button v-else type="button" class="mt-1.5 flex items-center gap-1 text-[11px] font-body text-inkMuted hover:text-primary transition-colors cursor-pointer" @click="addingCat = true">
+                <PlusIcon :size="10" /> 新增類別
+              </button>
             </div>
           </div>
 
           <div class="grid grid-cols-4 gap-3">
-            <div>
+            <div class="relative" ref="brandWrapRef">
               <label class="field-label">品牌</label>
-              <input v-model="form.brand" type="text" class="input-field text-sm" placeholder="品牌" />
+              <input
+                v-model="form.brand"
+                type="text"
+                class="input-field text-sm"
+                placeholder="品牌名稱"
+                autocomplete="off"
+                @focus="showBrandDropdown = true"
+              />
+              <!-- Suggestions dropdown -->
+              <Transition name="brand-drop">
+                <div
+                  v-if="showBrandDropdown && brandSuggestions.length"
+                  class="brand-dropdown"
+                >
+                  <button
+                    v-for="b in brandSuggestions" :key="b"
+                    type="button"
+                    class="brand-option"
+                    :class="{ 'brand-option--active': form.brand === b }"
+                    @mousedown.prevent="form.brand = b; showBrandDropdown = false"
+                  >{{ b }}</button>
+                </div>
+              </Transition>
             </div>
             <div>
               <label class="field-label">價格</label>
@@ -89,11 +134,41 @@
               <label class="field-label">加入時間</label>
               <input v-model="form.addedAt" type="date" class="input-field text-sm font-mono" />
             </div>
-            <div>
+            <div class="col-span-2">
               <label class="field-label">參考連結</label>
-              <input v-model="form.referenceUrl" type="text" class="input-field text-sm font-mono" placeholder="https://…"
-                :style="formErrors.referenceUrl ? { borderColor: '#ef4444' } : {}" />
-              <p v-if="formErrors.referenceUrl" class="mt-1 text-xs font-body" style="color:#ef4444;">{{ formErrors.referenceUrl }}</p>
+              <div class="space-y-2">
+                <div
+                  v-for="(url, i) in form.referenceUrls" :key="i"
+                  class="flex gap-1.5"
+                >
+                  <input
+                    :value="url"
+                    @input="form.referenceUrls[i] = ($event.target as HTMLInputElement).value"
+                    type="url"
+                    class="input-field text-sm font-mono flex-1"
+                    placeholder="https://…"
+                    :style="urlErrors[i] ? { borderColor: '#ef4444' } : {}"
+                  />
+                  <button
+                    type="button"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg text-inkMuted hover:text-red-400 transition-colors cursor-pointer shrink-0"
+                    style="border: 1px solid var(--c-border);"
+                    @click="form.referenceUrls.splice(i, 1)"
+                    aria-label="移除"
+                  >
+                    <XIcon :size="13" />
+                  </button>
+                </div>
+                <p v-for="(err, i) in urlErrors" :key="'e'+i" class="text-xs font-body" style="color:#ef4444;">{{ err }}</p>
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 text-xs font-body cursor-pointer transition-colors"
+                  style="color: var(--c-primary);"
+                  @click="form.referenceUrls.push('')"
+                >
+                  <PlusIcon :size="12" /> 新增連結
+                </button>
+              </div>
             </div>
           </div>
 
@@ -210,12 +285,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import {
-  ArrowLeft as ArrowLeftIcon, Save as SaveIcon, X as XIcon,
+  ArrowLeft as ArrowLeftIcon, Save as SaveIcon, X as XIcon, Plus as PlusIcon,
   AlertCircle as AlertCircleIcon,
   Bold as BoldIcon, Italic as ItalicIcon, Strikethrough as StrikethroughIcon,
   List as ListIcon, ListOrdered as ListOrderedIcon,
@@ -252,7 +327,7 @@ onMounted(async () => {
       category:     found.category,
       quantity:     found.quantity ?? 1,
       brand:        found.brand ?? '',
-      referenceUrl: found.referenceUrl ?? '',
+      referenceUrls: found.referenceUrl ? found.referenceUrl.split('\n').filter(Boolean) : [''],
       price:        found.price != null ? String(found.price) : '',
       addedAt:      found.addedAt ?? '',
       status:       found.status ?? (found.isWishlist ? 'wishlist' : 'owned'),
@@ -275,10 +350,30 @@ const filterCategories = computed(() => {
   return [...all].sort((a, b) => a.localeCompare(b, 'zh-TW'))
 })
 
+const addingCat = ref(false)
+const newCatName = ref('')
+const savingCat = ref(false)
+
+async function confirmAddCat() {
+  const name = newCatName.value.trim()
+  if (!name || savingCat.value) return
+  savingCat.value = true
+  try {
+    await store.addGearCategory(name)
+    form.value.category = name
+    addingCat.value = false
+    newCatName.value = ''
+  } catch {
+    // keep input open on error
+  } finally {
+    savingCat.value = false
+  }
+}
+
 // ── Form ─────────────────────────────────────────────────
 type GearForm = {
   name: string; weight: string; note: string; category: string
-  quantity: number; brand: string; referenceUrl: string; price: string
+  quantity: number; brand: string; referenceUrls: string[]; price: string
   addedAt: string; status: GearStatus
 }
 
@@ -291,20 +386,46 @@ const statusOptions: { value: GearStatus; label: string }[] = [
 
 const form = ref<GearForm>({
   name: '', weight: '', note: '', category: '其他',
-  quantity: 1, brand: '', referenceUrl: '', price: '', addedAt: '', status: 'other',
+  quantity: 1, brand: '', referenceUrls: [''], price: '', addedAt: new Date().toISOString().slice(0, 10), status: 'other',
+})
+
+// ── Brands combobox ──────────────────────────────────────
+const existingBrands = computed(() => {
+  const brands = store.gearLibrary.map(g => g.brand).filter(Boolean) as string[]
+  return [...new Set(brands)].sort((a, b) => a.localeCompare(b, 'zh-TW'))
+})
+const showBrandDropdown = ref(false)
+const brandWrapRef = ref<HTMLElement | null>(null)
+const brandSuggestions = computed(() => {
+  const q = form.value.brand.trim().toLowerCase()
+  if (!q) return existingBrands.value
+  return existingBrands.value.filter(b => b.toLowerCase().includes(q))
+})
+function onBrandClickOutside(e: MouseEvent) {
+  if (!brandWrapRef.value?.contains(e.target as Node)) showBrandDropdown.value = false
+}
+watch(showBrandDropdown, (val) => {
+  if (val) document.addEventListener('mousedown', onBrandClickOutside)
+  else document.removeEventListener('mousedown', onBrandClickOutside)
 })
 
 const formErrors = computed(() => {
-  const e: Partial<Record<'weight' | 'price' | 'referenceUrl', string>> = {}
+  const e: Partial<Record<'weight' | 'price', string>> = {}
   const w = form.value.weight.trim()
   if (w !== '' && (isNaN(Number(w)) || Number(w) < 0)) e.weight = '重量需為有效數字'
   const p = form.value.price.trim()
   if (p !== '' && (isNaN(Number(p)) || Number(p) < 0)) e.price = '價格需為有效數字'
-  const url = form.value.referenceUrl.trim()
-  if (url && !/^https?:\/\//.test(url)) e.referenceUrl = '需以 http:// 或 https:// 開頭'
   return e
 })
-const hasFormErrors = computed(() => Object.keys(formErrors.value).length > 0)
+const urlErrors = computed(() =>
+  form.value.referenceUrls.map(u => {
+    const v = u.trim()
+    return v && !/^https?:\/\//.test(v) ? '需以 http:// 或 https:// 開頭' : ''
+  })
+)
+const hasFormErrors = computed(() =>
+  Object.keys(formErrors.value).length > 0 || urlErrors.value.some(Boolean)
+)
 
 // ── Rich text editor ─────────────────────────────────────
 const editor = useEditor({
@@ -350,7 +471,10 @@ function removeNewImage(index: number) {
   newImageProgress.value.splice(index, 1)
 }
 
-onBeforeUnmount(() => { newImagePreviews.value.forEach(u => URL.revokeObjectURL(u)) })
+onBeforeUnmount(() => {
+  newImagePreviews.value.forEach(u => URL.revokeObjectURL(u))
+  document.removeEventListener('mousedown', onBrandClickOutside)
+})
 
 // ── Submit ───────────────────────────────────────────────
 async function submitForm() {
@@ -365,7 +489,7 @@ async function submitForm() {
       category:     form.value.category,
       quantity:     form.value.quantity ?? 1,
       brand:        form.value.brand || null,
-      referenceUrl: form.value.referenceUrl.trim() || null,
+      referenceUrl: form.value.referenceUrls.map(u => u.trim()).filter(Boolean).join('\n') || null,
       price:        form.value.price.trim() ? Number(form.value.price) : null,
       addedAt:      form.value.addedAt || null,
       status:       form.value.status,
@@ -509,4 +633,43 @@ async function submitForm() {
   cursor: pointer; transition: background 0.12s;
 }
 .gear-img-remove:hover { background: rgba(0,0,0,0.85); }
+
+/* ── Brand combobox ────────────────────────────────────── */
+.brand-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--c-card);
+  border: 1px solid color-mix(in srgb, var(--c-border) 70%, transparent);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  overflow: hidden;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.brand-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-body, sans-serif);
+  color: var(--c-inkMuted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.brand-option:hover {
+  background: color-mix(in srgb, var(--c-primary) 10%, transparent);
+  color: var(--c-ink);
+}
+.brand-option--active {
+  background: color-mix(in srgb, var(--c-primary) 14%, transparent);
+  color: var(--c-primary);
+  font-weight: 600;
+}
+.brand-drop-enter-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.brand-drop-leave-active { transition: opacity 0.08s ease, transform 0.08s ease; }
+.brand-drop-enter-from, .brand-drop-leave-to { opacity: 0; transform: translateY(-4px); }
 </style>

@@ -75,11 +75,17 @@
             </div>
             <div v-if="gear.referenceUrl" class="col-span-2 sm:col-span-1">
               <p class="field-label">參考連結</p>
-              <a :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
-                class="field-value font-body text-primary hover:opacity-70 transition-opacity flex items-center gap-1 truncate">
-                <ExternalLinkIcon :size="12" class="shrink-0" />
-                <span class="truncate">{{ gear.referenceUrl }}</span>
-              </a>
+              <div class="space-y-1.5">
+                <a
+                  v-for="(url, i) in gear.referenceUrl.split('\n').filter(Boolean)"
+                  :key="i"
+                  :href="url" target="_blank" rel="noopener noreferrer"
+                  class="field-value font-body text-primary hover:opacity-70 transition-opacity flex items-center gap-1 truncate"
+                >
+                  <ExternalLinkIcon :size="12" class="shrink-0" />
+                  <span class="truncate">{{ url }}</span>
+                </a>
+              </div>
             </div>
           </div>
 

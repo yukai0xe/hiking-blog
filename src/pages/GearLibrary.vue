@@ -74,60 +74,7 @@
         </select>
       </div>
 
-      <!-- ── Category Management ──────────────────────────── -->
-      <div class="card-aged px-5 py-4 mb-6">
-        <p class="text-[10px] font-body font-semibold tracking-[0.2em] uppercase text-inkMuted mb-3">自訂類別</p>
-        <div class="flex flex-wrap gap-2 items-center">
-          <!-- User's own (custom) categories -->
-          <span
-            v-for="cat in store.ownGearCategories"
-            :key="cat"
-            class="pl-2.5 pr-2.5 py-1 rounded-full text-xs font-body text-primary"
-            style="border: 1px solid color-mix(in srgb, var(--c-primary) 30%, transparent); background: color-mix(in srgb, var(--c-primary) 8%, transparent);"
-          >
-            {{ cat }}
-          </span>
-
-          <!-- Add new category -->
-          <template v-if="addingCat">
-            <div class="flex items-center gap-1.5">
-              <input
-                v-model="newCatName"
-                type="text"
-                class="px-2.5 py-1 rounded-full text-xs font-body text-ink outline-none"
-                style="border: 1px solid var(--c-primary); background: transparent; min-width: 120px;"
-                placeholder="新類別名稱"
-                autofocus
-                @keydown.enter="confirmAddCat"
-                @keydown.escape="addingCat = false; newCatName = ''"
-              />
-              <button
-                type="button"
-                class="w-6 h-6 rounded-full flex items-center justify-center btn-cta cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                :disabled="!newCatName.trim() || savingCat"
-                @click="confirmAddCat"
-              >
-                <span v-if="savingCat" class="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                <CheckIcon v-else :size="11" />
-              </button>
-              <button
-                type="button"
-                class="w-6 h-6 rounded-full flex items-center justify-center card-aged text-inkMuted hover:text-ink transition-colors cursor-pointer"
-                @click="addingCat = false; newCatName = ''"
-              ><XIcon :size="11" /></button>
-            </div>
-          </template>
-          <button
-            v-else
-            type="button"
-            class="px-2.5 py-1 rounded-full text-xs font-body text-inkMuted hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
-            style="border: 1px dashed var(--c-border);"
-            @click="addingCat = true"
-          ><PlusIcon :size="11" /> 新增類別</button>
-        </div>
-      </div>
-
-      <!-- Error banner -->
+<!-- Error banner -->
       <div v-if="apiError"
         class="mb-4 px-4 py-2.5 rounded-lg flex items-center gap-2 font-body text-sm"
         style="background: rgba(220,60,60,0.12); border: 1px solid rgba(220,60,60,0.35); color: #e07070;"
@@ -565,7 +512,6 @@ import {
   ChevronUp as ChevronUpIcon,
   ChevronDown as ChevronDownIcon,
   ChevronsUpDown as ChevronsUpDownIcon,
-  Check as CheckIcon,
   Bookmark as BookmarkIcon,
 } from 'lucide-vue-next'
 import type { Gear, GearStatus } from '../types'
@@ -576,27 +522,6 @@ const router = useRouter()
 onMounted(() => Promise.all([store.fetchGearLibrary(), store.fetchGearCategories()]))
 
 // ── Category management block ─────────────────────────────
-const addingCat = ref(false)
-const newCatName = ref('')
-const savingCat = ref(false)
-
-
-async function confirmAddCat() {
-  const name = newCatName.value.trim()
-  if (!name || savingCat.value) return
-  savingCat.value = true
-  try {
-    await store.addGearCategory(name)
-    addingCat.value = false
-    newCatName.value = ''
-  } catch {
-    // keep input open on error
-  } finally {
-    savingCat.value = false
-  }
-}
-
-
 // ── Table state ──────────────────────────────────────────
 const filterCategories = computed(() => {
   const all = new Set([

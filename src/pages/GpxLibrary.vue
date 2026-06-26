@@ -66,6 +66,31 @@
           </button>
         </div>
 
+                <!-- View mode toggle -->
+        <div class="flex items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="viewMode === 'simple'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="viewMode = 'simple'"
+          >
+            <LayoutListIcon :size="13" />
+            簡單
+          </button>
+          <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="viewMode === 'advanced'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="viewMode = 'advanced'"
+          >
+            <BarChart2Icon :size="13" />
+            進階
+          </button>
+        </div>
+
         <!-- Filter button -->
         <div class="relative">
           <button
@@ -160,31 +185,6 @@
             </div>
           </Transition>
         </div>
-
-        <!-- View mode toggle -->
-        <div class="flex items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
-          <button
-            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
-            :style="viewMode === 'simple'
-              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
-              : 'background: transparent; color: var(--c-inkMuted);'"
-            @click="viewMode = 'simple'"
-          >
-            <LayoutListIcon :size="13" />
-            簡單
-          </button>
-          <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
-          <button
-            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
-            :style="viewMode === 'advanced'
-              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
-              : 'background: transparent; color: var(--c-inkMuted);'"
-            @click="viewMode = 'advanced'"
-          >
-            <BarChart2Icon :size="13" />
-            進階
-          </button>
-        </div>
       </div>
 
       <!-- Error banner -->
@@ -223,12 +223,27 @@
             <!-- Group divider -->
             <div
               v-if="item.type === 'divider'"
-              class="col-span-full flex items-center gap-2 mt-1"
+              class="col-span-full mt-5 pb-2"
+              :style="item.isWishlist
+                ? 'border-bottom: 1px solid color-mix(in srgb, var(--c-primary) 35%, transparent);'
+                : 'border-bottom: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);'"
             >
-              <BookmarkIcon v-if="item.isWishlist" :size="12" style="color: var(--c-primary);" />
-              <span class="text-[10px] font-body uppercase tracking-widest" :style="item.isWishlist ? 'color: var(--c-primary); opacity: 0.8;' : 'color: var(--c-inkMuted);'">{{ item.label }}</span>
-              <span class="text-[10px] font-mono text-inkMuted opacity-50">({{ item.count }})</span>
-              <div class="flex-1 h-px" style="background: var(--c-border); opacity: 0.4;" />
+              <div class="flex items-end justify-between">
+                <div class="flex items-center gap-2">
+                  <BookmarkIcon v-if="item.isWishlist" :size="18" style="color: var(--c-primary);" />
+                  <RouteIcon v-else :size="18" style="color: var(--c-inkMuted);" />
+                  <span
+                    class="font-heading font-bold uppercase tracking-widest leading-none select-none"
+                    style="font-size: 22px;"
+                    :style="item.isWishlist ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'"
+                  >{{ item.label }}</span>
+                </div>
+                <span
+                  class="font-mono font-bold leading-none select-none"
+                  style="font-size: 20px;"
+                  :style="item.isWishlist ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'"
+                >{{ item.count }}</span>
+              </div>
             </div>
 
             <!-- Card -->
@@ -512,7 +527,7 @@ import {
   SlidersHorizontal as SlidersHorizontalIcon,
   Square as SquareIcon, CheckSquare as CheckSquareIcon,
   LayoutList as LayoutListIcon, BarChart2 as BarChart2Icon,
-  Tag as TagIcon, Bookmark as BookmarkIcon,
+  Tag as TagIcon, Bookmark as BookmarkIcon, Route as RouteIcon,
   MoreVertical as MoreVerticalIcon, Download as DownloadIcon, Pencil as PencilIcon,
   Star,
 } from 'lucide-vue-next'
