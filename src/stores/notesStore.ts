@@ -15,10 +15,11 @@ async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
 }
 
 export const useNotesStore = defineStore('notes', () => {
-  const groups  = ref<NoteGroup[]>([])
-  const links   = ref<NoteLink[]>([])
-  const loading = ref(false)
-  const error   = ref<string | null>(null)
+  const groups     = ref<NoteGroup[]>([])
+  const links      = ref<NoteLink[]>([])
+  const trashLinks = ref<NoteLink[]>([])
+  const loading    = ref(false)
+  const error      = ref<string | null>(null)
 
   async function fetchNotes() {
     loading.value = true
@@ -91,6 +92,24 @@ export const useNotesStore = defineStore('notes', () => {
     links.value.push(created)
   }
 
+  async function moveLink(id: string, groupId: string | null): Promise<void> {
+    const idx = links.value.findIndex(l => l.id === id)
+    if (idx === -1) return
+    const prev = { ...links.value[idx] }
+    if (prev.groupId === groupId) return
+    links.value[idx] = { ...links.value[idx], groupId }
+    try {
+      await apiFetch(`/api/notes/links/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ groupId }),
+      })
+    } catch (e) {
+      links.value[idx] = prev
+      throw e
+    }
+  }
+
   async function deleteLink(id: string): Promise<void> {
     const prev   = links.value.slice()
     links.value  = links.value.filter(l => l.id !== id)
@@ -102,10 +121,48 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
+  async function fetchTrash(): Promise<void> {
+    const res        = await apiFetch('/api/notes/trash')
+    trashLinks.value = await res.json() as NoteLink[]
+  }
+
+  async function restoreLink(id: string): Promise<void> {
+    trashLinks.value = trashLinks.value.filter(l => l.id !== id)
+    try {
+      await apiFetch(`/api/notes/links/${id}/restore`, { method: 'POST' })
+      await fetchNotes()
+    } catch (e) {
+      await fetchTrash()
+      throw e
+    }
+  }
+
+  async function permanentDeleteLink(id: string): Promise<void> {
+    const prev       = trashLinks.value.slice()
+    trashLinks.value = trashLinks.value.filter(l => l.id !== id)
+    try {
+      await apiFetch(`/api/notes/trash/${id}`, { method: 'DELETE' })
+    } catch (e) {
+      trashLinks.value = prev
+      throw e
+    }
+  }
+
+  async function emptyTrash(): Promise<void> {
+    const prev       = trashLinks.value.slice()
+    trashLinks.value = []
+    try {
+      await apiFetch('/api/notes/trash', { method: 'DELETE' })
+    } catch (e) {
+      trashLinks.value = prev
+      throw e
+    }
+  }
+
   async function fetchPreview(url: string): Promise<{ title: string; coverImageUrl: string | null }> {
     const res  = await apiFetch(`/api/notes/preview?url=${encodeURIComponent(url)}`)
     return res.json()
   }
 
-  return { groups, links, loading, error, fetchNotes, createGroup, updateGroup, deleteGroup, addLink, deleteLink, fetchPreview }
+  return { groups, links, trashLinks, loading, error, fetchNotes, createGroup, updateGroup, deleteGroup, addLink, moveLink, deleteLink, fetchTrash, restoreLink, permanentDeleteLink, emptyTrash, fetchPreview }
 })

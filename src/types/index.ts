@@ -165,4 +165,5 @@ export interface NoteLink {
   coverImageUrl: string | null
   sortOrder:     number
   createdAt:     string
+  deletedAt?:    string | null
 }
