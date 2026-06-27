@@ -1,5 +1,5 @@
 <template>
-  <section class="card-aged p-6">
+  <div>
     <h2 class="font-heading text-base text-ink tracking-wide mb-1">登山難度設定</h2>
     <p class="text-xs font-body text-inkMuted mb-5">設定難度星等上限，並為每個等級加上說明</p>
 
@@ -74,7 +74,7 @@
         </div>
       </div>
     </div>
-  </section>
+  </div>
 </template>
 
 <script setup lang="ts">
