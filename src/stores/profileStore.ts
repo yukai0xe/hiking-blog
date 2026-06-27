@@ -148,11 +148,15 @@ export const useProfileStore = defineStore('profile', () => {
     scheduleSave()
   }
 
+  async function testDiscordWebhook(): Promise<void> {
+    await apiFetch('/api/UserProfile/test-discord', { method: 'POST' })
+  }
+
   applyTheme()
 
   return {
     themeMode, isDark, difficultyMax, difficultyLabels, discordWebhookUrl,
     setThemeMode, setDifficultyMax, setDifficultyLabel, setDiscordWebhookUrl,
-    fetchFromApi,
+    testDiscordWebhook, fetchFromApi,
   }
 })

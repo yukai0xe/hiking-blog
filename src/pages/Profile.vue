@@ -3,7 +3,7 @@
 
     <!-- Navbar -->
     <header class="sticky top-0 z-20 px-4 pt-4 pb-2">
-      <div class="max-w-2xl mx-auto card-aged px-5 py-3 flex items-center gap-3"
+      <div class="max-w-4xl mx-auto card-aged px-5 py-3 flex items-center gap-3"
            style="backdrop-filter: blur(10px);">
         <button
           @click="router.back()"
@@ -16,7 +16,7 @@
       </div>
     </header>
 
-    <main class="relative z-10 max-w-2xl mx-auto px-4 py-8">
+    <main class="relative z-10 max-w-4xl mx-auto px-4 py-8">
       <div class="card-aged p-6">
         <Tabs :tabs="tabs" v-model:active="activeTab">
           <template #default="{ active }">
@@ -110,9 +110,27 @@
                   @click="showWebhook = !showWebhook"
                 >{{ showWebhook ? '隱藏' : '顯示' }}</button>
               </div>
-              <p class="mt-2 text-[11px] font-body text-inkMuted opacity-70">
-                在 Discord 頻道設定 → 整合 → Webhook 中取得 URL。儲存後自動生效。
-              </p>
+              <div class="mt-3 flex items-center gap-3">
+                <button
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body font-medium cursor-pointer transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :style="testState === 'success'
+                    ? { background: 'color-mix(in srgb, #2ECC71 15%, transparent)', border: '1px solid #2ECC71', color: '#2ECC71' }
+                    : testState === 'error'
+                      ? { background: 'color-mix(in srgb, #E74C3C 15%, transparent)', border: '1px solid #E74C3C', color: '#E74C3C' }
+                      : { border: '1px solid var(--c-border)', color: 'var(--c-inkMuted)' }"
+                  :disabled="testState === 'loading' || !profile.discordWebhookUrl"
+                  @click="runTest"
+                >
+                  <span v-if="testState === 'loading'" class="font-mono opacity-60">…</span>
+                  <CheckIcon v-else-if="testState === 'success'" :size="12" />
+                  <XIcon     v-else-if="testState === 'error'"   :size="12" />
+                  <BellIcon  v-else                              :size="12" />
+                  {{ testState === 'loading' ? '傳送中' : testState === 'success' ? '已送出' : testState === 'error' ? '傳送失敗' : '測試通知' }}
+                </button>
+                <p class="text-[11px] font-body text-inkMuted opacity-70">
+                  在 Discord 頻道設定 → 整合 → Webhook 中取得 URL。
+                </p>
+              </div>
             </div>
 
           </template>
@@ -130,6 +148,9 @@ import {
   Moon as MoonIcon,
   Sun as SunIcon,
   Monitor as MonitorIcon,
+  Bell as BellIcon,
+  Check as CheckIcon,
+  X as XIcon,
 } from 'lucide-vue-next'
 import { useProfileStore }  from '../stores/profileStore'
 import { usePostStore }     from '../stores/postStore'
@@ -141,6 +162,18 @@ const profile     = useProfileStore()
 const postStore   = usePostStore()
 const showWebhook = ref(false)
 const activeTab   = ref('appearance')
+const testState   = ref<'idle' | 'loading' | 'success' | 'error'>('idle')
+
+async function runTest() {
+  testState.value = 'loading'
+  try {
+    await profile.testDiscordWebhook()
+    testState.value = 'success'
+  } catch {
+    testState.value = 'error'
+  }
+  setTimeout(() => { testState.value = 'idle' }, 3000)
+}
 
 const tabs = [
   { key: 'appearance',    label: '外觀' },
