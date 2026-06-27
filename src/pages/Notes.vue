@@ -22,6 +22,15 @@
         載入中…
       </div>
 
+      <!-- Delete error -->
+      <div v-if="deleteError"
+        class="mb-4 px-4 py-2.5 rounded-lg flex items-center gap-2 font-body text-sm"
+        style="background: rgba(220,60,60,0.12); border: 1px solid rgba(220,60,60,0.35); color: #e07070;"
+      >
+        <AlertCircleIcon :size="14" class="shrink-0" />
+        {{ deleteError }}
+      </div>
+
       <template v-else>
 
         <!-- Ungrouped links -->
@@ -41,7 +50,7 @@
               v-for="link in ungroupedLinks"
               :key="link.id"
               :link="link"
-              @delete="store.deleteLink(link.id)"
+              @delete="handleDeleteLink(link.id)"
             />
           </div>
           <p v-else class="text-xs font-body italic text-inkMuted">尚無未分組連結</p>
@@ -60,8 +69,8 @@
             :links="linksForGroup(group.id)"
             @add-link="openAddLink(group.id)"
             @edit-group="openEditGroup(group)"
-            @delete-group="store.deleteGroup(group.id)"
-            @delete-link="store.deleteLink($event)"
+            @delete-group="handleDeleteGroup(group.id)"
+            @delete-link="handleDeleteLink($event)"
           />
         </div>
 
@@ -94,7 +103,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ArrowLeft as ArrowLeftIcon, Plus as PlusIcon, FolderPlus as FolderPlusIcon } from 'lucide-vue-next'
+import { ArrowLeft as ArrowLeftIcon, Plus as PlusIcon, FolderPlus as FolderPlusIcon, AlertCircle as AlertCircleIcon } from 'lucide-vue-next'
 import { useNotesStore } from '../stores/notesStore'
 import type { NoteGroup } from '../types'
 import NoteLinkCard       from '../components/NoteLinkCard.vue'
@@ -103,6 +112,8 @@ import NoteAddLinkModal   from '../components/NoteAddLinkModal.vue'
 import NoteGroupEditModal from '../components/NoteGroupEditModal.vue'
 
 const store = useNotesStore()
+
+const deleteError = ref<string | null>(null)
 
 onMounted(() => store.fetchNotes())
 
@@ -131,5 +142,23 @@ function openEditGroup(group: NoteGroup) {
 function openNewGroup() {
   groupEditTarget.value = null
   groupEditOpen.value   = true
+}
+
+async function handleDeleteLink(id: string) {
+  deleteError.value = null
+  try {
+    await store.deleteLink(id)
+  } catch (e) {
+    deleteError.value = (e as Error).message
+  }
+}
+
+async function handleDeleteGroup(id: string) {
+  deleteError.value = null
+  try {
+    await store.deleteGroup(id)
+  } catch (e) {
+    deleteError.value = (e as Error).message
+  }
 }
 </script>
