@@ -148,3 +148,21 @@ export interface GpxLibraryEntry {
   sortOrder?:      number
   createdAt:       string
 }
+
+export interface NoteGroup {
+  id:          string
+  name:        string
+  description: string | null
+  sortOrder:   number
+  createdAt:   string
+}
+
+export interface NoteLink {
+  id:            string
+  groupId:       string | null
+  url:           string
+  title:         string
+  coverImageUrl: string | null
+  sortOrder:     number
+  createdAt:     string
+}
