@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { Pencil as PencilIcon, Trash2 as Trash2Icon, Plus as PlusIcon } from 'lucide-vue-next'
 import type { NoteGroup, NoteLink } from '../types'
 import NoteLinkCard from './NoteLinkCard.vue'
@@ -72,6 +72,7 @@ let confirmTimer: ReturnType<typeof setTimeout> | null = null
 
 function handleDelete() {
   if (!confirming.value) {
+    if (confirmTimer) clearTimeout(confirmTimer)
     confirming.value = true
     confirmTimer = setTimeout(() => { confirming.value = false }, 3000)
   } else {
@@ -80,4 +81,8 @@ function handleDelete() {
     emit('delete-group')
   }
 }
+
+onBeforeUnmount(() => {
+  if (confirmTimer) clearTimeout(confirmTimer)
+})
 </script>
