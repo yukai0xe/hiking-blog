@@ -82,12 +82,39 @@
       <!-- ④ Difficulty -->
       <DifficultySettings />
 
+      <!-- ⑤ Notifications -->
+      <section class="card-aged p-6">
+        <h2 class="font-heading text-base text-ink tracking-wide mb-1">通知整合</h2>
+        <p class="text-xs font-body text-inkMuted mb-5">每週垃圾桶清理完成後，透過 Discord Webhook 發送通知</p>
+
+        <label class="block mb-1.5 text-xs font-body font-medium text-inkMuted">Discord Webhook URL</label>
+        <div class="flex gap-2">
+          <input
+            :type="showWebhook ? 'text' : 'password'"
+            :value="profile.discordWebhookUrl"
+            @input="profile.setDiscordWebhookUrl(($event.target as HTMLInputElement).value)"
+            placeholder="https://discord.com/api/webhooks/..."
+            class="flex-1 px-3 py-2 rounded-lg text-sm font-mono text-ink bg-transparent border outline-none transition-colors"
+            style="border-color: var(--c-border);"
+            @focus="($event.target as HTMLInputElement).style.borderColor = 'var(--c-primary)'"
+            @blur="($event.target as HTMLInputElement).style.borderColor = 'var(--c-border)'"
+          />
+          <button
+            class="card-aged px-3 rounded-lg text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer shrink-0"
+            @click="showWebhook = !showWebhook"
+          >{{ showWebhook ? '隱藏' : '顯示' }}</button>
+        </div>
+        <p class="mt-2 text-[11px] font-body text-inkMuted opacity-70">
+          在 Discord 頻道設定 → 整合 → Webhook 中取得 URL。儲存後自動生效。
+        </p>
+      </section>
+
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowLeft as ArrowLeftIcon,
@@ -99,8 +126,9 @@ import { useProfileStore } from '../stores/profileStore'
 import { usePostStore }    from '../stores/postStore'
 import DifficultySettings  from '../components/DifficultySettings.vue'
 
-const router    = useRouter()
-const profile   = useProfileStore()
+const router      = useRouter()
+const profile     = useProfileStore()
+const showWebhook = ref(false)
 const postStore = usePostStore()
 
 onMounted(() => {

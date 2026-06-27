@@ -40,9 +40,10 @@ function loadFromStorage() {
 export const useProfileStore = defineStore('profile', () => {
   const initial = loadFromStorage()
 
-  const themeMode        = ref<ThemeMode>(initial.themeMode)
-  const difficultyMax    = ref<number>(initial.difficultyMax)
-  const difficultyLabels = ref<string[]>(initial.difficultyLabels)
+  const themeMode          = ref<ThemeMode>(initial.themeMode)
+  const difficultyMax      = ref<number>(initial.difficultyMax)
+  const difficultyLabels   = ref<string[]>(initial.difficultyLabels)
+  const discordWebhookUrl  = ref<string>('')
 
   const systemDark = ref(window.matchMedia('(prefers-color-scheme: dark)').matches)
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
@@ -84,9 +85,10 @@ export const useProfileStore = defineStore('profile', () => {
         method:  'PUT',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          themeMode:        themeMode.value,
-          difficultyMax:    difficultyMax.value,
-          difficultyLabels: difficultyLabels.value,
+          themeMode:         themeMode.value,
+          difficultyMax:     difficultyMax.value,
+          difficultyLabels:  difficultyLabels.value,
+          discordWebhookUrl: discordWebhookUrl.value || null,
         }),
       })
     } catch { /* localStorage already persisted — API failure is non-fatal */ }
@@ -98,7 +100,7 @@ export const useProfileStore = defineStore('profile', () => {
     try {
       const res  = await apiFetch('/api/UserProfile')
       const data = await res.json() as {
-        themeMode: string; difficultyMax: number; difficultyLabels: string[]
+        themeMode: string; difficultyMax: number; difficultyLabels: string[]; discordWebhookUrl?: string | null
       }
       if (data.themeMode && ['dark','light','auto'].includes(data.themeMode))
         themeMode.value = data.themeMode as ThemeMode
@@ -106,6 +108,7 @@ export const useProfileStore = defineStore('profile', () => {
         difficultyMax.value = data.difficultyMax
       if (Array.isArray(data.difficultyLabels))
         difficultyLabels.value = data.difficultyLabels
+      discordWebhookUrl.value = data.discordWebhookUrl ?? ''
       applyTheme()
       persistLocal()
     } catch { /* use localStorage values */ }
@@ -140,11 +143,16 @@ export const useProfileStore = defineStore('profile', () => {
     scheduleSave()
   }
 
+  function setDiscordWebhookUrl(url: string) {
+    discordWebhookUrl.value = url
+    scheduleSave()
+  }
+
   applyTheme()
 
   return {
-    themeMode, isDark, difficultyMax, difficultyLabels,
-    setThemeMode, setDifficultyMax, setDifficultyLabel,
+    themeMode, isDark, difficultyMax, difficultyLabels, discordWebhookUrl,
+    setThemeMode, setDifficultyMax, setDifficultyLabel, setDiscordWebhookUrl,
     fetchFromApi,
   }
 })
