@@ -3,6 +3,7 @@ import type { Ref } from 'vue'
 import type { Waypoint, WaypointOverride } from '../types'
 import type GpxViewer from '../components/GpxViewer.vue'
 import { parseDate } from '../utils/gpxHelpers'
+import { useAuthStore } from '../stores/authStore'
 
 export function useWaypointAdd(
   gpxViewerRef: Ref<InstanceType<typeof GpxViewer> | null>,
@@ -10,6 +11,7 @@ export function useWaypointAdd(
   activeOverrides: Ref<WaypointOverride[]>,
   waypointApiUrl: (segment: string) => string,
 ) {
+  const auth = useAuthStore()
   const addingWpt       = ref(false)
   const showAddWptModal = ref(false)
   const newWptDraft     = ref({ lat: '', lng: '', name: '', desc: '', wptDate: '' })
@@ -50,10 +52,12 @@ export function useWaypointAdd(
     showAddWptModal.value = false
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
       const res = await fetch(waypointApiUrl(''), {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ lat, lng, name, desc, time: timeIso }),
+        method: 'POST',
+        headers,
+        body:   JSON.stringify({ lat, lng, name, desc, time: timeIso }),
       })
       if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
     } catch (e) {

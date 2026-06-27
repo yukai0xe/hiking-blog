@@ -72,9 +72,11 @@ export function useWaypoint(
     editingWpt.value = null
 
     try {
+      const hdrs: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (auth.token) hdrs['Authorization'] = `Bearer ${auth.token}`
       const res = await fetch(waypointApiUrl(''), {
         method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: hdrs,
         body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name, desc, time: timeIso }),
       })
       if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
@@ -100,9 +102,11 @@ export function useWaypoint(
     }
 
     try {
+      const hdrs: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (auth.token) hdrs['Authorization'] = `Bearer ${auth.token}`
       const res = await fetch(waypointApiUrl(''), {
         method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: hdrs,
         body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng, name: wpt.name, desc: wpt.desc, hidden: newHidden }),
       })
       if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
@@ -120,9 +124,11 @@ export function useWaypoint(
     gpxViewerRef.value?.removeWaypointMarker(wpt.lat, wpt.lng)
 
     try {
+      const hdrs: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (auth.token) hdrs['Authorization'] = `Bearer ${auth.token}`
       const res = await fetch(waypointApiUrl(''), {
         method:  'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: hdrs,
         body:    JSON.stringify({ lat: wpt.lat, lng: wpt.lng }),
       })
       if (!res.ok) throw new Error(`伺服器錯誤 (${res.status})`)
