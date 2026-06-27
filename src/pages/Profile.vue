@@ -90,7 +90,12 @@
 
             <!-- 通知 -->
             <div v-show="active === 'notifications'">
-              <h2 class="font-heading text-base text-ink tracking-wide mb-1">通知整合</h2>
+              <div class="flex items-center gap-2 mb-1">
+                <svg viewBox="0 0 24 24" class="shrink-0" style="width:18px;height:18px;fill:var(--c-primary);">
+                  <path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.462-.62.874-1.275 1.226-1.963.021-.04.001-.088-.041-.104a13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z"/>
+                </svg>
+                <h2 class="font-heading text-base text-ink tracking-wide">通知整合</h2>
+              </div>
               <p class="text-xs font-body text-inkMuted mb-5">每週垃圾桶清理完成後，透過 Discord Webhook 發送通知</p>
 
               <label class="block mb-1.5 text-xs font-body font-medium text-inkMuted">Discord Webhook URL</label>
@@ -106,9 +111,13 @@
                   @blur="($event.target as HTMLInputElement).style.borderColor = 'var(--c-border)'"
                 />
                 <button
-                  class="card-aged px-3 rounded-lg text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer shrink-0"
+                  class="card-aged w-9 h-9 flex items-center justify-center rounded-lg text-inkMuted hover:text-ink transition-colors cursor-pointer shrink-0"
                   @click="showWebhook = !showWebhook"
-                >{{ showWebhook ? '隱藏' : '顯示' }}</button>
+                  :aria-label="showWebhook ? '隱藏' : '顯示'"
+                >
+                  <EyeOffIcon v-if="showWebhook" :size="14" />
+                  <EyeIcon    v-else              :size="14" />
+                </button>
               </div>
               <div class="mt-3 flex items-center gap-3">
                 <button
@@ -151,6 +160,8 @@ import {
   Bell as BellIcon,
   Check as CheckIcon,
   X as XIcon,
+  Eye as EyeIcon,
+  EyeOff as EyeOffIcon,
 } from 'lucide-vue-next'
 import { useProfileStore }  from '../stores/profileStore'
 import { usePostStore }     from '../stores/postStore'
