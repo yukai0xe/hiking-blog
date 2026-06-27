@@ -33,6 +33,10 @@
           <LibraryIcon :size="14" class="shrink-0" />
           裝備庫
         </router-link>
+        <router-link to="/notes" @click="showMenu = false" class="menu-row">
+          <BookmarkIcon :size="14" class="shrink-0" />
+          筆記
+        </router-link>
 
         <div style="border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent); margin: 4px 0;" />
         <router-link to="/profile" @click="showMenu = false" class="menu-row">
@@ -52,7 +56,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Route as RouteIcon, Library as LibraryIcon, Settings as SettingsIcon, LogOut as LogOutIcon } from 'lucide-vue-next'
+import { Route as RouteIcon, Library as LibraryIcon, Bookmark as BookmarkIcon, Settings as SettingsIcon, LogOut as LogOutIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/authStore'
 
 const emit = defineEmits<{ 'logout-request': [] }>()
