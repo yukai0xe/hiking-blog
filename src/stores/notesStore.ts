@@ -63,18 +63,15 @@ export const useNotesStore = defineStore('notes', () => {
   }
 
   async function deleteGroup(id: string): Promise<void> {
-    const prevGroups  = groups.value.slice()
-    const affectedIds = links.value.filter(l => l.groupId === id).map(l => l.id)
-    groups.value      = groups.value.filter(g => g.id !== id)
+    const prevGroups = groups.value.slice()
+    const prevLinks  = links.value.map(l => ({ ...l }))
+    groups.value     = groups.value.filter(g => g.id !== id)
     links.value.forEach(l => { if (l.groupId === id) l.groupId = null })
     try {
       await apiFetch(`/api/notes/groups/${id}`, { method: 'DELETE' })
     } catch (e) {
       groups.value = prevGroups
-      affectedIds.forEach(lid => {
-        const l = links.value.find(x => x.id === lid)
-        if (l) l.groupId = id
-      })
+      links.value  = prevLinks
       throw e
     }
   }
