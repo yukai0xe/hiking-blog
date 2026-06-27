@@ -69,7 +69,6 @@
           title-variant="default"
           :total-count="store.gearLibrary.length"
           :footer-weight="filteredWeightKg"
-          @edit="openEdit"
           @delete="confirmDelete"
           @sort="setGroupSort"
         />
@@ -85,7 +84,6 @@
           title-variant="default"
           :total-count="ownedInLibrary.length"
           :footer-weight="filteredWeightKg"
-          @edit="openEdit"
           @delete="confirmDelete"
           @sort="setGroupSort"
         />
@@ -98,7 +96,6 @@
           title="願望清單"
           title-variant="wishlist"
           :total-count="wishlistCount"
-          @edit="openEdit"
           @delete="confirmDelete"
           @sort="setGroupSort"
         />
@@ -112,7 +109,6 @@
           title="已淘汰"
           title-variant="abandon"
           :total-count="abandonCount"
-          @edit="openEdit"
           @delete="confirmDelete"
           @sort="setGroupSort"
         />
@@ -126,7 +122,6 @@
           title="未分組"
           title-variant="default"
           :total-count="otherCount"
-          @edit="openEdit"
           @delete="confirmDelete"
           @sort="setGroupSort"
         />
@@ -185,7 +180,6 @@ const saving   = ref(false)
 const apiError = ref<string | null>(null)
 
 function openCreate() { router.push('/gear-library/edit/new') }
-function openEdit(gear: Gear) { router.push(`/gear-library/edit/${gear.id}`) }
 
 // ── Delete confirm ─────────────────────────────────────
 const deletingGear = ref<Gear | null>(null)

@@ -75,10 +75,6 @@
               <td class="td text-right" @click.stop>
                 <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                   <button
-                    class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-ink hover:bg-border/30 transition-colors cursor-pointer"
-                    @click="emit('edit', gear)" aria-label="編輯"
-                  ><PencilIcon :size="13" /></button>
-                  <button
                     class="w-7 h-7 rounded flex items-center justify-center text-inkMuted hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
                     @click="emit('delete', gear)" aria-label="刪除"
                   ><Trash2Icon :size="13" /></button>
@@ -101,7 +97,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Pencil as PencilIcon, Trash2 as Trash2Icon, ExternalLink as ExternalLinkIcon, Bookmark as BookmarkIcon } from 'lucide-vue-next'
+import { Trash2 as Trash2Icon, ExternalLink as ExternalLinkIcon, Bookmark as BookmarkIcon } from 'lucide-vue-next'
 import { useGearSort } from '../composables/useGearSort'
 import type { SortField, GroupKey } from '../composables/useGearSort'
 import type { Gear } from '../types'
@@ -116,7 +112,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  edit:   [gear: Gear]
   delete: [gear: Gear]
   sort:   [group: GroupKey, field: SortField]
 }>()
