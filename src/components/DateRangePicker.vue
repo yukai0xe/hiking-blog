@@ -65,11 +65,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Calendar as CalendarIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from 'lucide-vue-next'
 
-const props = defineProps<{ start: string; end: string }>()
-const emit  = defineEmits<{
-  'update:start': [v: string]
-  'update:end':   [v: string]
-}>()
+const start = defineModel<string>('start', { required: true })
+const end   = defineModel<string>('end',   { required: true })
 
 const open      = ref(false)
 const hoverDate = ref('')
@@ -116,12 +113,12 @@ const calendarDays = computed<CalDay[]>(() => {
 // ── Day class ──────────────────────────────────────────
 function dayClass(d: CalDay) {
   if (!d.currentMonth) return 'drp-day--other'
-  const s = props.start
-  const e = props.end || hoverDate.value
+  const s = start.value
+  const e = end.value || hoverDate.value
   const isStart = d.date === s
-  const isEnd   = d.date === (props.end || '')
+  const isEnd   = d.date === (end.value || '')
   const inRange = s && e && d.date > (s < e ? s : e) && d.date < (s < e ? e : s)
-  const isHoverEnd = !props.end && hoverDate.value && s && d.date === hoverDate.value && d.date > s
+  const isHoverEnd = !end.value && hoverDate.value && s && d.date === hoverDate.value && d.date > s
   return {
     'drp-day--start':    isStart,
     'drp-day--end':      isEnd,
@@ -132,23 +129,23 @@ function dayClass(d: CalDay) {
 
 // ── Selection logic ────────────────────────────────────
 function selectDay(date: string) {
-  if (!props.start || (props.start && props.end)) {
-    emit('update:start', date)
-    emit('update:end', '')
+  if (!start.value || (start.value && end.value)) {
+    start.value = date
+    end.value = ''
   } else {
-    if (date < props.start) {
-      emit('update:end', props.start)
-      emit('update:start', date)
+    if (date < start.value) {
+      end.value = start.value
+      start.value = date
     } else {
-      emit('update:end', date)
+      end.value = date
     }
     open.value = false
   }
 }
 
 function clear() {
-  emit('update:start', '')
-  emit('update:end', '')
+  start.value = ''
+  end.value = ''
 }
 
 function shiftMonth(delta: number) {
@@ -159,8 +156,8 @@ function shiftMonth(delta: number) {
 
 // ── Display text ───────────────────────────────────────
 const displayText = computed(() => {
-  if (props.start && props.end)   return `${fmt(props.start)} → ${fmt(props.end)}`
-  if (props.start)                return `${fmt(props.start)} →`
+  if (start.value && end.value)   return `${fmt(start.value)} → ${fmt(end.value)}`
+  if (start.value)                return `${fmt(start.value)} →`
   return '選擇日期'
 })
 
