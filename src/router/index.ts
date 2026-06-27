@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home         from '../pages/Home.vue'
-import Detail       from '../pages/Detail.vue'
+import PostDetail   from '../pages/PostDetail.vue'
 import Create       from '../pages/Create.vue'
 import PostEdit     from '../pages/PostEdit.vue'
 import GpxLibrary   from '../pages/GpxLibrary.vue'
@@ -15,7 +15,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/',              component: Home },
-    { path: '/detail/:id',   component: Detail },
+    { path: '/detail/:id',   component: PostDetail },
     { path: '/create',       component: Create },
     { path: '/edit/:id',     component: PostEdit },
     { path: '/gpx-library',  component: GpxLibrary },
