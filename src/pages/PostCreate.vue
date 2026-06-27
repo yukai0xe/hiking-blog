@@ -24,7 +24,7 @@
               <div
                 class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200"
                 :class="
-                  step > i + 1  ? 'bg-secondary text-ink opacity-80' :
+                  step > i + 1   ? 'bg-secondary text-ink opacity-80' :
                   step === i + 1 ? 'bg-primary text-[var(--c-cta-text)] shadow-md' :
                                    'bg-border/40 text-inkMuted hover:bg-border/70'
                 "
@@ -59,8 +59,7 @@
               <label class="field-label">標籤</label>
               <div class="flex flex-wrap gap-2 mb-2">
                 <span
-                  v-for="tag in form.tags"
-                  :key="tag"
+                  v-for="tag in form.tags" :key="tag"
                   class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-body border"
                   style="background: color-mix(in srgb, var(--c-primary) 28%, transparent); border-color: var(--c-primary); color: var(--c-ink); font-weight: 600;"
                 >
@@ -118,19 +117,7 @@
             </div>
             <div>
               <label class="field-label">難度</label>
-              <div class="flex items-center gap-2 mt-1">
-                <button
-                  v-for="n in profile.difficultyMax" :key="n"
-                  type="button"
-                  class="text-xl leading-none transition-colors duration-100 cursor-pointer"
-                  :class="n <= (form.difficultyStars ?? 0) ? 'text-primary' : 'text-inkMuted opacity-30'"
-                  @click="form.difficultyStars = form.difficultyStars === n ? null : n"
-                >★</button>
-                <span v-if="form.difficultyStars && profile.difficultyLabels[form.difficultyStars - 1]"
-                  class="text-xs font-body text-inkMuted ml-1">
-                  {{ profile.difficultyLabels[form.difficultyStars - 1] }}
-                </span>
-              </div>
+              <DifficultyPicker v-model="form.difficultyStars" :max="profile.difficultyMax" :labels="profile.difficultyLabels" />
             </div>
           </div>
 
@@ -177,65 +164,7 @@
           <div v-else-if="step === 4" class="space-y-4">
             <h2 class="font-heading text-xl text-ink mb-1">詳細資訊</h2>
             <p class="text-inkMuted text-sm font-body mb-6">選擇在詳細頁要顯示的區塊，關閉後仍可在詳細頁重新開啟。</p>
-
-            <div class="space-y-3">
-              <!-- GPX 路線 toggle -->
-              <div
-                class="flex items-center justify-between p-4 rounded-xl"
-                style="border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-card) 50%, transparent);"
-              >
-                <div>
-                  <p class="text-sm font-body font-semibold text-ink">GPX 路線</p>
-                  <p class="text-xs font-body text-inkMuted mt-0.5">在詳細頁顯示地圖與記錄點</p>
-                </div>
-                <button
-                  type="button"
-                  class="toggle-btn shrink-0"
-                  :class="form.showGpx ? 'toggle-on' : 'toggle-off'"
-                  @click="form.showGpx = !form.showGpx"
-                >
-                  <span class="toggle-thumb" :class="form.showGpx ? 'translate-x-5' : 'translate-x-0'" />
-                </button>
-              </div>
-
-              <!-- 裝備清單 toggle -->
-              <div
-                class="flex items-center justify-between p-4 rounded-xl"
-                style="border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-card) 50%, transparent);"
-              >
-                <div>
-                  <p class="text-sm font-body font-semibold text-ink">裝備清單</p>
-                  <p class="text-xs font-body text-inkMuted mt-0.5">在詳細頁顯示裝備列表與重量統計</p>
-                </div>
-                <button
-                  type="button"
-                  class="toggle-btn shrink-0"
-                  :class="form.showGears ? 'toggle-on' : 'toggle-off'"
-                  @click="form.showGears = !form.showGears"
-                >
-                  <span class="toggle-thumb" :class="form.showGears ? 'translate-x-5' : 'translate-x-0'" />
-                </button>
-              </div>
-
-              <!-- 糧食清單 toggle -->
-              <div
-                class="flex items-center justify-between p-4 rounded-xl"
-                style="border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-card) 50%, transparent);"
-              >
-                <div>
-                  <p class="text-sm font-body font-semibold text-ink">糧食清單</p>
-                  <p class="text-xs font-body text-inkMuted mt-0.5">在詳細頁顯示糧食規劃</p>
-                </div>
-                <button
-                  type="button"
-                  class="toggle-btn shrink-0"
-                  :class="form.showFoods ? 'toggle-on' : 'toggle-off'"
-                  @click="form.showFoods = !form.showFoods"
-                >
-                  <span class="toggle-thumb" :class="form.showFoods ? 'translate-x-5' : 'translate-x-0'" />
-                </button>
-              </div>
-            </div>
+            <PostVisibilityToggles v-model="visibilityModel" />
           </div>
 
           <!-- Navigation -->
@@ -280,22 +209,23 @@ import {
   Image as ImageIcon, Camera as CameraIcon,
   AlertCircle as AlertCircleIcon, X as XIcon, Tag as TagIcon,
 } from 'lucide-vue-next'
-import { usePostStore } from '../stores/postStore'
+import { usePostStore }    from '../stores/postStore'
 import { useProfileStore } from '../stores/profileStore'
-import TagPickerModal from '../components/TagPickerModal.vue'
+import TagPickerModal          from '../components/TagPickerModal.vue'
+import DifficultyPicker        from '../components/DifficultyPicker.vue'
+import PostVisibilityToggles   from '../components/PostVisibilityToggles.vue'
 import defaultCoverUrl from '../assets/cover_default.jpg'
 
+const router  = useRouter()
+const store   = usePostStore()
 const profile = useProfileStore()
 
-const router = useRouter()
-const store  = usePostStore()
 const tagModalOpen = ref(false)
-
-const step = ref(1)
-const stepLabels = ['基本', '封面', '照片', '詳細資訊']
+const step         = ref(1)
+const stepLabels   = ['基本', '封面', '照片', '詳細資訊']
 
 function defaultTitle() {
-  const now = new Date()
+  const now  = new Date()
   const yyyy = now.getFullYear()
   const mm   = String(now.getMonth() + 1).padStart(2, '0')
   const dd   = String(now.getDate()).padStart(2, '0')
@@ -305,25 +235,30 @@ function defaultTitle() {
 }
 
 const form = ref({
-  title:        defaultTitle(),
-  description:  '',
-  dateStart:    '',
-  dateEnd:      '',
+  title:           defaultTitle(),
+  description:     '',
+  dateStart:       '',
+  dateEnd:         '',
   weather:         '',
   peopleCount:     null as number | null,
   difficultyStars: null as number | null,
   coverFile:       null as File | null,
-  photoFiles:   [] as File[],
-  tags:         [] as string[],
-  showGpx:      true,
-  showGears:    true,
-  showFoods:    true,
+  photoFiles:      [] as File[],
+  tags:            [] as string[],
+  showGpx:         true,
+  showGears:       true,
+  showFoods:       true,
 })
 
-const coverInput  = ref<HTMLInputElement | null>(null)
-const photosInput = ref<HTMLInputElement | null>(null)
-const coverPreview   = ref<string | null>(null)
-const photoPreviews  = ref<string[]>([])
+const visibilityModel = computed({
+  get: () => ({ showGpx: form.value.showGpx, showGears: form.value.showGears, showFoods: form.value.showFoods }),
+  set: (v) => { form.value.showGpx = v.showGpx; form.value.showGears = v.showGears; form.value.showFoods = v.showFoods },
+})
+
+const coverInput   = ref<HTMLInputElement | null>(null)
+const photosInput  = ref<HTMLInputElement | null>(null)
+const coverPreview = ref<string | null>(null)
+const photoPreviews = ref<string[]>([])
 
 const canNext = computed(() => true)
 function nextStep() { if (canNext.value) step.value++ }
@@ -332,13 +267,13 @@ function onCoverChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
   form.value.coverFile = file
-  coverPreview.value = URL.createObjectURL(file)
+  coverPreview.value   = URL.createObjectURL(file)
 }
 
 function onPhotosChange(e: Event) {
   const files = Array.from((e.target as HTMLInputElement).files ?? [])
   form.value.photoFiles = files
-  photoPreviews.value = files.map(f => URL.createObjectURL(f))
+  photoPreviews.value   = files.map(f => URL.createObjectURL(f))
 }
 
 async function submit() {
@@ -349,25 +284,24 @@ async function submit() {
       const blob = await res.blob()
       coverFile  = new File([blob], 'cover_default.jpg', { type: blob.type })
     }
-
     const id = await store.createPost({
-      title:          form.value.title.trim() || '登山紀錄',
-      description:    form.value.description,
+      title:           form.value.title.trim() || '登山紀錄',
+      description:     form.value.description,
       coverFile,
-      gpxFile:        null,
-      photoFiles:     form.value.photoFiles,
-      gears:          [],
-      libraryGearIds: [],
-      foods:          [],
-      dateStart:      form.value.dateStart  || undefined,
-      dateEnd:        form.value.dateEnd    || undefined,
+      gpxFile:         null,
+      photoFiles:      form.value.photoFiles,
+      gears:           [],
+      libraryGearIds:  [],
+      foods:           [],
+      dateStart:       form.value.dateStart       || undefined,
+      dateEnd:         form.value.dateEnd         || undefined,
       weather:         form.value.weather         || undefined,
       peopleCount:     form.value.peopleCount,
       difficultyStars: form.value.difficultyStars,
       tags:            form.value.tags,
-      showGpx:        form.value.showGpx,
-      showGears:      form.value.showGears,
-      showFoods:      form.value.showFoods,
+      showGpx:         form.value.showGpx,
+      showGears:       form.value.showGears,
+      showFoods:       form.value.showFoods,
     })
     router.push(`/detail/${id}`)
   } catch { /* error shown via store.error */ }
@@ -384,29 +318,5 @@ async function submit() {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 6px;
-}
-
-/* ── Toggle switch ───────────────────────────────────── */
-.toggle-btn {
-  position: relative;
-  width: 44px;
-  height: 24px;
-  border-radius: 12px;
-  cursor: pointer;
-  border: none;
-  transition: background 0.2s ease;
-}
-.toggle-on  { background: var(--c-primary); }
-.toggle-off { background: color-mix(in srgb, var(--c-border) 120%, transparent); }
-.toggle-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: white;
-  transition: transform 0.2s ease;
-  display: block;
 }
 </style>

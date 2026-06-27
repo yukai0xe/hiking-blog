@@ -60,19 +60,7 @@
     </div>
     <div>
       <label class="field-label">難度</label>
-      <div class="flex items-center gap-2 mt-1">
-        <button
-          v-for="n in difficultyMax" :key="n"
-          type="button"
-          class="text-xl leading-none transition-colors duration-100 cursor-pointer"
-          :class="n <= (model.difficultyStars ?? 0) ? 'text-primary' : 'text-inkMuted opacity-30'"
-          @click="model.difficultyStars = model.difficultyStars === n ? null : n"
-        >★</button>
-        <span v-if="model.difficultyStars && difficultyLabels[model.difficultyStars - 1]"
-          class="text-xs font-body text-inkMuted ml-1">
-          {{ difficultyLabels[model.difficultyStars - 1] }}
-        </span>
-      </div>
+      <DifficultyPicker v-model="model.difficultyStars" :max="difficultyMax" :labels="difficultyLabels" />
     </div>
   </div>
 </template>
@@ -81,7 +69,8 @@
 import { ref } from 'vue'
 import { X as XIcon, Tag as TagIcon } from 'lucide-vue-next'
 import type { PostForm } from '../composables/usePostEditForm'
-import TagPickerModal from './TagPickerModal.vue'
+import TagPickerModal    from './TagPickerModal.vue'
+import DifficultyPicker  from './DifficultyPicker.vue'
 
 defineProps<{
   difficultyMax:    number
