@@ -42,9 +42,7 @@
 
           <!-- Status badge -->
           <div class="mb-4">
-            <span class="status-badge" :class="`status-badge--${resolvedStatus}`">
-              {{ statusLabel }}
-            </span>
+            <GearStatusBadge :status="gearStatus(gear!)" />
           </div>
 
           <!-- Fields grid -->
@@ -125,9 +123,11 @@ import {
   Pencil as PencilIcon,
   ExternalLink as ExternalLinkIcon,
 } from 'lucide-vue-next'
-import type { Gear, GearImage, GearStatus } from '../types'
+import type { Gear, GearImage } from '../types'
 import { usePostStore } from '../stores/postStore'
+import { gearStatus } from '../composables/useGearStats'
 import PhotoGallery from '../components/PhotoGallery.vue'
+import GearStatusBadge from '../components/GearStatusBadge.vue'
 
 const route = useRoute()
 const store = usePostStore()
@@ -150,20 +150,6 @@ onMounted(async () => {
     finally { loadingImages.value = false }
   }
 })
-
-function resolveStatus(g: Gear): GearStatus {
-  if (g.status) return g.status
-  return g.isWishlist ? 'wishlist' : 'owned'
-}
-
-const resolvedStatus = computed(() => gear.value ? resolveStatus(gear.value) : 'owned')
-
-const statusLabel = computed(() => ({
-  owned:    '已擁有',
-  wishlist: '願望清單',
-  abandon:  '已淘汰',
-  other:    '未分組',
-}[resolvedStatus.value]))
 
 const hasDescription = computed(() => {
   const d = gear.value?.description
@@ -197,22 +183,6 @@ const hasDescription = computed(() => {
   font-size: 14px;
   line-height: 1.4;
 }
-
-/* ── Status badge ─────────────────────────────────────── */
-.status-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-family: Inter, sans-serif;
-  font-weight: 600;
-  border: 1px solid var(--c-border);
-  color: var(--c-inkMuted);
-}
-.status-badge--owned    { color: var(--c-ink);     border-color: var(--c-ink);     background: color-mix(in srgb, var(--c-ink) 10%, transparent); }
-.status-badge--wishlist { color: var(--c-primary); border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
-.status-badge--abandon  { color: #c47070;           border-color: #c47070;          background: rgba(196,112,112,0.1); }
-.status-badge--other    { color: var(--c-inkMuted); border-color: var(--c-border);  background: transparent; }
 
 /* ── Category badge (matches GearLibrary) ──────────────── */
 .cat-badge {
