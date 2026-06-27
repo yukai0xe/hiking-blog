@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home         from '../pages/Home.vue'
 import Detail       from '../pages/Detail.vue'
 import Create       from '../pages/Create.vue'
-import Edit         from '../pages/Edit.vue'
+import PostEdit     from '../pages/PostEdit.vue'
 import GpxLibrary   from '../pages/GpxLibrary.vue'
 import GearLibrary  from '../pages/GearLibrary.vue'
 import GearEditPage   from '../pages/GearEditPage.vue'
@@ -17,7 +17,7 @@ const router = createRouter({
     { path: '/',              component: Home },
     { path: '/detail/:id',   component: Detail },
     { path: '/create',       component: Create },
-    { path: '/edit/:id',     component: Edit },
+    { path: '/edit/:id',     component: PostEdit },
     { path: '/gpx-library',  component: GpxLibrary },
     { path: '/gear-library', component: GearLibrary },
     { path: '/gear-library/edit/:id', component: GearEditPage },
