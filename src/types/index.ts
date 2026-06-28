@@ -163,6 +163,7 @@ export interface NoteLink {
   url:           string
   title:         string
   coverImageUrl: string | null
+  description:   string | null
   sortOrder:     number
   createdAt:     string
   deletedAt?:    string | null

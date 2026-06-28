@@ -95,7 +95,7 @@ const url          = ref('')
 const titleEdit    = ref('')
 const previewing   = ref(false)
 const previewError = ref(false)
-const preview      = ref<{ title: string; coverImageUrl: string | null } | null>(null)
+const preview      = ref<{ title: string; coverImageUrl: string | null; description: string | null } | null>(null)
 const adding       = ref(false)
 const addError     = ref<string | null>(null)
 
@@ -113,6 +113,7 @@ watch(() => props.open, (v) => {
     preview.value      = null
     previewError.value = false
     addError.value     = null
+    titleEdit.value    = ''
   }
 })
 
@@ -132,7 +133,7 @@ async function fetchPreview() {
   } catch {
     previewError.value = true
     titleEdit.value    = hostname.value
-    preview.value      = { title: hostname.value, coverImageUrl: null }
+    preview.value      = { title: hostname.value, coverImageUrl: null, description: null }
   } finally {
     previewing.value = false
   }
@@ -142,10 +143,11 @@ async function doAdd() {
   if (!canAdd.value) return
   adding.value   = true
   addError.value = null
-  const title    = titleEdit.value.trim() || hostname.value
-  const cover    = preview.value?.coverImageUrl ?? null
+  const title       = titleEdit.value.trim() || hostname.value
+  const cover       = preview.value?.coverImageUrl ?? null
+  const description = preview.value?.description ?? null
   try {
-    await store.addLink(url.value.trim(), title, cover, props.groupId)
+    await store.addLink(url.value.trim(), title, cover, description, props.groupId)
     emit('added')
     emit('close')
   } catch (e) {

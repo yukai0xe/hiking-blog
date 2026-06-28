@@ -46,8 +46,7 @@
         v-for="link in links"
         :key="link.id"
         :link="link"
-        @delete="emit('delete-link', link.id)"
-        @rename="emit('rename-link', link.id, $event)"
+        @open-detail="emit('open-detail-link', link)"
       />
     </div>
     <p v-else class="text-xs font-body italic text-inkMuted">此分組尚無連結</p>
@@ -71,12 +70,11 @@ import { useToast } from '../composables/useToast'
 
 const props = defineProps<{ group: NoteGroup; links: NoteLink[] }>()
 const emit = defineEmits<{
-  'add-link':    []
-  'edit-group':  []
-  'delete-group': []
-  'delete-link': [id: string]
-  'rename-link': [id: string, title: string]
-  'move-link':   [id: string]
+  'add-link':        []
+  'edit-group':      []
+  'delete-group':    []
+  'open-detail-link': [link: NoteLink]
+  'move-link':        [id: string]
 }>()
 
 const { show: showToast } = useToast()

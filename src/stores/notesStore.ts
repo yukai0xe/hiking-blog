@@ -81,12 +81,13 @@ export const useNotesStore = defineStore('notes', () => {
     url: string,
     title: string,
     coverImageUrl: string | null,
+    description: string | null,
     groupId: string | null,
   ): Promise<void> {
     const res     = await apiFetch('/api/notes/links', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ url, title, coverImageUrl, groupId }),
+      body:    JSON.stringify({ url, title, coverImageUrl, description, groupId }),
     })
     const created = await res.json() as NoteLink
     links.value.push(created)
@@ -176,7 +177,7 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
-  async function fetchPreview(url: string): Promise<{ title: string; coverImageUrl: string | null }> {
+  async function fetchPreview(url: string): Promise<{ title: string; coverImageUrl: string | null; description: string | null }> {
     const res  = await apiFetch(`/api/notes/preview?url=${encodeURIComponent(url)}`)
     return res.json()
   }

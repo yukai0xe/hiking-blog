@@ -62,8 +62,7 @@
               v-for="link in ungroupedLinks"
               :key="link.id"
               :link="link"
-              @delete="handleDeleteLink(link.id)"
-              @rename="handleRenameLink(link.id, $event)"
+              @open-detail="openDetail(link)"
             />
           </div>
           <p v-else class="text-xs font-body italic text-inkMuted">尚無未分組連結</p>
@@ -83,8 +82,7 @@
             @add-link="openAddLink(group.id)"
             @edit-group="openEditGroup(group)"
             @delete-group="handleDeleteGroup(group.id)"
-            @delete-link="handleDeleteLink($event)"
-            @rename-link="(id: string, title: string) => handleRenameLink(id, title)"
+            @open-detail-link="openDetail($event)"
             @move-link="handleMoveLink($event, group.id)"
           />
         </div>
@@ -124,6 +122,12 @@
       :open="trashOpen"
       @close="trashOpen = false"
     />
+    <NoteLinkDetailModal
+      :open="detailOpen"
+      :link="detailLink"
+      @close="detailOpen = false"
+      @delete="handleDeleteFromDetail"
+    />
   </div>
 </template>
 
@@ -131,18 +135,34 @@
 import { ref, computed, onMounted } from 'vue'
 import { ArrowLeft as ArrowLeftIcon, Plus as PlusIcon, FolderPlus as FolderPlusIcon, AlertCircle as AlertCircleIcon, Trash2 as Trash2Icon } from 'lucide-vue-next'
 import { useNotesStore } from '../stores/notesStore'
-import type { NoteGroup } from '../types'
-import NoteLinkCard       from '../components/NoteLinkCard.vue'
-import NoteGroupSection   from '../components/NoteGroupSection.vue'
-import NoteAddLinkModal   from '../components/NoteAddLinkModal.vue'
-import NoteGroupEditModal from '../components/NoteGroupEditModal.vue'
-import ConfirmDialog      from '../components/ConfirmDialog.vue'
-import NoteTrashModal     from '../components/NoteTrashModal.vue'
+import type { NoteGroup, NoteLink } from '../types'
+import NoteLinkCard         from '../components/NoteLinkCard.vue'
+import NoteGroupSection     from '../components/NoteGroupSection.vue'
+import NoteAddLinkModal     from '../components/NoteAddLinkModal.vue'
+import NoteGroupEditModal   from '../components/NoteGroupEditModal.vue'
+import ConfirmDialog        from '../components/ConfirmDialog.vue'
+import NoteTrashModal       from '../components/NoteTrashModal.vue'
+import NoteLinkDetailModal  from '../components/NoteLinkDetailModal.vue'
 
 const store = useNotesStore()
 
 const deleteError       = ref<string | null>(null)
 const ungroupedDragOver = ref(false)
+
+const detailOpen = ref(false)
+const detailLink = ref<NoteLink | null>(null)
+
+function openDetail(link: NoteLink) {
+  detailLink.value = link
+  detailOpen.value = true
+}
+
+function handleDeleteFromDetail() {
+  const link = detailLink.value
+  if (!link) return
+  detailOpen.value = false
+  handleDeleteLink(link.id)
+}
 
 const trashOpen      = ref(false)
 const confirmOpen    = ref(false)
@@ -200,11 +220,6 @@ function handleDeleteLink(id: string) {
     try { await store.deleteLink(id) }
     catch (e) { deleteError.value = (e as Error).message }
   })
-}
-
-async function handleRenameLink(id: string, title: string) {
-  try { await store.updateLinkTitle(id, title) }
-  catch (e) { deleteError.value = (e as Error).message }
 }
 
 async function handleMoveLink(id: string, groupId: string | null) {
