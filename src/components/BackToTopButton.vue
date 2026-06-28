@@ -22,9 +22,12 @@ const route     = useRoute()
 const THRESHOLD = 320
 const scrolled  = ref(false)
 
+// Detect native browser scroll-to-top support (CSS Overflow spec)
+const nativeSupported = typeof CSS !== 'undefined' && CSS.supports('scroll-to-top', 'auto')
+
 // PostDetail has its own back-to-top that handles an inner scroll container
 const visible = computed(() =>
-  scrolled.value && !route.path.startsWith('/detail/')
+  scrolled.value && !route.path.startsWith('/detail/') && !nativeSupported
 )
 
 function onScroll() {
@@ -35,7 +38,14 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+onMounted(() => {
+  if (nativeSupported) {
+    // Let the browser render its own button for the document scroll container
+    document.documentElement.style.setProperty('scroll-to-top', 'auto')
+  } else {
+    window.addEventListener('scroll', onScroll, { passive: true })
+  }
+})
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
 </script>
 
