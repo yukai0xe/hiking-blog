@@ -51,7 +51,7 @@
           </div>
 
           <!-- Card grid -->
-          <div v-else class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(200px, 350px));">
+          <div v-else class="grid gap-3" :style="isMobile ? 'grid-template-columns: 1fr;' : 'grid-template-columns: repeat(auto-fill, minmax(200px, 350px));'">
             <template v-for="item in groupedFiltered" :key="item.type === 'card' ? item.entry.id : item.label">
 
               <!-- Group divider -->
@@ -138,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import {
   ArrowLeft as ArrowLeftIcon, Plus as PlusIcon, Search as SearchIcon,
   AlertCircle as AlertCircleIcon, Map as MapIcon,
@@ -160,6 +160,11 @@ import GpxDeleteModal from '../components/GpxDeleteModal.vue'
 
 const store     = useGpxLibraryStore()
 const postStore = usePostStore()
+
+const isMobile = ref(typeof window !== 'undefined' && window.innerWidth < 640)
+function onResize() { isMobile.value = window.innerWidth < 640 }
+onMounted(() => window.addEventListener('resize', onResize, { passive: true }))
+onUnmounted(() => window.removeEventListener('resize', onResize))
 
 const VIEW_MODE_KEY = 'gpx-library-view-mode'
 const viewMode = ref<'simple' | 'advanced'>(
