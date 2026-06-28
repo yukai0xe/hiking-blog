@@ -54,11 +54,15 @@ onBeforeUnmount(() => editor.value?.destroy())
 
 <style scoped>
 .editor-toolbar {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
+  display: flex; align-items: center; flex-wrap: nowrap; gap: 2px;
   padding: 6px 8px; border-radius: 8px 8px 0 0;
   border: 1px solid var(--c-border); border-bottom: none;
   background: color-mix(in srgb, var(--c-card) 70%, var(--c-border) 30%);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.editor-toolbar::-webkit-scrollbar { display: none; }
 .tb-btn {
   display: flex; align-items: center; justify-content: center;
   min-width: 28px; height: 26px; padding: 0 5px; border-radius: 5px; cursor: pointer;
