@@ -10,54 +10,66 @@
       <span class="truncate">{{ displayText }}</span>
     </button>
 
-    <!-- Calendar dropdown -->
-    <Transition name="drp">
-      <div v-if="open" class="drp-dropdown">
+    <!-- Calendar: bottom sheet on mobile, absolute dropdown on desktop -->
+    <Teleport to="body" :disabled="!isMobile">
+      <Transition :name="isMobile ? 'sheet-fade' : 'drp'">
+        <div
+          v-if="open"
+          :class="isMobile ? 'sheet-backdrop' : ''"
+          @click.self="open = false"
+        >
+          <div :class="isMobile ? 'sheet-box' : 'drp-dropdown'">
 
-        <!-- Month header -->
-        <div class="drp-header">
-          <button class="drp-nav" @click="shiftMonth(-1)" aria-label="上個月">
-            <ChevronLeftIcon :size="14" />
-          </button>
-          <span class="drp-month-label font-heading">
-            {{ viewYear }} 年 {{ viewMonth + 1 }} 月
-          </span>
-          <button class="drp-nav" @click="shiftMonth(1)" aria-label="下個月">
-            <ChevronRightIcon :size="14" />
-          </button>
+            <!-- Handle (mobile only) -->
+            <div v-if="isMobile" class="sheet-handle" />
+
+            <!-- Month header -->
+            <div class="drp-header">
+              <button class="drp-nav" @click="shiftMonth(-1)" aria-label="上個月">
+                <ChevronLeftIcon :size="14" />
+              </button>
+              <span class="drp-month-label font-heading">
+                {{ viewYear }} 年 {{ viewMonth + 1 }} 月
+              </span>
+              <button class="drp-nav" @click="shiftMonth(1)" aria-label="下個月">
+                <ChevronRightIcon :size="14" />
+              </button>
+            </div>
+
+            <!-- Weekday row -->
+            <div class="drp-weekdays">
+              <span v-for="w in ['日','一','二','三','四','五','六']" :key="w">{{ w }}</span>
+            </div>
+
+            <!-- Day grid -->
+            <div class="drp-grid">
+              <button
+                v-for="d in calendarDays"
+                :key="d.date"
+                class="drp-day"
+                :class="dayClass(d)"
+                :disabled="!d.currentMonth"
+                @click="selectDay(d.date)"
+                @mouseenter="hoverDate = d.date"
+                @mouseleave="hoverDate = ''"
+              >
+                {{ d.day }}
+              </button>
+            </div>
+
+            <!-- Footer -->
+            <div class="drp-footer">
+              <span class="drp-hint font-body">
+                {{ start && !end ? '請選擇結束日期' : start ? `${fmt(start)} → ${fmt(end)}` : '請選擇起始日期' }}
+              </span>
+              <button v-if="start || end" class="drp-clear font-body" @click="clear">清除</button>
+              <button v-if="isMobile" class="drp-close font-body" @click="open = false">完成</button>
+            </div>
+
+          </div>
         </div>
-
-        <!-- Weekday row -->
-        <div class="drp-weekdays">
-          <span v-for="w in ['日','一','二','三','四','五','六']" :key="w">{{ w }}</span>
-        </div>
-
-        <!-- Day grid -->
-        <div class="drp-grid">
-          <button
-            v-for="d in calendarDays"
-            :key="d.date"
-            class="drp-day"
-            :class="dayClass(d)"
-            :disabled="!d.currentMonth"
-            @click="selectDay(d.date)"
-            @mouseenter="hoverDate = d.date"
-            @mouseleave="hoverDate = ''"
-          >
-            {{ d.day }}
-          </button>
-        </div>
-
-        <!-- Footer -->
-        <div class="drp-footer">
-          <span class="drp-hint font-body">
-            {{ start && !end ? '請選擇結束日期' : start ? `${fmt(start)} → ${fmt(end)}` : '請選擇起始日期' }}
-          </span>
-          <button v-if="start || end" class="drp-clear font-body" @click="clear">清除</button>
-        </div>
-
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -71,12 +83,12 @@ const end   = defineModel<string>('end',   { required: true })
 const open      = ref(false)
 const hoverDate = ref('')
 const wrapRef   = ref<HTMLElement | null>(null)
+const isMobile  = ref(typeof window !== 'undefined' && window.innerWidth < 640)
 
 const today     = new Date()
 const viewYear  = ref(today.getFullYear())
 const viewMonth = ref(today.getMonth())
 
-// ── Helpers ───────────────────────────────────────────
 function toStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -86,13 +98,12 @@ function fmt(iso: string) {
   return `${y}/${m}/${d}`
 }
 
-// ── Calendar days ──────────────────────────────────────
 interface CalDay { date: string; day: number; currentMonth: boolean }
 
 const calendarDays = computed<CalDay[]>(() => {
   const days: CalDay[] = []
-  const first   = new Date(viewYear.value, viewMonth.value, 1)
-  const last    = new Date(viewYear.value, viewMonth.value + 1, 0)
+  const first    = new Date(viewYear.value, viewMonth.value, 1)
+  const last     = new Date(viewYear.value, viewMonth.value + 1, 0)
   const padStart = first.getDay()
 
   for (let i = padStart - 1; i >= 0; i--) {
@@ -110,14 +121,13 @@ const calendarDays = computed<CalDay[]>(() => {
   return days
 })
 
-// ── Day class ──────────────────────────────────────────
 function dayClass(d: CalDay) {
   if (!d.currentMonth) return 'drp-day--other'
   const s = start.value
   const e = end.value || hoverDate.value
-  const isStart = d.date === s
-  const isEnd   = d.date === (end.value || '')
-  const inRange = s && e && d.date > (s < e ? s : e) && d.date < (s < e ? e : s)
+  const isStart    = d.date === s
+  const isEnd      = d.date === (end.value || '')
+  const inRange    = s && e && d.date > (s < e ? s : e) && d.date < (s < e ? e : s)
   const isHoverEnd = !end.value && hoverDate.value && s && d.date === hoverDate.value && d.date > s
   return {
     'drp-day--start':    isStart,
@@ -127,25 +137,24 @@ function dayClass(d: CalDay) {
   }
 }
 
-// ── Selection logic ────────────────────────────────────
 function selectDay(date: string) {
   if (!start.value || (start.value && end.value)) {
     start.value = date
-    end.value = ''
+    end.value   = ''
   } else {
     if (date < start.value) {
-      end.value = start.value
+      end.value   = start.value
       start.value = date
     } else {
       end.value = date
     }
-    open.value = false
+    if (!isMobile.value) open.value = false
   }
 }
 
 function clear() {
   start.value = ''
-  end.value = ''
+  end.value   = ''
 }
 
 function shiftMonth(delta: number) {
@@ -154,25 +163,35 @@ function shiftMonth(delta: number) {
   viewMonth.value = d.getMonth()
 }
 
-// ── Display text ───────────────────────────────────────
 const displayText = computed(() => {
-  if (start.value && end.value)   return `${fmt(start.value)} → ${fmt(end.value)}`
-  if (start.value)                return `${fmt(start.value)} →`
+  if (start.value && end.value) return `${fmt(start.value)} → ${fmt(end.value)}`
+  if (start.value)              return `${fmt(start.value)} →`
   return '選擇日期'
 })
 
-// ── Click outside ──────────────────────────────────────
 function onClickOutside(e: MouseEvent) {
-  if (wrapRef.value && !wrapRef.value.contains(e.target as Node)) open.value = false
+  if (!isMobile.value && wrapRef.value && !wrapRef.value.contains(e.target as Node))
+    open.value = false
 }
-onMounted(()   => document.addEventListener('mousedown', onClickOutside))
-onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
+
+function onResize() {
+  isMobile.value = window.innerWidth < 640
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', onClickOutside)
+  window.addEventListener('resize', onResize, { passive: true })
+})
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onClickOutside)
+  window.removeEventListener('resize', onResize)
+})
 </script>
 
 <style scoped>
 .drp-wrap { position: relative; }
 
-/* Trigger */
+/* ── Trigger ──────────────────────────────────────────── */
 .drp-trigger {
   min-width: 130px;
   padding: 7px 10px;
@@ -190,7 +209,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
 .drp-trigger:focus { border-color: var(--c-primary); }
 .drp-trigger--active { border-color: var(--c-primary); color: var(--c-primary); }
 
-/* Dropdown */
+/* ── Desktop dropdown ─────────────────────────────────── */
 .drp-dropdown {
   position: absolute;
   top: calc(100% + 6px);
@@ -204,7 +223,28 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   overflow: hidden;
 }
 
-/* Header */
+/* ── Mobile bottom sheet ──────────────────────────────── */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.sheet-box {
+  width: 100%;
+  background: var(--c-card);
+  border: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);
+  border-radius: 0;
+  box-shadow: 0 -8px 48px rgba(0,0,0,0.4);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  overflow: hidden;
+}
+.sheet-handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: 12px auto 4px;
+}
+
+/* ── Calendar internals (shared) ──────────────────────── */
 .drp-header {
   display: flex;
   align-items: center;
@@ -213,56 +253,36 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   border-bottom: 1px solid var(--c-border);
 }
 .drp-month-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--c-ink);
-  letter-spacing: 0.03em;
+  font-size: 14px; font-weight: 600;
+  color: var(--c-ink); letter-spacing: 0.03em;
 }
 .drp-nav {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--c-inkMuted);
-  cursor: pointer;
+  width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--c-inkMuted); cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 .drp-nav:hover { background: var(--c-border); color: var(--c-ink); }
 
-/* Weekdays */
 .drp-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  display: grid; grid-template-columns: repeat(7, 1fr);
   padding: 6px 8px 2px;
 }
 .drp-weekdays span {
-  text-align: center;
-  font-size: 10px;
+  text-align: center; font-size: 10px;
   font-family: Inter, sans-serif;
-  color: var(--c-inkMuted);
-  opacity: 0.6;
-  letter-spacing: 0.05em;
+  color: var(--c-inkMuted); opacity: 0.6; letter-spacing: 0.05em;
 }
 
-/* Day grid */
 .drp-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  padding: 2px 8px 8px;
-  gap: 1px;
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  padding: 2px 8px 8px; gap: 1px;
 }
 .drp-day {
   aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-family: Inter, sans-serif;
-  color: var(--c-ink);
-  border-radius: 6px;
-  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-family: Inter, sans-serif;
+  color: var(--c-ink); border-radius: 6px; cursor: pointer;
   transition: background 0.1s, color 0.1s;
 }
 .drp-day:hover:not(:disabled):not(.drp-day--start):not(.drp-day--end) {
@@ -273,33 +293,35 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
 .drp-day--in-range { background: color-mix(in srgb, var(--c-primary) 15%, transparent); border-radius: 0; }
 .drp-day--start,
 .drp-day--end {
-  background: var(--c-primary);
-  color: var(--c-base);
-  font-weight: 700;
-  border-radius: 6px;
+  background: var(--c-primary); color: var(--c-base);
+  font-weight: 700; border-radius: 6px;
 }
 
-/* Footer */
 .drp-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; gap: 8px;
   border-top: 1px solid var(--c-border);
 }
-.drp-hint  { font-size: 11px; color: var(--c-inkMuted); }
+.drp-hint  { font-size: 11px; color: var(--c-inkMuted); flex: 1; }
 .drp-clear {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--c-primary);
-  cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.15s;
+  font-size: 11px; font-weight: 600; color: var(--c-primary);
+  cursor: pointer; opacity: 0.8; transition: opacity 0.15s;
 }
 .drp-clear:hover { opacity: 1; }
+.drp-close {
+  font-size: 11px; font-weight: 600;
+  color: var(--c-ink); cursor: pointer; opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.drp-close:hover { opacity: 1; }
 
-/* Transition */
+/* ── Desktop transition (drop down) ──────────────────── */
 .drp-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .drp-leave-active { transition: opacity 0.12s ease, transform 0.1s ease; }
 .drp-enter-from, .drp-leave-to { opacity: 0; transform: translateY(-4px); }
+
+/* ── Mobile transition (slide up) ────────────────────── */
+.sheet-fade-enter-active { transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.sheet-fade-leave-active { transition: opacity 0.16s ease, transform 0.2s ease; }
+.sheet-fade-enter-from, .sheet-fade-leave-to { opacity: 0; transform: translateY(60%); }
 </style>

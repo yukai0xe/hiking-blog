@@ -394,6 +394,14 @@ const dateDisplay = computed(() => {
   opacity: 0.8;
 }
 
+@media (max-width: 639px) {
+  .card-wrap {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}
+
 .tags-row {
   display: flex;
   flex-wrap: wrap;

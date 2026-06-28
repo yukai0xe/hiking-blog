@@ -1,7 +1,7 @@
 <template>
-  <header class="sticky top-0 z-20 px-4 pt-4 pb-2">
+  <header class="sticky top-0 z-20 sm:px-4 sm:pt-4 sm:pb-2">
     <div
-      class="max-w-7xl mx-auto card-aged px-5 py-3 flex items-center justify-between"
+      class="max-w-7xl mx-auto card-aged px-5 py-3 flex items-center justify-between navbar-inner"
       style="backdrop-filter: blur(10px);"
     >
       <div class="flex items-center gap-2.5">
@@ -48,6 +48,15 @@ function doLogout() {
 </script>
 
 <style scoped>
+@media (max-width: 639px) {
+  .navbar-inner {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+  }
+}
+
 .nav-icon-btn {
   display: flex;
   align-items: center;
