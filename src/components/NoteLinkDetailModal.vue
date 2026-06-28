@@ -177,12 +177,14 @@ import {
 import type { NoteLink } from '../types'
 import { useNotesStore } from '../stores/notesStore'
 import { useToast } from '../composables/useToast'
+import { useBrowserPanel } from '../composables/useBrowserPanel'
 
 const props = defineProps<{ open: boolean; link: NoteLink | null }>()
 const emit  = defineEmits<{ close: []; delete: [] }>()
 
-const store           = useNotesStore()
-const { show: toast } = useToast()
+const store              = useNotesStore()
+const { show: toast }    = useToast()
+const { browserOpen }    = useBrowserPanel()
 
 const titleEdit       = ref('')
 const imgError        = ref(false)
@@ -200,10 +202,11 @@ const currentGroupName = computed(() => {
 })
 
 watch(() => props.link, (l) => {
-  titleEdit.value  = l?.title ?? ''
-  imgError.value   = false
+  titleEdit.value      = l?.title ?? ''
+  imgError.value       = false
   showBrowser.value    = false
   browserLoading.value = true
+  browserOpen.value    = false
 })
 
 watch(() => props.open, (v) => {
@@ -211,6 +214,7 @@ watch(() => props.open, (v) => {
     showGroupPicker.value = false
     showBrowser.value     = false
     browserLoading.value  = true
+    browserOpen.value     = false
   }
 })
 
@@ -235,9 +239,11 @@ function toggleBrowser() {
   if (!showBrowser.value) {
     browserLoading.value = true
     showBrowser.value    = true
+    browserOpen.value    = true
   } else {
     showBrowser.value    = false
     browserLoading.value = true
+    browserOpen.value    = false
   }
 }
 
