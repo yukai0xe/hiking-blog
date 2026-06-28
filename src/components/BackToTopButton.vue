@@ -82,4 +82,8 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .btt-fade-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .btt-fade-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .btt-fade-enter-from, .btt-fade-leave-to { opacity: 0; transform: translateY(8px); }
+
+@media (max-width: 639px) {
+  .btt-btn { display: none; }
+}
 </style>
