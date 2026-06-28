@@ -2,8 +2,8 @@
   <div class="min-h-screen textured-bg vignette">
 
     <!-- Navbar -->
-    <header class="sticky top-0 z-20 px-4 pt-4 pb-2">
-      <div class="max-w-4xl mx-auto card-aged px-5 py-3 flex items-center gap-3"
+    <header class="sticky top-0 z-20 sm:px-4 sm:pt-4 sm:pb-2">
+      <div class="max-w-4xl mx-auto card-aged px-5 py-3 flex items-center gap-3 profile-navbar"
            style="backdrop-filter: blur(10px);">
         <button
           @click="router.back()"
@@ -16,8 +16,8 @@
       </div>
     </header>
 
-    <main class="relative z-10 max-w-4xl mx-auto px-4 py-8">
-      <div class="card-aged p-6">
+    <main class="relative z-10 max-w-4xl mx-auto px-0 sm:px-4 py-4 sm:py-8">
+      <div class="profile-card">
         <Tabs :tabs="tabs" v-model:active="activeTab">
           <template #default="{ active }">
 
@@ -225,3 +225,29 @@ const themeOptions = [
   { value: 'auto'  as const, label: '跟隨系統', icon: MonitorIcon },
 ]
 </script>
+
+<style scoped>
+/* Mobile: flush navbar (no border-radius, no side/top borders) */
+@media (max-width: 639px) {
+  .profile-navbar {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+  }
+}
+
+/* Mobile: no card wrapper — full bleed */
+.profile-card { /* plain on mobile */ }
+
+/* sm+: restore card-aged appearance */
+@media (min-width: 640px) {
+  .profile-card {
+    background: var(--c-card);
+    border: 1px solid var(--c-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 16px var(--c-shadow), inset 0 1px 0 rgba(255,255,255,0.04);
+    padding: 24px;
+  }
+}
+</style>
