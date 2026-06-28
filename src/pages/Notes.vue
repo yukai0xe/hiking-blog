@@ -63,6 +63,7 @@
               :key="link.id"
               :link="link"
               @delete="handleDeleteLink(link.id)"
+              @rename="handleRenameLink(link.id, $event)"
             />
           </div>
           <p v-else class="text-xs font-body italic text-inkMuted">尚無未分組連結</p>
@@ -83,6 +84,7 @@
             @edit-group="openEditGroup(group)"
             @delete-group="handleDeleteGroup(group.id)"
             @delete-link="handleDeleteLink($event)"
+            @rename-link="(id: string, title: string) => handleRenameLink(id, title)"
             @move-link="handleMoveLink($event, group.id)"
           />
         </div>
@@ -198,6 +200,11 @@ function handleDeleteLink(id: string) {
     try { await store.deleteLink(id) }
     catch (e) { deleteError.value = (e as Error).message }
   })
+}
+
+async function handleRenameLink(id: string, title: string) {
+  try { await store.updateLinkTitle(id, title) }
+  catch (e) { deleteError.value = (e as Error).message }
 }
 
 async function handleMoveLink(id: string, groupId: string | null) {

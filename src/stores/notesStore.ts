@@ -92,6 +92,23 @@ export const useNotesStore = defineStore('notes', () => {
     links.value.push(created)
   }
 
+  async function updateLinkTitle(id: string, title: string): Promise<void> {
+    const idx = links.value.findIndex(l => l.id === id)
+    if (idx === -1) return
+    const prev = { ...links.value[idx] }
+    links.value[idx] = { ...links.value[idx], title }
+    try {
+      await apiFetch(`/api/notes/links/${id}/rename`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ title }),
+      })
+    } catch (e) {
+      links.value[idx] = prev
+      throw e
+    }
+  }
+
   async function moveLink(id: string, groupId: string | null): Promise<void> {
     const idx = links.value.findIndex(l => l.id === id)
     if (idx === -1) return
@@ -164,5 +181,5 @@ export const useNotesStore = defineStore('notes', () => {
     return res.json()
   }
 
-  return { groups, links, trashLinks, loading, error, fetchNotes, createGroup, updateGroup, deleteGroup, addLink, moveLink, deleteLink, fetchTrash, restoreLink, permanentDeleteLink, emptyTrash, fetchPreview }
+  return { groups, links, trashLinks, loading, error, fetchNotes, createGroup, updateGroup, deleteGroup, addLink, updateLinkTitle, moveLink, deleteLink, fetchTrash, restoreLink, permanentDeleteLink, emptyTrash, fetchPreview }
 })

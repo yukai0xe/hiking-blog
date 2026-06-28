@@ -1,5 +1,10 @@
 <template>
-  <div class="note-link-card group relative flex" draggable="true" @click="openLink" @dragstart="onDragStart">
+  <div
+    class="note-link-card group relative flex"
+    draggable="true"
+    @click="!editing && openLink()"
+    @dragstart="onDragStart"
+  >
     <!-- Cover image -->
     <div class="note-link-cover shrink-0">
       <img
@@ -16,11 +21,22 @@
 
     <!-- Info -->
     <div class="flex-1 min-w-0 px-3 py-2.5 flex flex-col justify-center">
-      <p class="text-sm font-body font-semibold text-ink line-clamp-2 leading-snug">{{ link.title }}</p>
-      <p class="text-[11px] font-mono text-inkMuted mt-0.5 truncate">{{ hostname }}</p>
+      <!-- Title: normal or inline-edit -->
+      <input
+        v-if="editing"
+        ref="titleInput"
+        v-model="editTitle"
+        class="note-link-title-input"
+        @keydown.enter.prevent="confirmEdit"
+        @keydown.esc.prevent="cancelEdit"
+        @blur="confirmEdit"
+        @click.stop
+      />
+      <p v-else class="text-sm font-body font-semibold text-ink line-clamp-2 leading-snug">{{ link.title }}</p>
+      <p class="text-[11px] font-mono text-inkMuted mt-0.5 truncate">{{ link.url }}</p>
     </div>
 
-    <!-- Hover actions (visible on hover) -->
+    <!-- Hover actions -->
     <div class="note-link-actions opacity-0 group-hover:opacity-100 flex flex-col gap-2">
       <button
         class="note-link-action-btn"
@@ -29,6 +45,13 @@
       >
         <CheckIcon v-if="copied" :size="11" />
         <LinkIcon  v-else        :size="11" />
+      </button>
+      <button
+        class="note-link-action-btn"
+        @click.stop="startEdit"
+        aria-label="編輯名稱"
+      >
+        <PencilIcon :size="11" />
       </button>
       <button
         class="note-link-action-btn note-link-action-btn--delete"
@@ -42,23 +65,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Link as LinkIcon, X as XIcon, Check as CheckIcon } from 'lucide-vue-next'
+import { ref, nextTick } from 'vue'
+import { Link as LinkIcon, X as XIcon, Check as CheckIcon, Pencil as PencilIcon } from 'lucide-vue-next'
 import type { NoteLink } from '../types'
 import { useToast } from '../composables/useToast'
 
 const props = defineProps<{ link: NoteLink }>()
-const emit  = defineEmits<{ delete: [] }>()
+const emit  = defineEmits<{ delete: []; rename: [title: string] }>()
 
 const { show: showToast } = useToast()
-const imgError = ref(false)
-const copied   = ref(false)
+const imgError   = ref(false)
+const copied     = ref(false)
+const editing    = ref(false)
+const editTitle  = ref('')
+const titleInput = ref<HTMLInputElement | null>(null)
 let   copyTimer: ReturnType<typeof setTimeout> | null = null
-
-const hostname = computed(() => {
-  try { return new URL(props.link.url).hostname.replace('www.', '') }
-  catch { return props.link.url }
-})
 
 function openLink() {
   window.open(props.link.url, '_blank', 'noopener,noreferrer')
@@ -72,7 +93,27 @@ function copyLink() {
   showToast(`已複製：${props.link.title}`)
 }
 
+async function startEdit() {
+  editTitle.value = props.link.title
+  editing.value   = true
+  await nextTick()
+  titleInput.value?.focus()
+  titleInput.value?.select()
+}
+
+function confirmEdit() {
+  if (!editing.value) return
+  editing.value = false
+  const t = editTitle.value.trim()
+  if (t && t !== props.link.title) emit('rename', t)
+}
+
+function cancelEdit() {
+  editing.value = false
+}
+
 function onDragStart(e: DragEvent) {
+  if (editing.value) { e.preventDefault(); return }
   e.dataTransfer!.setData('text/plain', props.link.id)
   e.dataTransfer!.effectAllowed = 'move'
 }
@@ -96,6 +137,18 @@ function onDragStart(e: DragEvent) {
   height: 110px;
   background: color-mix(in srgb, var(--c-border) 30%, transparent);
   overflow: hidden;
+}
+.note-link-title-input {
+  width: 100%;
+  font-size: 0.875rem;
+  font-family: var(--font-body, inherit);
+  font-weight: 600;
+  color: var(--c-ink);
+  background: color-mix(in srgb, var(--c-primary) 8%, transparent);
+  border: 1px solid var(--c-primary);
+  border-radius: 6px;
+  padding: 2px 6px;
+  outline: none;
 }
 .note-link-actions {
   position: absolute;

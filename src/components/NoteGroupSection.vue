@@ -47,6 +47,7 @@
         :key="link.id"
         :link="link"
         @delete="emit('delete-link', link.id)"
+        @rename="emit('rename-link', link.id, $event)"
       />
     </div>
     <p v-else class="text-xs font-body italic text-inkMuted">此分組尚無連結</p>
@@ -74,6 +75,7 @@ const emit = defineEmits<{
   'edit-group':  []
   'delete-group': []
   'delete-link': [id: string]
+  'rename-link': [id: string, title: string]
   'move-link':   [id: string]
 }>()
 
