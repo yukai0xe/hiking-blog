@@ -1,11 +1,10 @@
 <template>
   <div
-    class="gpx-card card-reveal cursor-pointer"
+    class="gpx-card card-reveal cursor-pointer w-full sm:max-w-[350px]"
     :class="{
       'gpx-card-dragging': isDragging,
       'gpx-card-dragover': isDragOver,
     }"
-    class="w-full sm:max-w-[350px]"
     draggable="true"
     @click="emit('click')"
     @dragstart="emit('dragstart')"
