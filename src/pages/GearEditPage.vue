@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen textured-bg vignette py-8 overflow-x-hidden">
-    <div class="relative z-10 max-w-3xl mx-auto px-4">
+  <div class="min-h-screen textured-bg vignette py-8">
+    <div class="relative z-10 max-w-3xl w-full mx-auto px-4 overflow-x-hidden">
 
       <!-- Header -->
       <div class="flex items-center gap-3 mb-8">
