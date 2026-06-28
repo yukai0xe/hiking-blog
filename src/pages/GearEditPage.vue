@@ -45,7 +45,7 @@
         </div>
 
         <!-- ── Basic fields ──────────────────────────────── -->
-        <div class="card-aged mb-5 space-y-4">
+        <div class="card-aged px-4 sm:px-6 py-5 space-y-4">
           <p class="section-label">基本資訊</p>
 
           <!-- Name + Category -->
@@ -141,13 +141,13 @@
         </div>
 
         <!-- ── Description (rich text) ──────────────────── -->
-        <div class="card-aged mb-5">
+        <div class="card-aged px-4 sm:px-6 py-5">
           <p class="section-label mb-3">詳細說明</p>
           <GearRichEditor v-model="description" />
         </div>
 
         <!-- ── Images ────────────────────────────────────── -->
-        <div class="card-aged mb-8">
+        <div class="card-aged px-4 sm:px-6 py-5">
           <p class="section-label mb-3">圖片</p>
           <GearImageUploader
             ref="imageUploaderRef"
