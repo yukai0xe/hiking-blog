@@ -131,3 +131,13 @@
     transition: background 0.3s ease;
   }
 }
+
+/* ─── Hide scrollbars on mobile ────────────────────────── */
+@media (max-width: 639px) {
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
