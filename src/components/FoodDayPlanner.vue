@@ -76,7 +76,7 @@
       <p class="label-title mb-3">糧食總表</p>
 
       <!-- ── EDITING: two-column (form | cards) ──────────────── -->
-      <div v-if="editing" class="grid gap-5" :style="formOpen ? 'grid-template-columns: 1fr 420px; align-items: start;' : 'grid-template-columns: 1fr;'">
+      <div v-if="editing" class="grid gap-5" :style="formOpen && !isMobile ? 'grid-template-columns: 1fr 420px; align-items: start;' : 'grid-template-columns: 1fr;'">
 
         <!-- Left: food cards -->
         <div>
@@ -179,9 +179,9 @@
           </div>
         </div>
 
-        <!-- Right: add/edit form (sticky, only when formOpen) -->
+        <!-- Right: add/edit form (sticky, desktop only) -->
         <div
-          v-if="formOpen"
+          v-if="formOpen && !isMobile"
           class="card-aged rounded-xl p-5 space-y-3 sticky top-4"
           :style="editingFoodIndex !== null
             ? 'border: 1px solid color-mix(in srgb, var(--c-primary) 40%, transparent);'
@@ -199,11 +199,11 @@
           <div class="grid grid-cols-2 gap-2">
             <div class="space-y-1">
               <label class="field-label">重量 (g)</label>
-              <input v-model.number="foodForm.weight" type="number" min="0" class="field-input" placeholder="0" />
+              <NumberInput :model-value="foodForm.weight" :min="0" placeholder="0" @update:model-value="v => foodForm.weight = v ?? 0" />
             </div>
             <div class="space-y-1">
               <label class="field-label">數量</label>
-              <input v-model.number="foodForm.quantity" type="number" min="1" class="field-input" placeholder="1" />
+              <NumberInput :model-value="foodForm.quantity" :min="1" @update:model-value="v => foodForm.quantity = v ?? 1" />
             </div>
           </div>
           <div class="space-y-1">
@@ -216,7 +216,7 @@
           </div>
           <div class="space-y-1">
             <label class="field-label">價格</label>
-            <input v-model.number="foodForm.price" type="number" min="0" class="field-input" placeholder="選填" />
+            <NumberInput v-model="foodForm.price" :min="0" placeholder="選填" />
           </div>
           <p v-if="saveError" class="text-[11px] font-body text-red-400 break-all">{{ saveError }}</p>
           <div class="flex gap-2 pt-1">
@@ -291,10 +291,73 @@
     </div>
 
   </div>
+
+  <!-- ── Mobile: food form bottom sheet ──────────────────────── -->
+  <Teleport to="body">
+    <Transition name="form-sheet">
+      <div v-if="formOpen && isMobile" class="form-backdrop" @click.self="closeForm">
+        <div class="form-sheet-box">
+          <div class="form-handle" />
+          <div class="px-5 py-4 space-y-3">
+            <p class="text-[10px] font-body font-semibold tracking-[0.14em] uppercase"
+              :style="editingFoodIndex !== null ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'">
+              {{ editingFoodIndex !== null ? '編輯糧食' : '新增糧食' }}
+            </p>
+            <div class="space-y-1">
+              <label class="field-label">食物名稱</label>
+              <input v-model="foodForm.name" class="field-input" placeholder="例：牛肉乾"
+                @keydown.enter.prevent="submitFood" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="space-y-1">
+                <label class="field-label">重量 (g)</label>
+                <NumberInput :model-value="foodForm.weight" :min="0" placeholder="0" @update:model-value="v => foodForm.weight = v ?? 0" />
+              </div>
+              <div class="space-y-1">
+                <label class="field-label">數量</label>
+                <NumberInput :model-value="foodForm.quantity" :min="1" @update:model-value="v => foodForm.quantity = v ?? 1" />
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="field-label">備註</label>
+              <input v-model="foodForm.note" class="field-input" placeholder="選填" />
+            </div>
+            <div class="space-y-1">
+              <label class="field-label">參考連結</label>
+              <input v-model="foodForm.referenceUrl" type="url" class="field-input" placeholder="https://" />
+            </div>
+            <div class="space-y-1">
+              <label class="field-label">價格</label>
+              <NumberInput v-model="foodForm.price" :min="0" placeholder="選填" />
+            </div>
+            <p v-if="saveError" class="text-[11px] font-body text-red-400 break-all">{{ saveError }}</p>
+            <div class="flex gap-2 pt-1 pb-1">
+              <button
+                v-if="editingFoodIndex !== null"
+                class="flex-1 py-2 rounded-lg text-xs font-body cursor-pointer border transition-colors duration-150"
+                style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                :disabled="saving"
+                @click="cancelEdit"
+              >取消</button>
+              <button
+                class="flex-1 py-2 rounded-lg text-xs font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-1.5"
+                :disabled="saving || !foodForm.name.trim()"
+                @click="submitFood"
+              >
+                <div v-if="saving" class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                {{ editingFoodIndex !== null ? '更新' : '新增' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   X as XIcon,
   GripVertical as GripVerticalIcon,
@@ -305,6 +368,7 @@ import {
 } from 'lucide-vue-next'
 import type { Food, FoodDraft } from '../types'
 import { usePostStore } from '../stores/postStore'
+import NumberInput from './NumberInput.vue'
 
 const props = defineProps<{
   foods:      Food[]
@@ -317,6 +381,11 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:editing': [boolean] }>()
 
 const store = usePostStore()
+
+const isMobile = ref(typeof window !== 'undefined' && window.innerWidth < 640)
+function onResize() { isMobile.value = window.innerWidth < 640 }
+onMounted(() => window.addEventListener('resize', onResize, { passive: true }))
+onUnmounted(() => window.removeEventListener('resize', onResize))
 
 // ── Days ──────────────────────────────────────────────────────
 const numDays = computed(() => {
@@ -568,4 +637,30 @@ async function deleteFood(index: number) {
 .form-slide-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
 .form-slide-enter-from,
 .form-slide-leave-to     { opacity: 0; transform: translateY(-6px); }
+
+/* ── Mobile: form bottom sheet ──────────────────────────────── */
+.form-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(0,0,0,0.55);
+}
+.form-sheet-box {
+  width: 100%;
+  background: var(--c-card);
+  border: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);
+  border-radius: 0;
+  box-shadow: 0 -8px 48px rgba(0,0,0,0.45);
+  max-height: 85dvh;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.form-handle {
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: 12px auto 4px;
+}
+.form-sheet-enter-active { transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.form-sheet-leave-active { transition: opacity 0.16s ease, transform 0.2s ease; }
+.form-sheet-enter-from, .form-sheet-leave-to { opacity: 0; transform: translateY(60%); }
 </style>

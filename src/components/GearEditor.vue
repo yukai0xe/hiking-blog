@@ -1,22 +1,23 @@
 <template>
-  <div>
+  <div class="gear-root">
 
     <!-- ── EDITING: two-column (cards | form) ──────────────────── -->
     <div
       v-if="editing"
       class="grid gap-5"
-      :style="formOpen
+      :style="formOpen && !isMobile
         ? 'grid-template-columns: 1fr 420px; align-items: start;'
         : 'grid-template-columns: 1fr;'"
     >
 
       <!-- Left: gear cards -->
-      <div>
-        <div class="flex items-center justify-between mb-3">
+      <div class="min-w-0">
+        <!-- Header row: count + desktop action buttons -->
+        <div class="flex items-center justify-between mb-2">
           <span class="text-[11px] font-mono text-inkMuted opacity-50">
             {{ gears.length }} 件裝備 · {{ totalWeight }} g
           </span>
-          <div v-if="!formOpen" class="flex items-center gap-2">
+          <div v-if="!formOpen" class="hidden sm:flex items-center gap-2">
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
               style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
@@ -36,9 +37,29 @@
           </div>
         </div>
 
+        <!-- Mobile: full-width action button row -->
+        <div v-if="!formOpen" class="flex gap-2 sm:hidden mb-3">
+          <button
+            class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
+            style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
+            @click="openLibraryModal"
+          >
+            <LibraryIcon :size="13" />
+            裝備庫
+          </button>
+          <button
+            class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold font-body cursor-pointer btn-cta transition-colors duration-150"
+            @click="openAddForm"
+          >
+            <PlusIcon :size="13" />
+            新增裝備
+          </button>
+        </div>
+
         <div v-if="gears.length === 0"
           class="text-center text-inkMuted py-16 font-body italic text-sm opacity-50">
-          — 尚無裝備，請填寫右側表單新增 —
+          <span class="hidden sm:inline">— 尚無裝備，請填寫右側表單新增 —</span>
+          <span class="sm:hidden">— 尚無裝備，點擊「新增裝備」開始 —</span>
         </div>
 
         <div v-else class="space-y-2">
@@ -58,13 +79,13 @@
               </div>
               <div class="flex items-center gap-0.5 shrink-0">
                 <button
-                  class="w-7 h-7 flex items-center justify-center rounded-lg transition-colors duration-150 cursor-pointer"
+                  class="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg transition-colors duration-150 cursor-pointer"
                   :style="editingGearIndex === gi ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'"
                   :disabled="saving"
                   @click.stop="startEdit(gi)"
                 ><Pencil2Icon :size="13" /></button>
                 <button
-                  class="w-7 h-7 flex items-center justify-center rounded-lg transition-colors duration-150 cursor-pointer hover:text-red-400"
+                  class="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg transition-colors duration-150 cursor-pointer hover:text-red-400"
                   style="color: var(--c-inkMuted);"
                   :disabled="saving"
                   @click.stop="deleteGear(gi)"
@@ -99,9 +120,9 @@
         </div>
       </div>
 
-      <!-- Right: add/edit form (sticky) -->
+      <!-- Right: add/edit form (sticky, desktop only) -->
       <div
-        v-if="formOpen"
+        v-if="formOpen && !isMobile"
         class="card-aged rounded-xl p-5 space-y-3 sticky top-4"
         :style="editingGearIndex !== null
           ? 'border: 1px solid color-mix(in srgb, var(--c-primary) 40%, transparent);'
@@ -127,14 +148,14 @@
         </div>
 
         <!-- Weight + Quantity + Brand -->
-        <div class="grid gap-2" style="grid-template-columns: 80px 70px 1fr;">
+        <div class="grid gap-2" style="grid-template-columns: 1fr 1fr 1fr;">
           <div class="space-y-1">
             <label class="field-label">重量 (g)</label>
-            <input v-model.number="gearForm.weight" type="number" min="0" class="field-input" placeholder="0" />
+            <NumberInput v-model="gearForm.weight" :min="0" placeholder="0" />
           </div>
           <div class="space-y-1">
             <label class="field-label">數量</label>
-            <input v-model.number="gearForm.quantity" type="number" min="1" class="field-input" placeholder="1" />
+            <NumberInput v-model="gearForm.quantity" :min="1" />
           </div>
           <div class="space-y-1">
             <label class="field-label">品牌</label>
@@ -146,7 +167,7 @@
         <div class="grid grid-cols-2 gap-2">
           <div class="space-y-1">
             <label class="field-label">價格</label>
-            <input v-model.number="gearForm.price" type="number" min="0" class="field-input" placeholder="選填" />
+            <NumberInput v-model="gearForm.price" :min="0" placeholder="選填" />
           </div>
           <div class="space-y-1">
             <label class="field-label">加入時間</label>
@@ -188,66 +209,190 @@
       </div>
     </div>
 
-    <!-- ── VIEW mode: read-only table ──────────────────────────── -->
+    <!-- ── VIEW mode ────────────────────────────────────────────── -->
     <template v-else>
       <div v-if="gears.length === 0" class="text-center text-inkMuted py-10 font-body italic">
         — 尚無裝備資料，點擊「編輯裝備」新增 —
       </div>
-      <div v-else class="card-aged overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-border text-left">
-              <th class="th">名稱</th>
-              <th class="th">品牌</th>
-              <th class="th">類別</th>
-              <th class="th text-right">數量</th>
-              <th class="th text-right">重量 (g)</th>
-              <th class="th text-right">價格</th>
-              <th class="th">備註</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="gear in gears" :key="gear.id" class="border-b border-border/50 hover:bg-surface/60 transition-colors duration-150">
-              <td class="td font-medium text-ink font-body">
-                <span class="flex items-center gap-1.5">
-                  {{ gear.name }}
-                  <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
-                    class="text-inkMuted hover:text-primary transition-colors shrink-0">
-                    <ExternalLinkIcon :size="11" />
-                  </a>
-                </span>
-              </td>
-              <td class="td text-inkMuted font-body">{{ gear.brand || '—' }}</td>
-              <td class="td">
-                <span class="px-2 py-0.5 rounded text-[11px] font-body"
-                  style="background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);">
-                  {{ gear.category || '其他' }}
-                </span>
-              </td>
-              <td class="td text-inkMuted font-mono text-right">{{ gear.quantity ?? 1 }}</td>
-              <td class="td text-inkMuted font-mono text-right">{{ gear.weight }}</td>
-              <td class="td text-inkMuted font-mono text-right">{{ gear.price != null ? gear.price.toLocaleString() : '—' }}</td>
-              <td class="td text-inkMuted/70 italic font-body">{{ gear.note || '—' }}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr style="background: color-mix(in srgb, var(--c-primary) 10%, transparent);">
-              <td class="py-3 px-4 font-semibold text-primary font-body tracking-wide" colspan="4">Total</td>
-              <td class="py-3 px-4 font-semibold text-primary font-mono text-right">{{ totalWeight }} g</td>
-              <td colspan="2" />
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+      <template v-else>
+
+        <!-- Mobile: card list (no table, no x-scroll) -->
+        <div class="sm:hidden space-y-2">
+          <div
+            v-for="gear in gears" :key="gear.id"
+            class="card-aged rounded-xl p-4"
+            style="border: 1px solid var(--c-border);"
+          >
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="flex-1 min-w-0 font-body font-semibold text-sm text-ink truncate">{{ gear.name }}</span>
+              <span
+                class="shrink-0 text-[10px] font-body px-2 py-0.5 rounded-full"
+                style="background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);"
+              >{{ gear.category || '其他' }}</span>
+              <a
+                v-if="gear.referenceUrl"
+                :href="gear.referenceUrl"
+                target="_blank" rel="noopener noreferrer"
+                class="shrink-0 text-inkMuted hover:text-primary transition-colors"
+              ><ExternalLinkIcon :size="11" /></a>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="text-[12px] font-mono text-inkMuted">
+                {{ gear.weight }} g × {{ gear.quantity ?? 1 }} =
+                <span class="text-ink font-semibold">{{ gear.weight * (gear.quantity ?? 1) }} g</span>
+              </span>
+              <span v-if="gear.brand" class="text-[11px] font-body text-inkMuted opacity-70">{{ gear.brand }}</span>
+              <span v-if="gear.price != null" class="text-[11px] font-mono text-inkMuted opacity-70">${{ gear.price.toLocaleString() }}</span>
+            </div>
+            <p v-if="gear.note" class="mt-1.5 text-[11px] font-body italic text-inkMuted/60 truncate">{{ gear.note }}</p>
+          </div>
+          <!-- Total row -->
+          <div class="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm"
+            style="background: color-mix(in srgb, var(--c-primary) 10%, transparent);">
+            <span class="font-body font-semibold text-primary tracking-wide">Total</span>
+            <span class="font-mono font-semibold text-primary">{{ totalWeight }} g</span>
+          </div>
+        </div>
+
+        <!-- Desktop: full table -->
+        <div class="hidden sm:block card-aged overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-border text-left">
+                <th class="th">名稱</th>
+                <th class="th">品牌</th>
+                <th class="th">類別</th>
+                <th class="th text-right">數量</th>
+                <th class="th text-right">重量 (g)</th>
+                <th class="th text-right">價格</th>
+                <th class="th">備註</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="gear in gears" :key="gear.id" class="border-b border-border/50 hover:bg-surface/60 transition-colors duration-150">
+                <td class="td font-medium text-ink font-body">
+                  <span class="flex items-center gap-1.5">
+                    {{ gear.name }}
+                    <a v-if="gear.referenceUrl" :href="gear.referenceUrl" target="_blank" rel="noopener noreferrer"
+                      class="text-inkMuted hover:text-primary transition-colors shrink-0">
+                      <ExternalLinkIcon :size="11" />
+                    </a>
+                  </span>
+                </td>
+                <td class="td text-inkMuted font-body">{{ gear.brand || '—' }}</td>
+                <td class="td">
+                  <span class="px-2 py-0.5 rounded text-[11px] font-body"
+                    style="background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);">
+                    {{ gear.category || '其他' }}
+                  </span>
+                </td>
+                <td class="td text-inkMuted font-mono text-right">{{ gear.quantity ?? 1 }}</td>
+                <td class="td text-inkMuted font-mono text-right">{{ gear.weight }}</td>
+                <td class="td text-inkMuted font-mono text-right">{{ gear.price != null ? gear.price.toLocaleString() : '—' }}</td>
+                <td class="td text-inkMuted/70 italic font-body">{{ gear.note || '—' }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr style="background: color-mix(in srgb, var(--c-primary) 10%, transparent);">
+                <td class="py-3 px-4 font-semibold text-primary font-body tracking-wide" colspan="4">Total</td>
+                <td class="py-3 px-4 font-semibold text-primary font-mono text-right">{{ totalWeight }} g</td>
+                <td colspan="2" />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+      </template>
     </template>
 
   </div>
+
+  <!-- ── Mobile: gear form bottom sheet ─────────────────────── -->
+  <Teleport to="body">
+    <Transition name="form-sheet">
+      <div v-if="formOpen && isMobile" class="form-backdrop" @click.self="closeForm">
+        <div class="form-sheet-box">
+          <div class="form-handle" />
+          <div class="px-5 py-4 space-y-3">
+            <p class="text-[10px] font-body font-semibold tracking-[0.14em] uppercase"
+              :style="editingGearIndex !== null ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'">
+              {{ editingGearIndex !== null ? '編輯裝備' : '新增裝備' }}
+            </p>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="space-y-1 col-span-2 min-w-0">
+                <label class="field-label">裝備名稱</label>
+                <input v-model="gearForm.name" class="field-input" placeholder="例：登山杖" />
+              </div>
+              <div class="space-y-1 min-w-0">
+                <label class="field-label">類別</label>
+                <select v-model="gearForm.category" class="field-input font-body">
+                  <option v-for="cat in store.gearCategories" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div class="space-y-1 min-w-0">
+                <label class="field-label">重量 (g)</label>
+                <NumberInput v-model="gearForm.weight" :min="0" placeholder="0" />
+              </div>
+              <div class="space-y-1 min-w-0">
+                <label class="field-label">數量</label>
+                <NumberInput v-model="gearForm.quantity" :min="1" />
+              </div>
+              <div class="space-y-1 min-w-0">
+                <label class="field-label">品牌</label>
+                <input v-model="gearForm.brand" class="field-input" placeholder="選填" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="space-y-1 min-w-0">
+                <label class="field-label">價格</label>
+                <NumberInput v-model="gearForm.price" :min="0" placeholder="選填" />
+              </div>
+              <div class="space-y-1 min-w-0">
+                <label class="field-label">加入時間</label>
+                <input v-model="gearForm.addedAt" type="date" class="field-input font-mono text-xs" style="max-width: 100%;" />
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="field-label">備註</label>
+              <input v-model="gearForm.note" class="field-input" placeholder="選填" />
+            </div>
+            <div class="space-y-1">
+              <label class="field-label">參考連結</label>
+              <input v-model="gearForm.referenceUrl" type="url" class="field-input" placeholder="https://" />
+            </div>
+            <p v-if="saveError" class="text-[11px] font-body text-red-400 break-all">{{ saveError }}</p>
+            <div class="flex gap-2 pt-1 pb-1">
+              <button
+                v-if="editingGearIndex !== null"
+                class="flex-1 py-2 rounded-lg text-xs font-body cursor-pointer border transition-colors duration-150"
+                style="color: var(--c-inkMuted); border-color: var(--c-border);"
+                :disabled="saving"
+                @click="cancelEdit"
+              >取消</button>
+              <button
+                class="flex-1 py-2 rounded-lg text-xs font-semibold font-body cursor-pointer btn-cta transition-colors duration-150 flex items-center justify-center gap-1.5"
+                :disabled="saving || !gearForm.name.trim()"
+                @click="submitGear"
+              >
+                <div v-if="saving" class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                {{ editingGearIndex !== null ? '更新' : '新增' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 
   <!-- ── 裝備庫 Modal ──────────────────────────────────────────── -->
   <Teleport to="body">
     <Transition name="lib-modal">
       <div v-if="showLibrary" class="lib-backdrop" @click.self="showLibrary = false">
         <div class="lib-modal">
+
+          <div class="lib-handle" />
 
           <!-- Header -->
           <div class="flex items-center justify-between px-5 py-4 border-b border-border/50">
@@ -374,7 +519,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   ExternalLink as ExternalLinkIcon,
   Pencil as Pencil2Icon,
@@ -387,6 +532,7 @@ import {
 } from 'lucide-vue-next'
 import type { Gear } from '../types'
 import { usePostStore } from '../stores/postStore'
+import NumberInput from './NumberInput.vue'
 
 const props = defineProps<{
   gears:   Gear[]
@@ -398,10 +544,15 @@ const emit = defineEmits<{ 'update:editing': [boolean] }>()
 
 const store = usePostStore()
 
+const isMobile = ref(typeof window !== 'undefined' && window.innerWidth < 640)
+function onResize() { isMobile.value = window.innerWidth < 640 }
+
 onMounted(() => {
   store.fetchGearCategories()
   store.fetchGearLibrary()
+  window.addEventListener('resize', onResize, { passive: true })
 })
+onUnmounted(() => window.removeEventListener('resize', onResize))
 
 const totalWeight = computed(() =>
   props.gears.reduce((s, g) => s + g.weight * (g.quantity ?? 1), 0)
@@ -414,8 +565,8 @@ const formOpen         = ref(false)
 const editingGearIndex = ref<number | null>(null)
 
 type GearFormData = {
-  name: string; weight: number; note: string; category: string
-  quantity: number; brand: string; referenceUrl: string
+  name: string; weight: number | null; note: string; category: string
+  quantity: number | null; brand: string; referenceUrl: string
   price: number | null; addedAt: string
 }
 
@@ -650,6 +801,35 @@ function gearCardStyle(gi: number): string {
   box-shadow: 0 6px 16px color-mix(in srgb, var(--c-ink) 14%, transparent);
 }
 
+/* ── Mobile: form bottom sheet ──────────────────────────────── */
+.form-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(0,0,0,0.55);
+}
+.form-sheet-box {
+  width: 100%;
+  max-width: 100vw;
+  background: var(--c-card);
+  border: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);
+  border-radius: 0;
+  box-shadow: 0 -8px 48px rgba(0,0,0,0.45);
+  max-height: 85dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.form-handle {
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: 12px auto 4px;
+}
+.form-sheet-enter-active { transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.form-sheet-leave-active { transition: opacity 0.16s ease, transform 0.2s ease; }
+.form-sheet-enter-from, .form-sheet-leave-to { opacity: 0; transform: translateY(60%); }
+
 /* ── Library modal ──────────────────────────────────────────── */
 .lib-modal-enter-active { transition: opacity 0.2s ease; }
 .lib-modal-leave-active { transition: opacity 0.15s ease; }
@@ -657,6 +837,15 @@ function gearCardStyle(gi: number): string {
 .lib-modal-enter-active .lib-modal,
 .lib-modal-leave-active .lib-modal { transition: transform 0.2s ease; }
 .lib-modal-enter-from .lib-modal, .lib-modal-leave-to .lib-modal { transform: translateY(16px) scale(0.98); }
+
+.lib-handle {
+  display: none;
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: 12px auto 4px;
+  flex-shrink: 0;
+}
 
 .lib-backdrop {
   position: fixed; inset: 0; z-index: 9000;
@@ -673,6 +862,15 @@ function gearCardStyle(gi: number): string {
   background: var(--c-card);
   box-shadow: 0 24px 60px rgba(0,0,0,0.4);
   overflow: hidden;
+}
+
+@media (max-width: 639px) {
+  .lib-handle { display: block; }
+  .lib-backdrop { align-items: flex-end; padding: 0; }
+  .lib-modal { border-radius: 0; max-width: 100%; max-height: 90dvh; }
+  .lib-modal-enter-active .lib-modal,
+  .lib-modal-leave-active .lib-modal { transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+  .lib-modal-enter-from .lib-modal, .lib-modal-leave-to .lib-modal { transform: translateY(100%); }
 }
 .lib-th {
   padding: 6px 12px 8px;
