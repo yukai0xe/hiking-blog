@@ -3,6 +3,8 @@
     <Transition name="modal-fade">
       <div v-if="open" class="modal-backdrop" @click.self="emit('close')">
         <div class="modal-box">
+          <div class="modal-handle" aria-hidden="true" />
+
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-heading text-base font-semibold text-ink">
               {{ group ? '編輯分組' : '新增分組' }}
@@ -104,6 +106,14 @@ async function doSave() {
   display: block; font-size: 11px; font-family: Inter, sans-serif; font-weight: 600;
   color: var(--c-inkMuted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px;
 }
+
+.modal-handle {
+  display: none;
+  width: 36px; height: 4px; border-radius: 2px;
+  background: color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: 0 auto 16px;
+}
+
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(0,0,0,0.55);
@@ -118,7 +128,27 @@ async function doSave() {
   padding: 20px;
   box-shadow: 0 24px 64px rgba(0,0,0,0.5);
 }
+
+/* Desktop animation */
 .modal-fade-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .modal-fade-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: scale(0.97); }
+
+/* Mobile: bottom sheet */
+@media (max-width: 639px) {
+  .modal-handle { display: block; }
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal-box {
+    max-width: 100%;
+    border-radius: 0;
+    border-bottom: none;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  .modal-fade-enter-active { transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+  .modal-fade-leave-active { transition: opacity 0.16s ease, transform 0.2s ease; }
+  .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: translateY(60%); }
+}
 </style>
