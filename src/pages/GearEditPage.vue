@@ -45,10 +45,11 @@
         </div>
 
         <!-- ── Basic fields ──────────────────────────────── -->
-        <div class="card-aged px-6 py-5 mb-5 space-y-4">
+        <div class="card-aged px-4 sm:px-6 py-5 mb-5 space-y-4">
           <p class="section-label">基本資訊</p>
 
-          <div class="grid grid-cols-[1fr_160px] gap-3">
+          <!-- Name + Category -->
+          <div class="grid grid-cols-1 sm:grid-cols-[1fr_160px] gap-3">
             <div>
               <label class="field-label">名稱 *</label>
               <input v-model="form.name" type="text" class="input-field text-sm" placeholder="裝備名稱" />
@@ -63,8 +64,9 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-4 gap-3">
-            <div>
+          <!-- Brand / Price / Weight / Quantity -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="col-span-2 sm:col-span-1">
               <label class="field-label">品牌</label>
               <GearBrandCombobox v-model="form.brand" :existing-brands="existingBrands" />
             </div>
@@ -86,12 +88,13 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
+          <!-- Date + Reference URLs -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="field-label">加入時間</label>
               <input v-model="form.addedAt" type="date" class="input-field text-sm font-mono" />
             </div>
-            <div class="col-span-2">
+            <div class="sm:col-span-2">
               <label class="field-label">參考連結</label>
               <div class="space-y-2">
                 <div v-for="(url, i) in form.referenceUrls" :key="i" class="flex gap-1.5">
@@ -138,13 +141,13 @@
         </div>
 
         <!-- ── Description (rich text) ──────────────────── -->
-        <div class="card-aged px-6 py-5 mb-5">
+        <div class="card-aged px-4 sm:px-6 py-5 mb-5">
           <p class="section-label mb-3">詳細說明</p>
           <GearRichEditor v-model="description" />
         </div>
 
         <!-- ── Images ────────────────────────────────────── -->
-        <div class="card-aged px-6 py-5 mb-8">
+        <div class="card-aged px-4 sm:px-6 py-5 mb-8">
           <p class="section-label mb-3">圖片</p>
           <GearImageUploader
             ref="imageUploaderRef"
@@ -154,13 +157,13 @@
         </div>
 
         <!-- Bottom save / cancel -->
-        <div class="flex items-center justify-end gap-3 mb-12">
+        <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mb-12">
           <button
-            class="px-4 py-2 rounded-lg text-sm font-body font-medium cursor-pointer card-aged text-inkMuted hover:text-ink transition-colors"
+            class="w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-body font-medium cursor-pointer card-aged text-inkMuted hover:text-ink transition-colors text-center"
             @click="$router.push('/gear-library')"
           >取消</button>
           <button
-            class="flex items-center gap-1.5 px-6 py-2.5 rounded-lg text-sm font-body font-semibold btn-cta cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            class="w-full sm:w-auto flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-lg text-sm font-body font-semibold btn-cta cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="!form.name.trim() || hasFormErrors || saving"
             @click="submitForm"
           >
