@@ -5,7 +5,7 @@
       'gpx-card-dragging': isDragging,
       'gpx-card-dragover': isDragOver,
     }"
-    style="max-width: 350px;"
+    class="w-full sm:max-w-[350px]"
     draggable="true"
     @click="emit('click')"
     @dragstart="emit('dragstart')"
