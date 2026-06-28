@@ -1,176 +1,335 @@
 <template>
-  <div class="card-aged px-5 py-4 mb-6 flex flex-wrap items-center gap-4">
-    <div class="flex items-center gap-5 mr-auto flex-wrap">
-      <div class="text-center">
-        <p class="font-heading text-2xl font-bold text-ink leading-none mb-0.5">{{ store.gpxLibrary.length }}</p>
-        <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">條路線</p>
+  <div class="card-aged mb-6">
+
+    <!-- ── Mobile layout ───────────────────────────────────────── -->
+    <div class="sm:hidden px-4 pt-4 pb-3 space-y-3">
+
+      <!-- Row 1: route count + view toggle -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-baseline gap-1.5">
+          <span class="font-heading text-2xl font-bold text-ink leading-none">{{ store.gpxLibrary.length }}</span>
+          <span class="text-[10px] font-body text-inkMuted uppercase tracking-widest">條路線</span>
+        </div>
+        <div class="flex items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="viewMode === 'simple'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="emit('update:viewMode', 'simple')"
+          ><LayoutListIcon :size="13" /> 簡單</button>
+          <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="viewMode === 'advanced'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="emit('update:viewMode', 'advanced')"
+          ><BarChart2Icon :size="13" /> 進階</button>
+        </div>
       </div>
-      <!-- Wishlist tab -->
+
+      <!-- Row 2: search -->
+      <div class="relative">
+        <SearchIcon :size="15" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-inkMuted pointer-events-none" />
+        <input
+          v-model="search"
+          type="text"
+          placeholder="搜尋路線名稱…"
+          class="search-input-mobile"
+        />
+        <button v-if="search" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-inkMuted hover:text-ink cursor-pointer transition-colors" @click="search = ''">
+          <XIcon :size="14" />
+        </button>
+      </div>
+
+      <!-- Row 3: wishlist tabs + filter -->
+      <div class="flex items-center gap-2">
+        <div class="flex flex-1 items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
+          <button
+            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="wishlistFilter === 'all'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="wishlistFilter = 'all'"
+          >全部</button>
+          <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
+          <button
+            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="wishlistFilter === 'wishlist'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="wishlistFilter = 'wishlist'"
+          ><BookmarkIcon :size="11" /> 願望</button>
+          <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
+          <button
+            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="wishlistFilter === 'done'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="wishlistFilter = 'done'"
+          >已完成</button>
+        </div>
+
+        <!-- Filter button -->
+        <button
+          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body cursor-pointer border transition-colors duration-150 shrink-0"
+          :style="showFilterPanel || activeFilterCount > 0
+            ? 'border-color: var(--c-primary); color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent);'
+            : 'border-color: var(--c-border); color: var(--c-inkMuted); background: transparent;'"
+          @click="showFilterPanel = !showFilterPanel"
+        >
+          <SlidersHorizontalIcon :size="13" />
+          篩選
+          <span
+            v-if="hasActiveFilter"
+            class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+            style="background: var(--c-primary); color: var(--c-base);"
+          >{{ filtered.length }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Desktop layout ──────────────────────────────────────── -->
+    <div class="hidden sm:flex flex-wrap items-center gap-4 px-5 py-4">
+      <div class="flex items-center gap-5 mr-auto flex-wrap">
+        <div class="text-center">
+          <p class="font-heading text-2xl font-bold text-ink leading-none mb-0.5">{{ store.gpxLibrary.length }}</p>
+          <p class="text-[10px] font-body text-inkMuted uppercase tracking-widest">條路線</p>
+        </div>
+        <div class="flex items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="wishlistFilter === 'all'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="wishlistFilter = 'all'"
+          >全部</button>
+          <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="wishlistFilter === 'wishlist'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="wishlistFilter = 'wishlist'"
+          ><BookmarkIcon :size="12" /> 願望清單</button>
+          <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
+          <button
+            class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
+            :style="wishlistFilter === 'done'
+              ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
+              : 'background: transparent; color: var(--c-inkMuted);'"
+            @click="wishlistFilter = 'done'"
+          >已完成</button>
+        </div>
+      </div>
+
+      <div class="relative flex-1 min-w-[180px]">
+        <SearchIcon :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-inkMuted pointer-events-none" />
+        <input
+          v-model="search"
+          type="text"
+          placeholder="搜尋路線名稱…"
+          class="w-full pl-8 pr-8 py-2 rounded-lg text-sm font-body text-ink focus:outline-none focus:border-primary transition-colors"
+          style="background: transparent; border: 1px solid var(--c-border);"
+        />
+        <button v-if="search" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-inkMuted hover:text-ink cursor-pointer" @click="search = ''">
+          <XIcon :size="13" />
+        </button>
+      </div>
+
       <div class="flex items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
         <button
           class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
-          :style="wishlistFilter === 'all'
+          :style="viewMode === 'simple'
             ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
             : 'background: transparent; color: var(--c-inkMuted);'"
-          @click="wishlistFilter = 'all'"
-        >全部</button>
+          @click="emit('update:viewMode', 'simple')"
+        ><LayoutListIcon :size="13" /> 簡單</button>
         <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
         <button
           class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
-          :style="wishlistFilter === 'wishlist'
+          :style="viewMode === 'advanced'
             ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
             : 'background: transparent; color: var(--c-inkMuted);'"
-          @click="wishlistFilter = 'wishlist'"
-        ><BookmarkIcon :size="12" /> 願望清單</button>
-        <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
-        <button
-          class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
-          :style="wishlistFilter === 'done'
-            ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
-            : 'background: transparent; color: var(--c-inkMuted);'"
-          @click="wishlistFilter = 'done'"
-        >已完成</button>
+          @click="emit('update:viewMode', 'advanced')"
+        ><BarChart2Icon :size="13" /> 進階</button>
       </div>
-    </div>
 
-    <!-- Search -->
-    <div class="relative flex-1 min-w-[180px]">
-      <SearchIcon :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-inkMuted pointer-events-none" />
-      <input
-        v-model="search"
-        type="text"
-        placeholder="搜尋路線名稱…"
-        class="w-full pl-8 pr-8 py-2 rounded-lg text-sm font-body text-ink focus:outline-none focus:border-primary transition-colors"
-        style="background: transparent; border: 1px solid var(--c-border);"
-      />
-      <button v-if="search" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-inkMuted hover:text-ink cursor-pointer" @click="search = ''">
-        <XIcon :size="13" />
-      </button>
-    </div>
-
-    <!-- View mode toggle -->
-    <div class="flex items-center rounded-lg overflow-hidden" style="border: 1px solid var(--c-border);">
-      <button
-        class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
-        :style="viewMode === 'simple'
-          ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
-          : 'background: transparent; color: var(--c-inkMuted);'"
-        @click="emit('update:viewMode', 'simple')"
-      >
-        <LayoutListIcon :size="13" />
-        簡單
-      </button>
-      <div style="width: 1px; background: var(--c-border); align-self: stretch;" />
-      <button
-        class="flex items-center gap-1.5 px-3 py-2 text-xs font-body cursor-pointer transition-colors duration-150"
-        :style="viewMode === 'advanced'
-          ? 'background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);'
-          : 'background: transparent; color: var(--c-inkMuted);'"
-        @click="emit('update:viewMode', 'advanced')"
-      >
-        <BarChart2Icon :size="13" />
-        進階
-      </button>
-    </div>
-
-    <!-- Filter button -->
-    <div class="relative">
-      <button
-        class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body transition-colors duration-150 cursor-pointer border"
-        :style="showFilterPanel || activeFilterCount > 0
-          ? 'border-color: var(--c-primary); color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent);'
-          : 'border-color: var(--c-border); color: var(--c-inkMuted); background: transparent;'"
-        @click="showFilterPanel = !showFilterPanel"
-      >
-        <SlidersHorizontalIcon :size="13" />
-        更多篩選
-        <span
-          v-if="hasActiveFilter"
-          class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
-          style="background: var(--c-primary); color: var(--c-base);"
-        >{{ filtered.length }}</span>
-      </button>
-
-      <!-- Backdrop -->
-      <div v-if="showFilterPanel" class="fixed inset-0 z-10" @click="showFilterPanel = false" />
-
-      <!-- Filter panel -->
-      <Transition name="filter-panel">
-        <div
-          v-if="showFilterPanel"
-          class="absolute right-0 mt-2 w-72 card-aged rounded-xl p-4 z-20 shadow-xl"
-          style="border: 1px solid color-mix(in srgb, var(--c-border) 80%, transparent);"
+      <div class="relative">
+        <button
+          class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body transition-colors duration-150 cursor-pointer border"
+          :style="showFilterPanel || activeFilterCount > 0
+            ? 'border-color: var(--c-primary); color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent);'
+            : 'border-color: var(--c-border); color: var(--c-inkMuted); background: transparent;'"
+          @click="showFilterPanel = !showFilterPanel"
         >
-          <!-- Difficulty -->
-          <div class="flex items-center justify-between mb-2.5">
-            <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">難度</p>
-            <button
-              class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
-              :title="filterStars.length === profile.difficultyMax ? '取消全部' : '選取全部'"
-              @click="filterStars = filterStars.length === profile.difficultyMax
-                ? []
-                : Array.from({ length: profile.difficultyMax }, (_, i) => i + 1)"
-            >
-              <CheckSquareIcon v-if="filterStars.length === profile.difficultyMax" :size="14" />
-              <SquareIcon v-else :size="14" />
-            </button>
-          </div>
-          <div class="flex flex-wrap gap-1.5 mb-4">
-            <button
-              v-for="n in profile.difficultyMax" :key="n"
-              class="px-2.5 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
-              :style="filterStars.includes(n)
-                ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
-                : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
-              :title="profile.difficultyLabels[n - 1] || undefined"
-              @click="toggleStars(n)"
-            >{{ n <= 10 ? '★'.repeat(n) : `★×${n}` }}</button>
-          </div>
+          <SlidersHorizontalIcon :size="13" />
+          更多篩選
+          <span
+            v-if="hasActiveFilter"
+            class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold"
+            style="background: var(--c-primary); color: var(--c-base);"
+          >{{ filtered.length }}</span>
+        </button>
 
-          <!-- Tags -->
-          <template v-if="postStore.availableTags.length">
+        <div v-if="showFilterPanel" class="fixed inset-0 z-10" @click="showFilterPanel = false" />
+
+        <Transition name="filter-panel">
+          <div
+            v-if="showFilterPanel"
+            class="absolute right-0 mt-2 w-72 card-aged rounded-xl p-4 z-20 shadow-xl"
+            style="border: 1px solid color-mix(in srgb, var(--c-border) 80%, transparent);"
+          >
             <div class="flex items-center justify-between mb-2.5">
-              <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">標籤</p>
+              <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">難度</p>
               <button
                 class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
-                :title="filterTags.length === postStore.availableTags.length ? '取消全部' : '選取全部'"
-                @click="filterTags = filterTags.length === postStore.availableTags.length ? [] : [...postStore.availableTags]"
+                :title="filterStars.length === profile.difficultyMax ? '取消全部' : '選取全部'"
+                @click="filterStars = filterStars.length === profile.difficultyMax
+                  ? []
+                  : Array.from({ length: profile.difficultyMax }, (_, i) => i + 1)"
               >
-                <CheckSquareIcon v-if="filterTags.length === postStore.availableTags.length" :size="14" />
+                <CheckSquareIcon v-if="filterStars.length === profile.difficultyMax" :size="14" />
                 <SquareIcon v-else :size="14" />
               </button>
             </div>
             <div class="flex flex-wrap gap-1.5 mb-4">
               <button
-                v-for="tag in postStore.availableTags" :key="tag"
-                class="px-2.5 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
-                :style="filterTags.includes(tag)
+                v-for="n in profile.difficultyMax" :key="n"
+                class="px-2.5 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
+                :style="filterStars.includes(n)
                   ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
                   : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
-                @click="toggleTag(tag)"
-              >{{ tag }}</button>
+                :title="profile.difficultyLabels[n - 1] || undefined"
+                @click="toggleStars(n)"
+              >{{ n <= 10 ? '★'.repeat(n) : `★×${n}` }}</button>
             </div>
-          </template>
 
-          <!-- Footer -->
-          <div class="flex items-center justify-between pt-3 border-t" style="border-color: var(--c-border);">
-            <button
-              class="text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer disabled:opacity-30"
-              :disabled="!hasActiveFilter"
-              @click="clearFilters"
-            >清除篩選</button>
-            <button
-              class="px-3 py-1 rounded-lg text-xs font-body btn-cta cursor-pointer"
-              @click="showFilterPanel = false"
-            >套用</button>
+            <template v-if="postStore.availableTags.length">
+              <div class="flex items-center justify-between mb-2.5">
+                <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">標籤</p>
+                <button
+                  class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
+                  :title="filterTags.length === postStore.availableTags.length ? '取消全部' : '選取全部'"
+                  @click="filterTags = filterTags.length === postStore.availableTags.length ? [] : [...postStore.availableTags]"
+                >
+                  <CheckSquareIcon v-if="filterTags.length === postStore.availableTags.length" :size="14" />
+                  <SquareIcon v-else :size="14" />
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-1.5 mb-4">
+                <button
+                  v-for="tag in postStore.availableTags" :key="tag"
+                  class="px-2.5 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
+                  :style="filterTags.includes(tag)
+                    ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                    : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                  @click="toggleTag(tag)"
+                >{{ tag }}</button>
+              </div>
+            </template>
+
+            <div class="flex items-center justify-between pt-3 border-t" style="border-color: var(--c-border);">
+              <button
+                class="text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer disabled:opacity-30"
+                :disabled="!hasActiveFilter"
+                @click="clearFilters"
+              >清除篩選</button>
+              <button
+                class="px-3 py-1 rounded-lg text-xs font-body btn-cta cursor-pointer"
+                @click="showFilterPanel = false"
+              >套用</button>
+            </div>
+          </div>
+        </Transition>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Mobile: filter bottom sheet -->
+  <Teleport to="body">
+    <Transition name="filter-sheet">
+      <div v-if="showFilterPanel && isMobile" class="filter-backdrop" @click.self="showFilterPanel = false">
+        <div class="filter-sheet-box">
+          <div class="filter-handle" />
+          <div class="px-5 py-4 space-y-4 overflow-y-auto">
+            <p class="text-[10px] font-body uppercase tracking-[0.14em] font-semibold text-inkMuted">更多篩選</p>
+
+            <!-- Difficulty -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">難度</p>
+                <button
+                  class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
+                  @click="filterStars = filterStars.length === profile.difficultyMax
+                    ? []
+                    : Array.from({ length: profile.difficultyMax }, (_, i) => i + 1)"
+                >
+                  <CheckSquareIcon v-if="filterStars.length === profile.difficultyMax" :size="14" />
+                  <SquareIcon v-else :size="14" />
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="n in profile.difficultyMax" :key="n"
+                  class="px-2.5 py-1 rounded-full text-xs font-mono transition-colors duration-150 cursor-pointer border"
+                  :style="filterStars.includes(n)
+                    ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                    : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                  @click="toggleStars(n)"
+                >{{ n <= 10 ? '★'.repeat(n) : `★×${n}` }}</button>
+              </div>
+            </div>
+
+            <!-- Tags -->
+            <template v-if="postStore.availableTags.length">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-[10px] font-body uppercase tracking-widest text-inkMuted">標籤</p>
+                  <button
+                    class="text-inkMuted hover:text-primary transition-colors cursor-pointer"
+                    @click="filterTags = filterTags.length === postStore.availableTags.length ? [] : [...postStore.availableTags]"
+                  >
+                    <CheckSquareIcon v-if="filterTags.length === postStore.availableTags.length" :size="14" />
+                    <SquareIcon v-else :size="14" />
+                  </button>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="tag in postStore.availableTags" :key="tag"
+                    class="px-2.5 py-1 rounded-full text-xs font-body transition-colors duration-150 cursor-pointer border"
+                    :style="filterTags.includes(tag)
+                      ? 'background: var(--c-primary); color: var(--c-base); border-color: var(--c-primary);'
+                      : 'background: transparent; color: var(--c-inkMuted); border-color: var(--c-border);'"
+                    @click="toggleTag(tag)"
+                  >{{ tag }}</button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-3 border-t pb-2" style="border-color: var(--c-border);">
+              <button
+                class="text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer disabled:opacity-30"
+                :disabled="!hasActiveFilter"
+                @click="clearFilters; showFilterPanel = false"
+              >清除篩選</button>
+              <button
+                class="px-4 py-2 rounded-lg text-xs font-body btn-cta cursor-pointer"
+                @click="showFilterPanel = false"
+              >套用</button>
+            </div>
           </div>
         </div>
-      </Transition>
-    </div>
-  </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import {
   Search as SearchIcon, X as XIcon, Bookmark as BookmarkIcon,
   SlidersHorizontal as SlidersHorizontalIcon,
@@ -199,10 +358,62 @@ const {
   activeFilterCount, hasActiveFilter, filtered,
   toggleStars, toggleTag, clearFilters,
 } = useGpxFilter()
+
+const isMobile = ref(typeof window !== 'undefined' && window.innerWidth < 640)
+function onResize() { isMobile.value = window.innerWidth < 640 }
+onMounted(() => window.addEventListener('resize', onResize, { passive: true }))
+onUnmounted(() => window.removeEventListener('resize', onResize))
 </script>
 
 <style scoped>
+.search-input-mobile {
+  width: 100%;
+  padding: 10px 40px 10px 40px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: Inter, sans-serif;
+  color: var(--c-ink);
+  background: color-mix(in srgb, var(--c-border) 20%, transparent);
+  border: 1px solid var(--c-border);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.search-input-mobile:focus {
+  border-color: var(--c-primary);
+  background: color-mix(in srgb, var(--c-primary) 4%, transparent);
+}
+.search-input-mobile::placeholder { color: var(--c-inkMuted); opacity: 0.6; }
+
+/* Mobile filter bottom sheet */
+.filter-backdrop {
+  position: fixed; inset: 0; z-index: 500;
+  display: flex; align-items: flex-end;
+  background: rgba(0, 0, 0, 0.55);
+}
+.filter-sheet-box {
+  width: 100%;
+  background: var(--c-card);
+  border-top: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);
+  box-shadow: 0 -8px 48px rgba(0, 0, 0, 0.4);
+  max-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.filter-handle {
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+
+/* Animations */
 .filter-panel-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .filter-panel-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
 .filter-panel-enter-from, .filter-panel-leave-to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+
+.filter-sheet-enter-active { transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.filter-sheet-leave-active { transition: opacity 0.16s ease, transform 0.2s ease; }
+.filter-sheet-enter-from, .filter-sheet-leave-to { opacity: 0; transform: translateY(60%); }
 </style>
