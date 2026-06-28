@@ -2,7 +2,7 @@
   <Teleport to="body">
     <Transition name="modal-fade">
       <div v-if="open && link" class="modal-backdrop" @click.self="emit('close')">
-        <div class="modal-box">
+        <div class="modal-box" :class="{ 'browser-open': showBrowser }">
 
           <!-- Bottom sheet drag handle (mobile only) -->
           <div class="sheet-handle" />
@@ -106,6 +106,14 @@
                   <CopyIcon  v-else        :size="15" class="shrink-0" />
                   <span>{{ copied ? '已複製' : '複製連結' }}</span>
                 </button>
+                <button
+                  class="action-row-btn"
+                  :class="{ 'action-row-btn--active': showBrowser }"
+                  @click="toggleBrowser"
+                >
+                  <GlobeIcon :size="15" class="shrink-0" />
+                  <span>{{ showBrowser ? '關閉瀏覽' : '在此瀏覽' }}</span>
+                </button>
                 <button class="action-row-btn" @click="showGroupPicker = true">
                   <FolderInputIcon :size="15" class="shrink-0" />
                   <span>移至分組</span>
@@ -122,6 +130,29 @@
             </div>
 
           </div>
+
+          <!-- Inline browser panel -->
+          <div v-if="showBrowser" class="browser-section">
+            <div v-if="browserLoading" class="browser-loading-state">
+              <div class="browser-spinner" />
+              <span class="text-xs font-body text-inkMuted">載入中…</span>
+            </div>
+            <iframe
+              v-show="!browserLoading"
+              :src="link!.url"
+              class="browser-iframe"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              referrerpolicy="no-referrer"
+              @load="browserLoading = false"
+            />
+            <div class="browser-bar">
+              <span class="text-[10px] font-mono text-inkMuted opacity-60 truncate flex-1">{{ link!.url }}</span>
+              <button class="text-[10px] font-body font-semibold shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                      style="color: var(--c-primary);"
+                      @click="openLink">在外部開啟</button>
+            </div>
+          </div>
+
         </div>
       </div>
     </Transition>
@@ -141,6 +172,7 @@ import {
   Folder as FolderIcon,
   FolderInput as FolderInputIcon,
   Inbox as InboxIcon,
+  Globe as GlobeIcon,
 } from 'lucide-vue-next'
 import type { NoteLink } from '../types'
 import { useNotesStore } from '../stores/notesStore'
@@ -152,10 +184,12 @@ const emit  = defineEmits<{ close: []; delete: [] }>()
 const store           = useNotesStore()
 const { show: toast } = useToast()
 
-const titleEdit      = ref('')
-const imgError       = ref(false)
-const copied         = ref(false)
+const titleEdit       = ref('')
+const imgError        = ref(false)
+const copied          = ref(false)
 const showGroupPicker = ref(false)
+const showBrowser     = ref(false)
+const browserLoading  = ref(true)
 let   copyTimer: ReturnType<typeof setTimeout> | null = null
 
 const titleDirty = computed(() => !!props.link && titleEdit.value.trim() !== props.link.title)
@@ -166,12 +200,18 @@ const currentGroupName = computed(() => {
 })
 
 watch(() => props.link, (l) => {
-  titleEdit.value   = l?.title ?? ''
-  imgError.value    = false
+  titleEdit.value  = l?.title ?? ''
+  imgError.value   = false
+  showBrowser.value    = false
+  browserLoading.value = true
 })
 
 watch(() => props.open, (v) => {
-  if (!v) showGroupPicker.value = false
+  if (!v) {
+    showGroupPicker.value = false
+    showBrowser.value     = false
+    browserLoading.value  = true
+  }
 })
 
 function resetTitle() {
@@ -189,6 +229,16 @@ async function saveTitle() {
 function openLink() {
   if (!props.link) return
   window.open(props.link.url, '_blank', 'noopener,noreferrer')
+}
+
+function toggleBrowser() {
+  if (!showBrowser.value) {
+    browserLoading.value = true
+    showBrowser.value    = true
+  } else {
+    showBrowser.value    = false
+    browserLoading.value = true
+  }
 }
 
 function copyLink() {
@@ -298,6 +348,46 @@ async function moveToGroup(groupId: string | null) {
 .modal-fade-leave-active { transition: opacity 0.16s ease, transform 0.2s ease; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: translateY(60%); }
 
+/* ── inline browser panel ─────────────────────────────────────────────────── */
+.modal-box.browser-open { max-height: 95vh; }
+
+.browser-section {
+  border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);
+  display: flex;
+  flex-direction: column;
+}
+
+.browser-loading-state {
+  height: 56vw;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+}
+
+.browser-spinner {
+  width: 22px; height: 22px;
+  border: 2px solid color-mix(in srgb, var(--c-border) 60%, transparent);
+  border-top-color: var(--c-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.browser-iframe {
+  width: 100%;
+  height: 56vw;
+  min-height: 240px;
+  border: none;
+  display: block;
+  background: #fff;
+}
+
+.browser-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--c-border) 40%, transparent);
+  flex-shrink: 0;
+}
+
 /* ── sm+ (≥ 640px): centered floating card ───────────────────────────────── */
 @media (min-width: 640px) {
   .modal-backdrop {
@@ -312,8 +402,15 @@ async function moveToGroup(groupId: string | null) {
     max-height: 90vh;
     padding-bottom: 0;
   }
+  .modal-box.browser-open { max-height: 92vh; }
   .sheet-handle { display: none; }
   .modal-cover { height: 180px; }
+
+  .browser-iframe {
+    height: 340px;
+    min-height: unset;
+  }
+  .browser-loading-state { height: 340px; }
 
   .modal-fade-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
   .modal-fade-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
