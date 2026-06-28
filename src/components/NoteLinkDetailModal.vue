@@ -25,7 +25,7 @@
           </div>
 
           <!-- Content -->
-          <div class="px-5 py-4 space-y-4">
+          <div class="modal-content px-5 py-4 space-y-4">
 
             <!-- Editable title -->
             <div>
@@ -349,16 +349,36 @@ async function moveToGroup(groupId: string | null) {
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: translateY(60%); }
 
 /* ── inline browser panel ─────────────────────────────────────────────────── */
-.modal-box.browser-open { max-height: 95vh; }
 
-.browser-section {
-  border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);
+/* When browser open: full flex-column layout, fixed viewport height */
+.modal-box.browser-open {
+  height: 97dvh;
+  max-height: 97dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
+.modal-box.browser-open .modal-cover {
+  height: 120px;
+  flex-shrink: 0;
+}
+.modal-box.browser-open .modal-content {
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.browser-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);
+}
 
 .browser-loading-state {
-  height: 56vw;
+  flex: 1;
+  min-height: 0;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 10px;
 }
@@ -373,9 +393,9 @@ async function moveToGroup(groupId: string | null) {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .browser-iframe {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 56vw;
-  min-height: 240px;
   border: none;
   display: block;
   background: #fff;
@@ -402,15 +422,9 @@ async function moveToGroup(groupId: string | null) {
     max-height: 90vh;
     padding-bottom: 0;
   }
-  .modal-box.browser-open { max-height: 92vh; }
+  .modal-box.browser-open { height: 92vh; max-height: 92vh; }
   .sheet-handle { display: none; }
   .modal-cover { height: 180px; }
-
-  .browser-iframe {
-    height: 340px;
-    min-height: unset;
-  }
-  .browser-loading-state { height: 340px; }
 
   .modal-fade-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
   .modal-fade-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
