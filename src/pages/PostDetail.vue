@@ -15,7 +15,7 @@
     <template v-else-if="store.currentPost">
 
       <!-- Header -->
-      <header class="shrink-0 px-[5vw] pt-5 pb-4 border-b"
+      <header class="detail-header shrink-0 sm:px-[5vw] sm:pt-5 sm:pb-4 border-b"
         style="border-color: color-mix(in srgb, var(--c-border) 50%, transparent);">
 
         <div class="flex items-center justify-between mb-3">
@@ -24,7 +24,7 @@
             @click="$router.push('/')"
           >
             <ArrowLeftIcon :size="15" />
-            返回
+            <span class="hidden sm:inline">返回</span>
           </button>
           <div class="flex items-center gap-2">
             <button
@@ -35,7 +35,7 @@
             >
               <EyeOffIcon v-if="store.currentPost!.isPublic" :size="14" />
               <GlobeIcon  v-else :size="14" />
-              {{ store.currentPost!.isPublic ? '取消公開' : '公開發布' }}
+              <span class="hidden sm:inline">{{ store.currentPost!.isPublic ? '取消公開' : '公開發布' }}</span>
             </button>
             <router-link
               v-if="auth.user"
@@ -43,14 +43,22 @@
               class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
             >
               <PencilIcon :size="14" />
-              編輯
+              <span class="hidden sm:inline">編輯</span>
             </router-link>
             <button
               class="card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
               @click="showExportModal = true"
             >
               <DownloadIcon :size="14" />
-              匯出
+              <span class="hidden sm:inline">匯出</span>
+            </button>
+            <!-- Mobile: info sheet trigger -->
+            <button
+              v-if="(hasMeta || store.currentPost?.description)"
+              class="sm:hidden card-aged text-inkMuted hover:text-ink flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-body cursor-pointer transition-colors duration-200"
+              @click="showInfoSheet = true"
+            >
+              <InfoIcon :size="14" />
             </button>
           </div>
         </div>
@@ -62,24 +70,24 @@
           {{ store.currentPost.title }}
         </h1>
 
-        <div v-if="hasMeta" class="flex flex-wrap items-center gap-2">
-          <div v-if="dateRange" class="meta-chip">
+        <div v-if="hasMeta" class="flex flex-wrap items-center gap-2 overflow-x-auto meta-chips-row">
+          <div v-if="dateRange" class="meta-chip shrink-0">
             <CalendarIcon :size="11" class="meta-chip-icon" />
             <span class="font-mono text-[11px]">{{ dateRange }}</span>
           </div>
-          <div v-if="tripDays" class="meta-chip">
+          <div v-if="tripDays" class="meta-chip shrink-0">
             <SunriseIcon :size="11" class="meta-chip-icon" />
             <span>{{ tripDays }} 天</span>
           </div>
-          <div v-if="store.currentPost.weather" class="meta-chip">
+          <div v-if="store.currentPost.weather" class="meta-chip shrink-0">
             <CloudIcon :size="11" class="meta-chip-icon" />
             <span>{{ store.currentPost.weather }}</span>
           </div>
-          <div v-if="store.currentPost.peopleCount" class="meta-chip">
+          <div v-if="store.currentPost.peopleCount" class="meta-chip shrink-0">
             <UsersIcon :size="11" class="meta-chip-icon" />
             <span>{{ store.currentPost.peopleCount }} 人</span>
           </div>
-          <div v-if="store.currentPost.difficultyStars" class="meta-chip">
+          <div v-if="store.currentPost.difficultyStars" class="meta-chip shrink-0">
             <span class="text-primary" style="font-size:11px;letter-spacing:-1px;">{{ '★'.repeat(Math.min(store.currentPost.difficultyStars, profile.difficultyMax)) }}</span>
             <span v-if="profile.difficultyLabels[store.currentPost.difficultyStars - 1]" class="font-body text-inkMuted" style="font-size:11px;">{{ profile.difficultyLabels[store.currentPost.difficultyStars - 1] }}</span>
           </div>
@@ -87,23 +95,21 @@
       </header>
 
       <!-- Three-column layout -->
-      <div class="relative z-10 flex flex-1 overflow-hidden px-[5vw] pt-6 pb-[30vh]">
+      <div class="detail-three-col relative z-10 flex flex-1 overflow-hidden px-[5vw] pt-6 pb-[30vh]">
 
         <!-- ① Left sidebar — tab navigation -->
-        <nav
-          class="w-[72px] shrink-0 flex flex-col pt-5 pb-4 gap-1 pr-3"
-          style="border-right: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);"
-        >
+        <nav class="detail-nav w-[72px] shrink-0 flex flex-col pt-5 pb-4 gap-1 pr-3"
+          style="border-right: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);">
           <button
             v-for="nav in navTabs"
             :key="nav.key"
-            class="relative flex flex-col items-center gap-1.5 py-3 transition-all duration-200 cursor-pointer rounded-r-sm"
+            class="detail-nav-btn relative flex flex-col items-center gap-1.5 py-3 transition-all duration-200 cursor-pointer rounded-r-sm"
             :style="activeTab === nav.key ? 'color: var(--c-primary);' : 'color: var(--c-inkMuted);'"
             @click="setTab(nav.key)"
           >
             <span
               v-if="activeTab === nav.key"
-              class="absolute left-0 top-2 bottom-2 w-0.5 rounded-full"
+              class="nav-indicator absolute left-0 top-2 bottom-2 w-0.5 rounded-full"
               style="background: var(--c-primary);"
             />
             <component :is="nav.icon" :size="18" />
@@ -112,10 +118,10 @@
         </nav>
 
         <!-- ② Center — main content -->
-        <main class="flex-1 flex flex-col overflow-hidden relative">
+        <main class="detail-main flex-1 flex flex-col overflow-hidden relative">
 
           <!-- Top bar -->
-          <div class="shrink-0" style="border-bottom: 1px solid color-mix(in srgb, var(--c-border) 40%, transparent);">
+          <div class="detail-topbar shrink-0" style="border-bottom: 1px solid color-mix(in srgb, var(--c-border) 40%, transparent);">
 
             <!-- Row 1: tags + right actions -->
             <div class="flex items-center gap-2 px-4 py-2 flex-wrap">
@@ -176,7 +182,7 @@
                   @click="gearEditMode = !gearEditMode"
                 >
                   <PencilIcon :size="13" />
-                  <span>編輯裝備</span>
+                  <span class="hidden sm:inline">編輯裝備</span>
                 </button>
 
                 <button
@@ -186,7 +192,7 @@
                   @click="openEditRecordModal"
                 >
                   <PencilIcon :size="13" />
-                  <span>編輯路線</span>
+                  <span class="hidden sm:inline">編輯路線</span>
                 </button>
 
                 <button
@@ -196,7 +202,7 @@
                   @click="activeGpxRecordId !== null ? openRerouteModal() : openGpxModal()"
                 >
                   <UploadIcon :size="13" />
-                  <span>重新上傳</span>
+                  <span class="hidden sm:inline">重新上傳</span>
                 </button>
 
                 <button
@@ -208,11 +214,11 @@
                   @click="foodEditMode = !foodEditMode"
                 >
                   <PencilIcon :size="13" />
-                  <span>編輯糧食</span>
+                  <span class="hidden sm:inline">編輯糧食</span>
                 </button>
 
                 <button
-                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
+                  class="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-body cursor-pointer transition-colors duration-150"
                   style="color: var(--c-inkMuted); border: 1px solid var(--c-border);"
                   @click="sidebarOpen = !sidebarOpen"
                 >
@@ -265,7 +271,7 @@
           <!-- Content area -->
           <div
             ref="contentScrollRef"
-            class="flex-1 min-h-0"
+            class="detail-content-area flex-1 min-h-0"
             :class="activeTab !== 'gpx' ? 'overflow-y-auto p-6' : 'overflow-y-auto'"
           >
             <PhotoGallery
@@ -411,7 +417,7 @@
 
         <!-- ③ Right sidebar -->
         <aside
-          class="shrink-0 overflow-hidden transition-[width] duration-300"
+          class="detail-sidebar shrink-0 overflow-hidden transition-[width] duration-300"
           :style="`width: ${sidebarOpen ? '240px' : '0px'}; border-left: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);`"
         >
           <div class="w-[240px] overflow-y-auto p-5 h-full">
@@ -459,6 +465,59 @@
 
       </div>
     </template>
+
+    <!-- ── Mobile info bottom sheet ──────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="info-sheet">
+        <div v-if="showInfoSheet" class="info-backdrop" @click.self="showInfoSheet = false">
+          <div class="info-box">
+            <div class="info-handle" />
+
+            <div class="info-scroll">
+              <div v-if="hasMeta" class="mb-5">
+                <p class="info-section-label">行程資訊</p>
+                <div class="space-y-2.5">
+                  <div v-if="dateRange" class="meta-item">
+                    <CalendarIcon :size="13" class="meta-icon" />
+                    <span class="meta-value font-mono text-xs">{{ dateRange }}</span>
+                  </div>
+                  <div v-if="tripDays" class="meta-item">
+                    <SunriseIcon :size="13" class="meta-icon" />
+                    <span class="meta-label">天數</span>
+                    <span class="meta-value">{{ tripDays }} 天</span>
+                  </div>
+                  <div v-if="store.currentPost?.weather" class="meta-item">
+                    <CloudIcon :size="13" class="meta-icon" />
+                    <span class="meta-label">天氣</span>
+                    <span class="meta-value">{{ store.currentPost.weather }}</span>
+                  </div>
+                  <div v-if="store.currentPost?.peopleCount" class="meta-item">
+                    <UsersIcon :size="13" class="meta-icon" />
+                    <span class="meta-label">人數</span>
+                    <span class="meta-value">{{ store.currentPost.peopleCount }} 人</span>
+                  </div>
+                  <div v-if="store.currentPost?.difficultyStars" class="meta-item">
+                    <span class="meta-icon text-primary" style="font-size:13px;line-height:1;">★</span>
+                    <span class="meta-label">難度</span>
+                    <span class="meta-value text-primary" style="letter-spacing:-1px;">{{ '★'.repeat(Math.min(store.currentPost.difficultyStars, profile.difficultyMax)) }}</span>
+                    <span v-if="profile.difficultyLabels[store.currentPost.difficultyStars - 1]" class="font-body text-inkMuted" style="font-size:12px; margin-left:4px;">{{ profile.difficultyLabels[store.currentPost.difficultyStars - 1] }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-if="store.currentPost?.description"
+                :class="hasMeta ? 'pt-5' : ''"
+                :style="hasMeta ? 'border-top: 1px solid color-mix(in srgb, var(--c-border) 40%, transparent);' : ''"
+              >
+                <p class="info-section-label">描述</p>
+                <p class="text-sm font-body italic text-inkMuted leading-relaxed">{{ store.currentPost.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- ── Modals ─────────────────────────────────────────────────── -->
     <WaypointEditModal
@@ -576,7 +635,7 @@ import {
   ChevronsRight as ChevronsRightIcon, ChevronsLeft as ChevronsLeftIcon,
   StarOff as StarOffIcon, Download as DownloadIcon, Upload as UploadIcon,
   Plus as PlusIcon, EyeOff as EyeOffIcon, Globe as GlobeIcon,
-  MapPin as MapPinIcon, AlignLeft as AlignLeftIcon,
+  MapPin as MapPinIcon, AlignLeft as AlignLeftIcon, Info as InfoIcon,
 } from 'lucide-vue-next'
 import PhotoGallery from '../components/PhotoGallery.vue'
 import GpxViewer from '../components/GpxViewer.vue'
@@ -614,6 +673,7 @@ const galleryRef       = ref<InstanceType<typeof PhotoGallery> | null>(null)
 const gpxViewerRef     = ref<InstanceType<typeof GpxViewer> | null>(null)
 const contentScrollRef = ref<HTMLElement | null>(null)
 const showBackToTop    = ref(false)
+const showInfoSheet    = ref(false)
 
 const {
   activeTab, sidebarOpen, foodEditMode, gearEditMode,
@@ -749,4 +809,129 @@ onUnmounted(() => {
 .wpt-hint-leave-active { transition: opacity 1s ease; }
 .wpt-hint-enter-from,
 .wpt-hint-leave-to     { opacity: 0 !important; }
+
+/* ── Mobile: Post Detail responsive overrides (< 640px) ─────────────── */
+@media (max-width: 639px) {
+
+  /* Sticky header with backdrop blur */
+  .detail-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: 10px 16px 10px;
+    backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--c-base) 88%, transparent);
+  }
+  .meta-chips-row {
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .meta-chips-row::-webkit-scrollbar { display: none; }
+
+  /* Three-col: stack vertically, document scroll */
+  .detail-three-col {
+    flex-direction: column;
+    overflow: visible;
+    padding: 0;
+    padding-bottom: 2rem;
+    flex: none;
+  }
+
+  /* Left nav → horizontal scroll tab bar */
+  .detail-nav {
+    flex-direction: row !important;
+    width: 100%;
+    padding: 0 4px !important;
+    border-right: none !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+    gap: 0;
+  }
+  .detail-nav::-webkit-scrollbar { display: none; }
+
+  .detail-nav-btn {
+    flex-direction: row !important;
+    gap: 6px !important;
+    padding: 10px 14px !important;
+    white-space: nowrap;
+    border-radius: 0;
+  }
+  .detail-nav-btn span.text-\[10px\] { font-size: 13px !important; }
+
+  /* Nav active indicator: bottom underline */
+  .nav-indicator {
+    left: 8px !important;
+    right: 8px !important;
+    top: auto !important;
+    bottom: -1px !important;
+    width: auto !important;
+    height: 2px !important;
+  }
+
+  /* Main: natural flow */
+  .detail-main {
+    overflow: visible !important;
+    flex: none !important;
+  }
+  .detail-content-area {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
+  }
+  /* Remove padding added by :class for non-gpx tabs — re-add inline */
+  .detail-content-area.overflow-y-auto.p-6 { padding: 16px !important; }
+
+  /* Right sidebar: hidden on mobile */
+  .detail-sidebar { display: none !important; }
+
+  /* Top bar: tighter padding */
+  .detail-topbar > div { padding-left: 12px; padding-right: 12px; }
+}
+
+/* ── Mobile info bottom sheet ──────────────────────────────────────── */
+.info-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.info-box {
+  width: 100%;
+  background: var(--c-card);
+  border: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);
+  border-radius: 0;
+  box-shadow: 0 -8px 48px rgba(0,0,0,0.4);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+}
+.info-handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: 12px auto 4px;
+  flex-shrink: 0;
+}
+.info-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 20px 20px;
+}
+.info-section-label {
+  font-size: 9px;
+  font-family: Inter, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--c-inkMuted);
+  opacity: 0.5;
+  margin-bottom: 12px;
+}
+
+/* Sheet slide-up transition */
+.info-sheet-enter-active { transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.info-sheet-leave-active { transition: opacity 0.16s ease, transform 0.2s ease; }
+.info-sheet-enter-from, .info-sheet-leave-to { opacity: 0; transform: translateY(60%); }
 </style>
