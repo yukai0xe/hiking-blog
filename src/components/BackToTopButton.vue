@@ -17,22 +17,17 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowUp as ArrowUpIcon } from 'lucide-vue-next'
-import { useBrowserPanel } from '../composables/useBrowserPanel'
 
-const route          = useRoute()
-const { browserOpen } = useBrowserPanel()
-const THRESHOLD      = 320
-const scrolled       = ref(false)
+const route     = useRoute()
+const THRESHOLD = 320
+const scrolled  = ref(false)
 
 // Detect native browser scroll-to-top support (CSS Overflow spec)
 const nativeSupported = typeof CSS !== 'undefined' && CSS.supports('scroll-to-top', 'auto')
 
-// PostDetail has its own back-to-top; hide while inline browser panel is open
+// PostDetail has its own back-to-top that handles an inner scroll container
 const visible = computed(() =>
-  scrolled.value &&
-  !route.path.startsWith('/detail/') &&
-  !nativeSupported &&
-  !browserOpen.value
+  scrolled.value && !route.path.startsWith('/detail/') && !nativeSupported
 )
 
 function onScroll() {
