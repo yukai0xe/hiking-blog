@@ -7,6 +7,7 @@
   />
   <RouterView />
   <ToastContainer />
+  <BackToTopButton />
 </template>
 
 <script setup lang="ts">
@@ -19,6 +20,7 @@ import bg5 from './assets/typography-bg-5.svg'
 import { useAuthStore }   from './stores/authStore'
 import { useProfileStore } from './stores/profileStore'
 import ToastContainer      from './components/ToastContainer.vue'
+import BackToTopButton     from './components/BackToTopButton.vue'
 
 const BACKGROUNDS = [bg1, bg2, bg3, bg4, bg5]
 const bg = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)]

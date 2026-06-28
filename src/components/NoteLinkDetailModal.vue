@@ -4,6 +4,9 @@
       <div v-if="open && link" class="modal-backdrop" @click.self="emit('close')">
         <div class="modal-box">
 
+          <!-- Bottom sheet drag handle (mobile only) -->
+          <div class="sheet-handle" />
+
           <!-- Cover image -->
           <div class="modal-cover">
             <img
@@ -52,21 +55,70 @@
             <!-- Divider -->
             <div style="border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);" />
 
-            <!-- Action buttons -->
+            <!-- Action buttons / group picker -->
             <div class="space-y-2">
-              <button class="action-row-btn" @click="openLink">
-                <ExternalLinkIcon :size="15" class="shrink-0" />
-                <span>開啟連結</span>
-              </button>
-              <button class="action-row-btn" @click="copyLink">
-                <CheckIcon v-if="copied" :size="15" class="shrink-0 text-primary" />
-                <CopyIcon  v-else        :size="15" class="shrink-0" />
-                <span>{{ copied ? '已複製' : '複製連結' }}</span>
-              </button>
-              <button class="action-row-btn action-row-btn--delete" @click="emit('delete')">
-                <Trash2Icon :size="15" class="shrink-0" />
-                <span>刪除連結</span>
-              </button>
+
+              <!-- Group picker panel -->
+              <template v-if="showGroupPicker">
+                <div class="flex items-center gap-2 mb-3">
+                  <button
+                    class="flex items-center gap-1.5 text-xs font-body text-inkMuted hover:text-ink transition-colors cursor-pointer"
+                    @click="showGroupPicker = false"
+                  >
+                    <ArrowLeftIcon :size="13" /> 返回
+                  </button>
+                  <span class="text-[11px] font-mono tracking-wider uppercase text-inkMuted">移至分組</span>
+                </div>
+
+                <!-- Ungrouped option -->
+                <button
+                  class="action-row-btn"
+                  :class="{ 'action-row-btn--active': !link.groupId }"
+                  @click="moveToGroup(null)"
+                >
+                  <CheckIcon v-if="!link.groupId" :size="15" class="shrink-0 text-primary" />
+                  <InboxIcon v-else                :size="15" class="shrink-0 opacity-60" />
+                  <span>未分組</span>
+                </button>
+
+                <!-- All groups -->
+                <button
+                  v-for="g in store.groups"
+                  :key="g.id"
+                  class="action-row-btn"
+                  :class="{ 'action-row-btn--active': link.groupId === g.id }"
+                  @click="moveToGroup(g.id)"
+                >
+                  <CheckIcon  v-if="link.groupId === g.id" :size="15" class="shrink-0 text-primary" />
+                  <FolderIcon v-else                        :size="15" class="shrink-0 opacity-60" />
+                  <span>{{ g.name }}</span>
+                </button>
+              </template>
+
+              <!-- Normal actions -->
+              <template v-else>
+                <button class="action-row-btn" @click="openLink">
+                  <ExternalLinkIcon :size="15" class="shrink-0" />
+                  <span>開啟連結</span>
+                </button>
+                <button class="action-row-btn" @click="copyLink">
+                  <CheckIcon v-if="copied" :size="15" class="shrink-0 text-primary" />
+                  <CopyIcon  v-else        :size="15" class="shrink-0" />
+                  <span>{{ copied ? '已複製' : '複製連結' }}</span>
+                </button>
+                <button class="action-row-btn" @click="showGroupPicker = true">
+                  <FolderInputIcon :size="15" class="shrink-0" />
+                  <span>移至分組</span>
+                  <span class="ml-auto text-[11px] font-mono text-inkMuted opacity-60 truncate max-w-[140px]">
+                    {{ currentGroupName }}
+                  </span>
+                </button>
+                <button class="action-row-btn action-row-btn--delete" @click="emit('delete')">
+                  <Trash2Icon :size="15" class="shrink-0" />
+                  <span>刪除連結</span>
+                </button>
+              </template>
+
             </div>
 
           </div>
@@ -85,6 +137,10 @@ import {
   Copy as CopyIcon,
   Check as CheckIcon,
   Trash2 as Trash2Icon,
+  ArrowLeft as ArrowLeftIcon,
+  Folder as FolderIcon,
+  FolderInput as FolderInputIcon,
+  Inbox as InboxIcon,
 } from 'lucide-vue-next'
 import type { NoteLink } from '../types'
 import { useNotesStore } from '../stores/notesStore'
@@ -96,16 +152,26 @@ const emit  = defineEmits<{ close: []; delete: [] }>()
 const store           = useNotesStore()
 const { show: toast } = useToast()
 
-const titleEdit = ref('')
-const imgError  = ref(false)
-const copied    = ref(false)
+const titleEdit      = ref('')
+const imgError       = ref(false)
+const copied         = ref(false)
+const showGroupPicker = ref(false)
 let   copyTimer: ReturnType<typeof setTimeout> | null = null
 
 const titleDirty = computed(() => !!props.link && titleEdit.value.trim() !== props.link.title)
 
+const currentGroupName = computed(() => {
+  if (!props.link?.groupId) return '未分組'
+  return store.groups.find(g => g.id === props.link!.groupId)?.name ?? '未分組'
+})
+
 watch(() => props.link, (l) => {
-  titleEdit.value = l?.title ?? ''
-  imgError.value  = false
+  titleEdit.value   = l?.title ?? ''
+  imgError.value    = false
+})
+
+watch(() => props.open, (v) => {
+  if (!v) showGroupPicker.value = false
 })
 
 function resetTitle() {
@@ -133,33 +199,58 @@ function copyLink() {
   if (copyTimer) clearTimeout(copyTimer)
   copyTimer = setTimeout(() => { copied.value = false }, 2000)
 }
+
+async function moveToGroup(groupId: string | null) {
+  if (!props.link) return
+  await store.moveLink(props.link.id, groupId)
+  showGroupPicker.value = false
+  const name = groupId ? (store.groups.find(g => g.id === groupId)?.name ?? '分組') : '未分組'
+  toast(`已移至：${name}`)
+}
 </script>
 
 <style scoped>
+/* ── backdrop ─────────────────────────────────────────────────────────────── */
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(0,0,0,0.55);
-  display: flex; align-items: center; justify-content: center;
-  padding: 1rem;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0;
 }
+
+/* ── box: bottom sheet on mobile, centered card on sm+ ───────────────────── */
 .modal-box {
-  width: 100%; max-width: 420px;
+  width: 100%;
   background: var(--c-card);
   border: 1px solid color-mix(in srgb, var(--c-border) 60%, transparent);
-  border-radius: 16px;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  box-shadow: 0 -8px 48px rgba(0,0,0,0.45);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ── drag handle (mobile only) ───────────────────────────────────────────── */
+.sheet-handle {
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: 12px auto 4px;
+}
+
+/* ── cover ────────────────────────────────────────────────────────────────── */
 .modal-cover {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 200px;
   background: color-mix(in srgb, var(--c-border) 30%, transparent);
   overflow: hidden;
 }
+
 .close-btn {
   position: absolute; top: 10px; right: 10px;
-  width: 28px; height: 28px;
+  width: 30px; height: 30px;
   border-radius: 50%;
   background: rgba(0,0,0,0.45);
   display: flex; align-items: center; justify-content: center;
@@ -168,10 +259,11 @@ function copyLink() {
 }
 .close-btn:hover { background: rgba(0,0,0,0.65); }
 
+/* ── action buttons ───────────────────────────────────────────────────────── */
 .action-row-btn {
   width: 100%;
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 10px;
   font-family: var(--font-body, sans-serif);
   font-size: 0.875rem;
@@ -186,6 +278,11 @@ function copyLink() {
   background: color-mix(in srgb, var(--c-primary) 10%, transparent);
   border-color: color-mix(in srgb, var(--c-primary) 30%, transparent);
 }
+.action-row-btn--active {
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--c-primary) 35%, transparent);
+  color: var(--c-primary);
+}
 .action-row-btn--delete {
   color: #e07070;
   background: color-mix(in srgb, #e07070 6%, transparent);
@@ -196,7 +293,30 @@ function copyLink() {
   border-color: color-mix(in srgb, #e07070 40%, transparent);
 }
 
-.modal-fade-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.modal-fade-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: scale(0.97); }
+/* ── transitions: slide-up on mobile ─────────────────────────────────────── */
+.modal-fade-enter-active { transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.modal-fade-leave-active { transition: opacity 0.16s ease, transform 0.2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: translateY(60%); }
+
+/* ── sm+ (≥ 640px): centered floating card ───────────────────────────────── */
+@media (min-width: 640px) {
+  .modal-backdrop {
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-box {
+    max-width: 420px;
+    border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    max-height: 90vh;
+    padding-bottom: 0;
+  }
+  .sheet-handle { display: none; }
+  .modal-cover { height: 180px; }
+
+  .modal-fade-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+  .modal-fade-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
+  .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: scale(0.97); }
+}
 </style>

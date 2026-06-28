@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen textured-bg vignette py-8">
-    <div class="relative z-10 max-w-5xl mx-auto px-4">
+    <div class="relative z-10 max-w-5xl mx-auto px-0 sm:px-4">
 
       <!-- Header -->
-      <div class="flex items-center gap-3 mb-8">
+      <div class="flex items-center gap-3 mb-8 px-4 sm:px-0">
         <button
           class="card-aged w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer text-inkMuted hover:text-ink transition-colors duration-200"
           @click="$router.push('/')" aria-label="返回"
@@ -23,11 +23,8 @@
         </button>
       </div>
 
-      <!-- Loading -->
-      <div v-if="store.loading" class="card-aged p-10 text-center text-inkMuted font-body">
-        <div class="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin mx-auto mb-3" />
-        載入中…
-      </div>
+      <!-- Skeleton loading -->
+      <NotesPageSkeleton v-if="store.loading" />
 
       <!-- Delete error -->
       <div v-if="deleteError"
@@ -42,13 +39,13 @@
 
         <!-- Ungrouped links -->
         <section
-          class="mb-6 rounded-xl p-3 -m-3 transition-colors duration-150"
+          class="mb-6 rounded-xl sm:p-3 sm:-m-3 transition-colors duration-150"
           :style="ungroupedDragOver ? { background: 'color-mix(in srgb, var(--c-primary) 6%, transparent)', outline: '2px dashed color-mix(in srgb, var(--c-primary) 40%, transparent)' } : {}"
           @dragover.prevent="ungroupedDragOver = true"
           @dragleave="(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) ungroupedDragOver = false }"
           @drop.prevent="onDropUngrouped"
         >
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center justify-between mb-3 px-4 sm:px-0">
             <h2 class="font-heading text-sm uppercase tracking-widest text-inkMuted opacity-70">未分組</h2>
             <button
               class="btn-cta flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body font-medium cursor-pointer"
@@ -65,7 +62,7 @@
               @open-detail="openDetail(link)"
             />
           </div>
-          <p v-else class="text-xs font-body italic text-inkMuted">尚無未分組連結</p>
+          <p v-else class="text-xs font-body italic text-inkMuted px-4 sm:px-0">尚無未分組連結</p>
         </section>
 
         <div v-if="store.groups.length > 0"
@@ -89,7 +86,7 @@
 
         <!-- New group button -->
         <button
-          class="mt-6 flex items-center gap-2 px-4 py-2.5 rounded-xl card-aged text-sm font-body text-inkMuted hover:text-primary transition-colors cursor-pointer"
+          class="mt-6 mx-4 sm:mx-0 flex items-center gap-2 px-4 py-2.5 rounded-xl card-aged text-sm font-body text-inkMuted hover:text-primary transition-colors cursor-pointer"
           @click="openNewGroup"
         >
           <FolderPlusIcon :size="15" /> 新增分組
@@ -143,25 +140,27 @@ import NoteGroupEditModal   from '../components/NoteGroupEditModal.vue'
 import ConfirmDialog        from '../components/ConfirmDialog.vue'
 import NoteTrashModal       from '../components/NoteTrashModal.vue'
 import NoteLinkDetailModal  from '../components/NoteLinkDetailModal.vue'
+import NotesPageSkeleton    from '../components/NotesPageSkeleton.vue'
 
 const store = useNotesStore()
 
 const deleteError       = ref<string | null>(null)
 const ungroupedDragOver = ref(false)
 
-const detailOpen = ref(false)
-const detailLink = ref<NoteLink | null>(null)
+const detailOpen   = ref(false)
+const detailLinkId = ref<string | null>(null)
+const detailLink   = computed(() => store.links.find(l => l.id === detailLinkId.value) ?? null)
 
 function openDetail(link: NoteLink) {
-  detailLink.value = link
-  detailOpen.value = true
+  detailLinkId.value = link.id
+  detailOpen.value   = true
 }
 
 function handleDeleteFromDetail() {
-  const link = detailLink.value
-  if (!link) return
+  const id = detailLinkId.value
+  if (!id) return
   detailOpen.value = false
-  handleDeleteLink(link.id)
+  handleDeleteLink(id)
 }
 
 const trashOpen      = ref(false)

@@ -1,21 +1,20 @@
 <template>
   <section
-    class="card-aged p-5 space-y-4 transition-colors duration-150"
-    :style="isDragOver ? { borderColor: 'var(--c-primary)', background: 'color-mix(in srgb, var(--c-primary) 5%, var(--c-card))' } : {}"
+    class="mb-6 sm:p-3 sm:-m-3 transition-colors duration-150"
+    :style="isDragOver ? { background: 'color-mix(in srgb, var(--c-primary) 6%, transparent)', outline: '2px dashed color-mix(in srgb, var(--c-primary) 40%, transparent)' } : {}"
     @dragover.prevent="onDragOver"
     @dragleave="onDragLeave"
     @drop.prevent="onDrop"
   >
     <!-- Group header -->
-    <div class="flex items-start gap-2">
+    <div class="flex items-center gap-2 px-4 sm:px-0 mb-3">
       <div class="flex-1 min-w-0">
-        <h3 class="font-heading text-base font-semibold text-ink">{{ group.name }}</h3>
+        <h3 class="font-heading text-sm uppercase tracking-widest text-inkMuted opacity-70">{{ group.name }}</h3>
         <p v-if="group.description" class="text-xs font-body text-inkMuted mt-0.5">{{ group.description }}</p>
       </div>
       <button
-        class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-        style="border: 1px solid var(--c-border);"
-        :style="copied ? { color: 'var(--c-primary)', borderColor: 'var(--c-primary)' } : { color: 'var(--c-inkMuted)' }"
+        class="shrink-0 w-7 h-7 flex items-center justify-center cursor-pointer transition-colors"
+        :style="copied ? { color: 'var(--c-primary)' } : { color: 'var(--c-inkMuted)' }"
         @click="copyGroup"
         :aria-label="copied ? '已複製' : '複製分組'"
       >
@@ -23,20 +22,24 @@
         <LinkIcon  v-else        :size="13" />
       </button>
       <button
-        class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer text-inkMuted hover:text-ink transition-colors"
-        style="border: 1px solid var(--c-border);"
+        class="shrink-0 w-7 h-7 flex items-center justify-center cursor-pointer text-inkMuted hover:text-ink transition-colors"
         @click="emit('edit-group')"
         aria-label="編輯分組"
       >
         <PencilIcon :size="13" />
       </button>
       <button
-        class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer text-inkMuted hover:text-red-400 transition-colors"
-        style="border: 1px solid var(--c-border);"
+        class="shrink-0 w-7 h-7 flex items-center justify-center cursor-pointer text-inkMuted hover:text-red-400 transition-colors"
         @click="emit('delete-group')"
         aria-label="刪除分組"
       >
         <Trash2Icon :size="13" />
+      </button>
+      <button
+        class="btn-cta flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body font-medium cursor-pointer"
+        @click="emit('add-link')"
+      >
+        <PlusIcon :size="13" /> 新增連結
       </button>
     </div>
 
@@ -49,15 +52,8 @@
         @open-detail="emit('open-detail-link', link)"
       />
     </div>
-    <p v-else class="text-xs font-body italic text-inkMuted">此分組尚無連結</p>
+    <p v-else class="text-xs font-body italic text-inkMuted px-4 sm:px-0">此分組尚無連結</p>
 
-    <!-- Add link button -->
-    <button
-      class="btn-cta flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body font-medium cursor-pointer"
-      @click="emit('add-link')"
-    >
-      <PlusIcon :size="13" /> 新增連結
-    </button>
   </section>
 </template>
 
@@ -70,9 +66,9 @@ import { useToast } from '../composables/useToast'
 
 const props = defineProps<{ group: NoteGroup; links: NoteLink[] }>()
 const emit = defineEmits<{
-  'add-link':        []
-  'edit-group':      []
-  'delete-group':    []
+  'add-link':         []
+  'edit-group':       []
+  'delete-group':     []
   'open-detail-link': [link: NoteLink]
   'move-link':        [id: string]
 }>()
@@ -115,5 +111,4 @@ function onDrop(e: DragEvent) {
   const id = e.dataTransfer?.getData('text/plain')
   if (id) emit('move-link', id)
 }
-
 </script>

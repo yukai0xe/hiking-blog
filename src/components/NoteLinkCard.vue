@@ -9,7 +9,7 @@
       <span class="text-[11px] font-mono leading-none">詳細</span>
     </div>
 
-    <!-- Swipeable card (also draggable for group DnD) -->
+    <!-- Swipeable card -->
     <div
       class="link-card"
       draggable="true"
@@ -24,8 +24,8 @@
       @touchmove="onTouchMove"
       @touchend.passive="onTouchEnd"
     >
-      <!-- Cover image -->
-      <div class="link-cover shrink-0" :class="{ 'link-cover--icon': isFavicon && !imgError }">
+      <!-- Cover image (full-width on mobile, fixed-width on sm+) -->
+      <div class="link-cover" :class="{ 'link-cover--icon': isFavicon && !imgError }">
         <img
           v-if="link.coverImageUrl && !imgError"
           :src="link.coverImageUrl"
@@ -38,16 +38,18 @@
         </div>
       </div>
 
-      <!-- Info -->
-      <div class="flex-1 min-w-0 px-3 py-2.5 flex flex-col justify-center gap-0.5">
-        <p class="text-sm font-body font-semibold text-ink line-clamp-2 leading-snug">{{ link.title }}</p>
-        <p v-if="link.description" class="text-[11px] font-body text-inkMuted line-clamp-2 leading-snug">{{ link.description }}</p>
-        <p class="text-[11px] font-mono text-inkMuted opacity-60 truncate">{{ link.url }}</p>
-      </div>
+      <!-- Body: info + swipe hint always side-by-side -->
+      <div class="link-body">
+        <div class="link-info">
+          <p class="text-sm font-body font-semibold text-ink line-clamp-2 leading-snug">{{ link.title }}</p>
+          <p v-if="link.description" class="text-[11px] font-body text-inkMuted line-clamp-2 leading-snug">{{ link.description }}</p>
+          <p class="text-[11px] font-mono text-inkMuted opacity-60 truncate">{{ link.url }}</p>
+        </div>
 
-      <!-- Swipe hint: animated chevrons on right edge -->
-      <div class="swipe-hint" :class="{ 'swipe-hint--hidden': isDragging }">
-        <ChevronsRightIcon :size="13" />
+        <!-- Swipe hint: animated chevrons -->
+        <div class="swipe-hint" :class="{ 'swipe-hint--hidden': isDragging }">
+          <ChevronsRightIcon :size="13" />
+        </div>
       </div>
     </div>
 
@@ -66,17 +68,16 @@ const THRESHOLD = 55
 const MAX_DRAG  = 92
 
 const imgError   = ref(false)
+const dragX      = ref(0)
+const isDragging = ref(false)
 
 const isFavicon = computed(() =>
   !!props.link.coverImageUrl && /favicon|\.ico($|\?)/i.test(props.link.coverImageUrl)
 )
-const dragX      = ref(0)
-const isDragging = ref(false)
 
-// ── state ─────────────────────────────────────────────────────────────────────
 let startX         = 0
 let startY         = 0
-let horizontalBias = false   // any mousemove with dx > dy before dragstart fires
+let horizontalBias = false
 let wasDrag        = false
 
 function snapBack() {
@@ -85,7 +86,6 @@ function snapBack() {
   horizontalBias   = false
 }
 
-// ── document-level mouse tracking ────────────────────────────────────────────
 function addDocListeners() {
   document.addEventListener('mousemove', onDocMouseMove)
   document.addEventListener('mouseup',   onDocMouseUp)
@@ -97,19 +97,15 @@ function removeDocListeners() {
 
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0) return
-  startX         = e.clientX
-  startY         = e.clientY
-  horizontalBias = false
-  wasDrag        = false
+  startX = e.clientX; startY = e.clientY
+  horizontalBias = false; wasDrag = false
   addDocListeners()
 }
 
 function onDocMouseMove(e: MouseEvent) {
   const dx = e.clientX - startX
   const dy = Math.abs(e.clientY - startY)
-  // Any movement with rightward horizontal bias → mark for dragstart gating
   if (dx > 0 && dx >= dy) horizontalBias = true
-  // Start visible swipe once clearly horizontal
   if (dx > 0 && (isDragging.value || (dx > 8 && dx > dy))) {
     isDragging.value = true
     dragX.value      = Math.min(MAX_DRAG, dx)
@@ -128,25 +124,17 @@ function onClick() {
   window.open(props.link.url, '_blank', 'noopener,noreferrer')
 }
 
-// ── dragstart: direction gates HTML5 DnD vs custom swipe ────────────────────
 function onDragStart(e: DragEvent) {
   const dx = Math.abs(e.clientX - startX)
   const dy = Math.abs(e.clientY - startY)
-
-  // Horizontal gesture (via flag or position at dragstart) → cancel DnD, keep swipe
   if (isDragging.value || horizontalBias || dx > dy + 1) {
-    e.preventDefault()
-    return
+    e.preventDefault(); return
   }
-
-  // Vertical/neutral gesture → allow group DnD, clean up swipe state
-  removeDocListeners()
-  snapBack()
+  removeDocListeners(); snapBack()
   e.dataTransfer!.setData('text/plain', props.link.id)
   e.dataTransfer!.effectAllowed = 'move'
 }
 
-// ── touch ─────────────────────────────────────────────────────────────────────
 let touchStartX = 0
 let touchStartY = 0
 
@@ -154,7 +142,6 @@ function onTouchStart(e: TouchEvent) {
   touchStartX = e.touches[0].clientX
   touchStartY = e.touches[0].clientY
 }
-
 function onTouchMove(e: TouchEvent) {
   const dx = e.touches[0].clientX - touchStartX
   const dy = Math.abs(e.touches[0].clientY - touchStartY)
@@ -164,7 +151,6 @@ function onTouchMove(e: TouchEvent) {
     dragX.value      = Math.min(MAX_DRAG, dx)
   }
 }
-
 function onTouchEnd() {
   if (dragX.value >= THRESHOLD) emit('open-detail')
   snapBack()
@@ -207,17 +193,20 @@ onUnmounted(removeDocListeners)
 .reveal-icon { transition: transform 0.14s ease; }
 .reveal-panel--triggered .reveal-icon { transform: scale(1.18); }
 
-/* ── card ────────────────────────────────────────────────────────────────── */
+/* ── card: column on mobile, row on sm+ ──────────────────────────────────── */
 .link-card {
   position: relative;
   display: flex;
+  flex-direction: column;   /* mobile: cover on top, body below */
   background: var(--c-card);
   width: 100%;
 }
 
+/* ── cover: full-width on mobile, fixed on sm+ ───────────────────────────── */
 .link-cover {
   position: relative;
-  width: 240px; height: 110px;
+  width: 100%;
+  height: 130px;
   background: color-mix(in srgb, var(--c-border) 30%, transparent);
   overflow: hidden;
   flex-shrink: 0;
@@ -229,10 +218,28 @@ onUnmounted(removeDocListeners)
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 48px; height: 48px;
+  width: 56px; height: 56px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 10px;
   image-rendering: crisp-edges;
+}
+
+/* ── body (info + swipe-hint, always a row) ──────────────────────────────── */
+.link-body {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.link-info {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 
 /* ── swipe hint ──────────────────────────────────────────────────────────── */
@@ -248,6 +255,25 @@ onUnmounted(removeDocListeners)
 .swipe-hint--hidden {
   opacity: 0;
   animation-play-state: paused;
+}
+
+/* ── mobile: no radius, no side margin ──────────────────────────────────── */
+@media (max-width: 639px) {
+  .link-wrapper {
+    border-radius: 0;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+/* ── sm+ (≥ 640px): horizontal layout ───────────────────────────────────── */
+@media (min-width: 640px) {
+  .link-card { flex-direction: row; }
+  .link-cover {
+    width: 200px;
+    height: 110px;
+  }
+  .link-info { padding: 10px 14px; }
 }
 
 @keyframes hint-nudge {
